@@ -1,0 +1,24 @@
+# DailyTodo Obsidian Companion Verification
+
+- [ ] Launch app with no existing companion settings.
+- [ ] Choose an Obsidian vault.
+- [ ] Open Obsidian Companion settings.
+- [ ] Confirm default rules and templates are visible.
+- [ ] Edit one template and reopen settings; confirm it persists.
+- [ ] Edit one rule target/section/mode and confirm preview reflects the change.
+- [ ] Preview sync for today's tasks and inspiration.
+- [ ] Confirm preview lists target files and actions.
+- [ ] Try a rule target containing `../outside.md` and confirm preview rejects it without writing outside the vault.
+- [ ] Run sync.
+- [ ] Confirm Markdown appears in the selected Obsidian vault.
+- [ ] Confirm the existing DailyTodo Obsidian sync button still works independently from Companion sync.
+- [ ] Create a temporary mobile inbox with `.txt`, `.md`, and `.json` files.
+- [ ] Put an already-existing same-name file in `_processed`, import mobile inbox, and confirm the imported file is moved with a unique name.
+- [ ] Import mobile inbox.
+- [ ] Confirm imported mobile items appear in Companion preview before sync.
+- [ ] Confirm imported files move to `_processed`.
+- [ ] Confirm invalid files move to `_failed`.
+- [ ] Run `npm run verify:companion`.
+- [ ] Run `npm run build`.
+- [ ] Run `npm run dist` if packaging is needed.
+- [ ] Launch packaged app and confirm it does not depend on development paths.

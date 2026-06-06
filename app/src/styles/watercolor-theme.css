@@ -1,0 +1,724 @@
+/* ========================================
+   🎨 Watercolor Style Theme (水彩画风)
+   基于 watercolor-style-app-ui-prompt.md 设计规范
+   ======================================== */
+
+/* ==================== 核心颜色变量 ==================== */
+.theme-watercolor {
+  --watercolor-paper: #faf8f5;
+  --watercolor-paper-light: #f0f4f8;
+  --watercolor-blue: #4a6fa5;
+  --watercolor-blue-light: #7fa3c9;
+  --watercolor-blue-lighter: #a8c5e3;
+  --watercolor-blue-pale: #e8f0f8;
+  --watercolor-text: #6a7a8a;
+  --watercolor-border: rgba(74, 111, 165, 0.2);
+  --watercolor-shadow-sm: 0 2px 10px rgba(74, 111, 165, 0.1);
+  --watercolor-shadow-md: 0 4px 20px rgba(74, 111, 165, 0.12);
+  --watercolor-shadow-lg: 0 8px 30px rgba(74, 111, 165, 0.15);
+  /* 面背景 RGB 三元组(配合 rgba(var(--x), alpha) 保留各自透明度) */
+  --wc-surface: 255, 255, 255;   /* 纯白面(卡片/按钮) */
+  --wc-paper-rgb: 250, 248, 245; /* 米纸底 */
+  --wc-soft: 240, 244, 248;      /* 冷白柔面 */
+}
+
+/* ==================== 应用外壳 ==================== */
+.theme-watercolor .app-shell {
+  background: linear-gradient(to bottom, rgba(var(--wc-paper-rgb), var(--window-opacity)), rgba(var(--wc-soft), var(--window-opacity))) !important;
+  border: 1px solid var(--watercolor-border) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--watercolor-shadow-lg) !important;
+}
+
+/* ==================== 顶部区域 ==================== */
+.theme-watercolor .app-top {
+  background: rgba(var(--wc-surface), var(--top-opacity, 0.8)) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid var(--watercolor-border) !important;
+}
+
+/* ==================== 标题栏 ==================== */
+.theme-watercolor .titlebar {
+  background: rgba(var(--wc-surface), var(--top-opacity, 0.8)) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid var(--watercolor-border) !important;
+}
+
+.theme-watercolor .titlebar-button {
+  border-radius: 20px !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .titlebar-button:active {
+  transform: scale(0.95) !important;
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+/* ==================== 头部品牌区域 ==================== */
+.theme-watercolor .app-header {
+  background: transparent !important;
+}
+
+.theme-watercolor .app-brand h1 {
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+  letter-spacing: 0.02em !important;
+}
+
+.theme-watercolor .app-brand p {
+  color: var(--watercolor-text) !important;
+  font-weight: 300 !important;
+}
+
+.theme-watercolor .app-brand-eyebrow {
+  color: var(--watercolor-text) !important;
+  font-weight: 300 !important;
+}
+
+/* ==================== 头部按钮 ==================== */
+.theme-watercolor .header-icon-button,
+.theme-watercolor .header-folder-button {
+  border-radius: 20px !important;
+  background: rgba(var(--wc-surface), var(--control-opacity, 0.6)) !important;
+  border: 1px solid var(--watercolor-border) !important;
+  color: var(--watercolor-blue) !important;
+  transition: all 0.4s ease-out !important;
+  font-weight: 300 !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .header-icon-button:active,
+.theme-watercolor .header-folder-button:active {
+  transform: scale(0.98) !important;
+  box-shadow: var(--watercolor-shadow-sm) !important;
+}
+
+/* ==================== 进度条 ==================== */
+.theme-watercolor .header-progress-track {
+  background: var(--watercolor-paper-light) !important;
+  border: 1px solid var(--watercolor-border) !important;
+  border-radius: 20px !important;
+  height: 12px !important;
+}
+
+.theme-watercolor .progress-fill {
+  background: linear-gradient(to right, var(--watercolor-blue-lighter), var(--watercolor-blue-light)) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--watercolor-shadow-sm) !important;
+}
+
+.theme-watercolor .header-clear-button {
+  border-radius: 20px !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  border: 1px solid var(--watercolor-border) !important;
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .header-clear-button:active {
+  transform: scale(0.98) !important;
+}
+
+/* ==================== 日期导航器 ==================== */
+.theme-watercolor .date-navigator {
+  border-bottom: 1px solid var(--watercolor-border) !important;
+  background: transparent !important;
+}
+
+.theme-watercolor .date-nav-button {
+  border-radius: 20px !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .date-nav-button:active {
+  transform: scale(0.95) !important;
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+/* ==================== Daily Work Panel ==================== */
+.theme-watercolor .daily-panel-tab {
+  border-radius: 20px !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  border: 1px solid var(--watercolor-border) !important;
+  color: var(--watercolor-blue) !important;
+  transition: all 0.4s ease-out !important;
+  font-weight: 300 !important;
+}
+
+.theme-watercolor .daily-panel-tab:active {
+  transform: scale(0.98) !important;
+}
+
+.theme-watercolor .daily-panel-tab-active {
+  background: rgba(var(--wc-soft), 0.5) !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .daily-work-panel {
+  border-radius: 24px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-paper-rgb), 0.95) !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .daily-work-textarea {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .daily-work-textarea:focus {
+  box-shadow: var(--watercolor-shadow-md) !important;
+  outline: none !important;
+}
+
+/* ==================== 标签栏 ==================== */
+.theme-watercolor .tab-bar {
+  border-bottom: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.theme-watercolor .tab-button {
+  border-radius: 0 !important;
+  color: var(--watercolor-text) !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+  border-right: 1px solid var(--watercolor-border) !important;
+}
+
+.theme-watercolor .tab-button:last-child {
+  border-right: none !important;
+}
+
+.theme-watercolor .tab-button:active {
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+.theme-watercolor .tab-button[data-active="true"] {
+  color: var(--watercolor-blue) !important;
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+/* ==================== 任务列表 ==================== */
+.theme-watercolor .task-list {
+  background: linear-gradient(to bottom, rgba(var(--wc-paper-rgb), var(--panel-opacity, 0.8)), rgba(var(--wc-soft), var(--panel-opacity, 0.8))) !important;
+}
+
+/* ==================== 任务卡片 ==================== */
+.theme-watercolor .task-card {
+  border-bottom: 1px solid var(--watercolor-border) !important;
+  background: transparent !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .task-card:active {
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+.theme-watercolor .task-card-completed {
+  opacity: 0.6 !important;
+}
+
+.theme-watercolor .task-card-completed .task-text {
+  text-decoration: line-through !important;
+  color: var(--watercolor-text) !important;
+}
+
+/* ==================== 任务复选框 ==================== */
+.theme-watercolor .task-check {
+  width: 24px !important;
+  height: 24px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  border-radius: 20px !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  transition: all 0.4s ease-out !important;
+  flex-shrink: 0 !important;
+  box-shadow: var(--watercolor-shadow-sm) !important;
+}
+
+.theme-watercolor .task-check:active {
+  transform: scale(0.95) !important;
+}
+
+.theme-watercolor .task-check-complete {
+  background: linear-gradient(to bottom right, var(--watercolor-blue-lighter), var(--watercolor-blue-light)) !important;
+  border-color: var(--watercolor-blue) !important;
+  color: white !important;
+}
+
+/* ==================== 优先级选择器 ==================== */
+.theme-watercolor .priority-dot-button {
+  border-radius: 20px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  transition: all 0.4s ease-out !important;
+  background: transparent !important;
+  border: 1px solid var(--watercolor-border) !important;
+}
+
+.theme-watercolor .priority-dot-button:active {
+  transform: scale(0.95) !important;
+}
+
+.theme-watercolor .priority-dot-button[data-priority="high"] {
+  background: linear-gradient(to bottom right, #e88a8a, #d35f5f) !important;
+  border-color: #d35f5f !important;
+}
+
+.theme-watercolor .priority-dot-button[data-priority="medium"] {
+  background: linear-gradient(to bottom right, #f0c77a, #e5a84b) !important;
+  border-color: #e5a84b !important;
+}
+
+.theme-watercolor .priority-dot-button[data-priority="low"] {
+  background: linear-gradient(to bottom right, #8bc4b4, #5b9a8b) !important;
+  border-color: #5b9a8b !important;
+}
+
+/* ==================== 任务优先级标签 ==================== */
+.theme-watercolor .task-priority-label {
+  color: var(--watercolor-text) !important;
+  font-weight: 300 !important;
+  font-size: 0.75rem !important;
+}
+
+/* ==================== 任务文本 ==================== */
+.theme-watercolor .task-text {
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+}
+
+.theme-watercolor .task-edit-input {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  color: var(--watercolor-blue) !important;
+  padding: 4px 12px !important;
+  font-weight: 300 !important;
+}
+
+.theme-watercolor .task-edit-input:focus {
+  box-shadow: var(--watercolor-shadow-md) !important;
+  outline: none !important;
+}
+
+/* ==================== 任务操作按钮 ==================== */
+.theme-watercolor .task-icon-action {
+  border-radius: 20px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  transition: all 0.4s ease-out !important;
+  color: var(--watercolor-blue) !important;
+}
+
+.theme-watercolor .task-icon-action:active {
+  transform: scale(0.95) !important;
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+/* ==================== 添加任务区域 ==================== */
+.theme-watercolor .add-task {
+  border-top: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), var(--control-opacity, 0.6)) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.theme-watercolor .add-task-input {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .add-task-input:focus {
+  box-shadow: var(--watercolor-shadow-md) !important;
+  outline: none !important;
+}
+
+.theme-watercolor .add-task-input::placeholder {
+  color: var(--watercolor-text) !important;
+}
+
+.theme-watercolor .add-task-button {
+  border-radius: 20px !important;
+  background: linear-gradient(to bottom right, var(--watercolor-blue-lighter), var(--watercolor-blue-light)) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .add-task-button:active {
+  transform: scale(0.98) !important;
+  box-shadow: var(--watercolor-shadow-sm) !important;
+}
+
+/* ==================== 优先级选择器弹出框 ==================== */
+.theme-watercolor .priority-picker {
+  border-radius: 24px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-paper-rgb), 0.98) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: var(--watercolor-shadow-lg) !important;
+}
+
+.theme-watercolor .priority-option {
+  border-radius: 20px !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .priority-option:active {
+  transform: scale(0.98) !important;
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+/* ==================== 设置面板 ==================== */
+.theme-watercolor .settings-panel {
+  border-radius: 24px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-paper-rgb), var(--menu-opacity, 0.9)) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: var(--watercolor-shadow-lg) !important;
+}
+
+.theme-watercolor .settings-panel-header {
+  border-bottom: 1px solid var(--watercolor-border) !important;
+}
+
+.theme-watercolor .settings-panel-header h2 {
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+  letter-spacing: 0.02em !important;
+}
+
+.theme-watercolor .settings-panel-header p {
+  color: var(--watercolor-text) !important;
+  font-weight: 300 !important;
+}
+
+.theme-watercolor .settings-icon-button,
+.theme-watercolor .settings-back-button {
+  border-radius: 20px !important;
+  transition: all 0.4s ease-out !important;
+  color: var(--watercolor-blue) !important;
+}
+
+.theme-watercolor .settings-icon-button:active,
+.theme-watercolor .settings-back-button:active {
+  transform: scale(0.95) !important;
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+/* ==================== 设置导航项 ==================== */
+.theme-watercolor .settings-nav-item {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  transition: all 0.4s ease-out !important;
+  color: var(--watercolor-blue) !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .settings-nav-item:active {
+  transform: scale(0.98) !important;
+  box-shadow: var(--watercolor-shadow-sm) !important;
+}
+
+.theme-watercolor .settings-nav-item strong {
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+}
+
+.theme-watercolor .settings-nav-item small {
+  color: var(--watercolor-text) !important;
+  font-weight: 300 !important;
+}
+
+/* ==================== 设置开关行 ==================== */
+.theme-watercolor .settings-switch-row {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .settings-switch-row:active {
+  transform: scale(0.98) !important;
+}
+
+.theme-watercolor .settings-switch-on {
+  background: rgba(var(--wc-soft), 0.5) !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+/* ==================== 设置输入框 ==================== */
+.theme-watercolor .settings-field input,
+.theme-watercolor .settings-field select,
+.theme-watercolor .settings-field textarea {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .settings-field textarea {
+  resize: none !important;
+}
+
+.theme-watercolor .settings-field input:focus,
+.theme-watercolor .settings-field select:focus,
+.theme-watercolor .settings-field textarea:focus {
+  box-shadow: var(--watercolor-shadow-md) !important;
+  outline: none !important;
+}
+
+.theme-watercolor .settings-field strong {
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+}
+
+.theme-watercolor .settings-field small {
+  color: var(--watercolor-text) !important;
+  font-weight: 300 !important;
+}
+
+/* ==================== 设置按钮 ==================== */
+.theme-watercolor .settings-reset-button {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  color: var(--watercolor-blue) !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .settings-reset-button:active {
+  transform: scale(0.98) !important;
+  box-shadow: var(--watercolor-shadow-sm) !important;
+}
+
+/* ==================== 主题预设卡片 ==================== */
+.theme-watercolor .theme-preset-card {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .theme-preset-card:active {
+  transform: scale(0.98) !important;
+}
+
+.theme-watercolor .theme-preset-active {
+  background: rgba(var(--wc-soft), 0.8) !important;
+  box-shadow: var(--watercolor-shadow-lg) !important;
+}
+
+/* ==================== 滚动条 ==================== */
+.theme-watercolor ::-webkit-scrollbar-thumb {
+  background-color: rgba(74, 111, 165, 0.3) !important;
+  border-radius: 20px !important;
+}
+
+.theme-watercolor ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(74, 111, 165, 0.5) !important;
+}
+
+/* ==================== 纸张纹理增强 ==================== */
+.theme-watercolor body::before {
+  opacity: 0.03 !important;
+}
+
+/* ==================== 搜索栏 ==================== */
+.theme-watercolor .search-bar {
+  border-bottom: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.8) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.theme-watercolor .search-input {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-surface), 0.6) !important;
+  color: var(--watercolor-blue) !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .search-input:focus {
+  box-shadow: var(--watercolor-shadow-md) !important;
+  outline: none !important;
+}
+
+/* ==================== 对话框 ==================== */
+.theme-watercolor .dialog-overlay {
+  background: rgba(74, 111, 165, 0.2) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.theme-watercolor .dialog-content {
+  border-radius: 24px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-paper-rgb), 0.98) !important;
+  box-shadow: var(--watercolor-shadow-lg) !important;
+}
+
+.theme-watercolor .dialog-button {
+  border-radius: 20px !important;
+  height: 48px !important;
+  font-weight: 300 !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .dialog-button:active {
+  transform: scale(0.98) !important;
+}
+
+.theme-watercolor .dialog-button-primary {
+  background: linear-gradient(to bottom right, var(--watercolor-blue-lighter), var(--watercolor-blue-light)) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: var(--watercolor-shadow-md) !important;
+}
+
+.theme-watercolor .dialog-button-secondary {
+  background: rgba(var(--wc-surface), 0.6) !important;
+  border: 1px solid var(--watercolor-border) !important;
+  color: var(--watercolor-blue) !important;
+}
+
+/* ==================== 日历面板 ==================== */
+.theme-watercolor .calendar-panel {
+  border-radius: 24px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  background: rgba(var(--wc-paper-rgb), var(--menu-opacity, 0.9)) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: var(--watercolor-shadow-lg) !important;
+}
+
+.theme-watercolor .calendar-day {
+  border-radius: 20px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  transition: all 0.4s ease-out !important;
+}
+
+.theme-watercolor .calendar-day:active {
+  transform: scale(0.95) !important;
+  background: rgba(var(--wc-soft), 0.5) !important;
+}
+
+.theme-watercolor .calendar-day-selected {
+  background: linear-gradient(to bottom right, var(--watercolor-blue-lighter), var(--watercolor-blue-light)) !important;
+  color: white !important;
+}
+
+/* ==================== 任务优先级轨道 ==================== */
+.theme-watercolor .task-priority-rail {
+  background: transparent !important;
+  border-radius: 20px !important;
+}
+
+.theme-watercolor .task-card[data-priority="high"] .task-priority-rail {
+  background: linear-gradient(to bottom, #e88a8a, #d35f5f) !important;
+}
+
+.theme-watercolor .task-card[data-priority="medium"] .task-priority-rail {
+  background: linear-gradient(to bottom, #f0c77a, #e5a84b) !important;
+}
+
+.theme-watercolor .task-card[data-priority="low"] .task-priority-rail {
+  background: linear-gradient(to bottom, #8bc4b4, #5b9a8b) !important;
+}
+
+/* ==================== 范围控制滑块 ==================== */
+.theme-watercolor .settings-range-row input[type="range"] {
+  accent-color: var(--watercolor-blue-light) !important;
+}
+
+/* ==================== 颜色选择器 ==================== */
+.theme-watercolor .settings-color input[type="color"] {
+  border-radius: 20px !important;
+  border: 1px solid var(--watercolor-border) !important;
+  cursor: pointer !important;
+}
+
+/* ==================== 轻盈字体 ==================== */
+.theme-watercolor * {
+  font-weight: 300 !important;
+}
+
+.theme-watercolor strong,
+.theme-watercolor b {
+  font-weight: 400 !important;
+}
+
+/* ==================== 🌙 水彩 · 深色版(深蓝水彩,模板不变) ==================== */
+.dark .theme-watercolor {
+  /* 面背景三元组改为深蓝石板,各处 alpha 保持不变 → 半透明深蓝面 */
+  --wc-surface: 38, 50, 74;      /* 卡片/按钮面 */
+  --wc-paper-rgb: 17, 25, 42;    /* 深蓝底 */
+  --wc-soft: 26, 36, 56;         /* 柔面 */
+  /* 强调与文字提亮,保证深色下可读 */
+  --watercolor-paper: #11192a;
+  --watercolor-paper-light: #1a2436;
+  --watercolor-blue: #8fb3da;
+  --watercolor-blue-light: #a8c5e3;
+  --watercolor-blue-lighter: #7fa3c9;
+  --watercolor-blue-pale: #243352;
+  --watercolor-text: #aebccd;
+  --watercolor-border: rgba(127, 163, 201, 0.22);
+  --watercolor-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --watercolor-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --watercolor-shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* 主壳深蓝渐变 */
+.dark .theme-watercolor .app-shell {
+  background: linear-gradient(to bottom, rgba(15, 22, 38, var(--window-opacity)), rgba(20, 28, 46, var(--window-opacity))) !important;
+}
+
+/* 正文/次要文字统一浅色 */
+.dark .theme-watercolor .task-text,
+.dark .theme-watercolor .date-current {
+  color: #cdd8e6 !important;
+}
+.dark .theme-watercolor .task-card-completed .task-text {
+  color: #6f7d8f !important;
+}
+
+/* ==================== 水彩编辑面板间距对齐规范模板 ==================== */
+.theme-watercolor .daily-inline-panel {
+  margin-top: 0.25rem !important;
+  padding: 0.5rem !important;
+  border-radius: 20px !important;
+}
+
+.theme-watercolor .daily-dialog-editor {
+  gap: 0.3rem !important;
+}
+

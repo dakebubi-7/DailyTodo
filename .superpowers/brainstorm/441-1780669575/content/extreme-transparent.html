@@ -1,0 +1,181 @@
+<h2>极致无感 — 三种「消失」策略</h2>
+<p class="subtitle">让窗口本体完全消失。内容像直接印在桌面上。选择你觉得对的方向（可多选）。</p>
+
+<div class="section">
+  <div class="options" data-multiselect>
+    <div class="option" data-choice="floating-text" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>浮动文字 Floating Text</h3>
+        <p><strong>窗口完全不显色。</strong>无卡片背景、无分割线。任务像桌面图标文字一样直接浮在壁纸上，仅靠微弱文字阴影保证可读性。优先级圆点是唯一的视觉锚点。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="ghost-lines" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>幽灵线条 Ghost Lines</h3>
+        <p>窗口不显色，但用<strong>0.5px 极细半透明线</strong>做最低限度的结构划分（标题下一条线、任务间一条线）。像信纸上的浅格线——存在但不被注意。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="breath-tint" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>呼吸渐变 Breath Tint</h3>
+        <p>仅在窗口<strong>顶部和底部</strong>有微弱的渐隐光晕（10-15% 白色），中间区域完全透明。像玻璃边缘的微光——感知不到，但去掉会不习惯。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>Mockup：浮动文字风格 (A) — 在真实壁纸上的效果</h3>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">亮色壁纸上</div>
+    <div class="mockup-body">
+      <div style="background: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 500%22><defs><linearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22><stop offset=%220%25%22 stop-color=%22%23a8c0d0%22/><stop offset=%2240%25%22 stop-color=%22%23d0dce4%22/><stop offset=%2270%25%22 stop-color=%22%23e8e4dc%22/><stop offset=%22100%25%22 stop-color=%22%23c8d0c0%22/></linearGradient></defs><rect width=%22400%22 height=%22500%22 fill=%22url(%23g)%22/></svg>') center/cover; padding: 24px 20px; border-radius: 12px;">
+        <!-- 几乎看不见的窗口背景 -->
+        <div style="background: rgba(255,255,255,0.08); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-radius: 28px; padding: 20px 18px; min-height: 300px;">
+          <!-- 标题：纯文字 + 微弱阴影 -->
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px;">
+            <span style="font-weight:600;font-size:13px;color:#3a3a3a;text-shadow:0 0.5px 1.5px rgba(255,255,255,0.6);letter-spacing:0.02em;">Daily Todo</span>
+            <span style="font-size:11px;color:#727272;text-shadow:0 0.5px 1px rgba(255,255,255,0.5);">6月5日</span>
+          </div>
+          <!-- 进度条：极淡 -->
+          <div style="height:2px;background:rgba(0,0,0,0.05);border-radius:2px;margin-bottom:22px;">
+            <div style="width:55%;height:100%;background:rgba(0,0,0,0.12);border-radius:2px;"></div>
+          </div>
+          <!-- Tab：纯文字，当前项加粗 -->
+          <div style="display:flex;gap:18px;margin-bottom:20px;">
+            <span style="font-size:11px;font-weight:700;color:#3a3a3a;text-shadow:0 0.5px 1px rgba(255,255,255,0.5);">今日</span>
+            <span style="font-size:11px;color:#999;">全部</span>
+            <span style="font-size:11px;color:#999;">已完成</span>
+          </div>
+          <!-- 任务：无背景卡片，只有文字 + 优先级点 -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#d35f5f;flex-shrink:0;box-shadow:0 0 0 2px rgba(211,95,95,0.15);"></span>
+            <span style="flex:1;font-size:12.5px;color:#2a2a2a;text-shadow:0 0.5px 1px rgba(255,255,255,0.5);">完成设计稿审查</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#e5a84b;flex-shrink:0;box-shadow:0 0 0 2px rgba(229,168,75,0.12);"></span>
+            <span style="flex:1;font-size:12.5px;color:#2a2a2a;text-shadow:0 0.5px 1px rgba(255,255,255,0.5);">整理本周笔记</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:18px;height:18px;border:1.5px solid rgba(0,0,0,0.18);border-radius:50%;flex-shrink:0;"></span>
+            <span style="flex:1;font-size:12.5px;color:#2a2a2a;text-shadow:0 0.5px 1px rgba(255,255,255,0.5);">回复客户邮件</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#5b9a8b;flex-shrink:0;box-shadow:0 0 0 2px rgba(91,154,139,0.12);"></span>
+            <span style="flex:1;font-size:12.5px;color:#8a8a8a;text-decoration:line-through;text-shadow:0 0.5px 1px rgba(255,255,255,0.5);">发周报邮件</span>
+          </div>
+          <!-- 添加按钮 -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+            <span style="font-size:16px;color:#b0b0b0;line-height:1;">+</span>
+            <span style="font-size:12px;color:#b0b0b0;">添加新任务...</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;font-size:11px;color:#999;">窗口背景 8% 白色 + 30px 模糊 · 无卡片 · 无分割线 · 纯文字浮动</p>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">深色壁纸上</div>
+    <div class="mockup-body">
+      <div style="background: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 500%22><defs><linearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22><stop offset=%220%25%22 stop-color=%22%231a1a2e%22/><stop offset=%2250%25%22 stop-color=%22%23162a3a%22/><stop offset=%22100%25%22 stop-color=%22%231a2a1a%22/></linearGradient></defs><rect width=%22400%22 height=%22500%22 fill=%22url(%23g)%22/></svg>') center/cover; padding: 24px 20px; border-radius: 12px;">
+        <div style="background: rgba(0,0,0,0.12); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-radius: 28px; padding: 20px 18px; min-height: 300px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px;">
+            <span style="font-weight:600;font-size:13px;color:#e8e8e8;text-shadow:0 0.5px 2px rgba(0,0,0,0.4);letter-spacing:0.02em;">Daily Todo</span>
+            <span style="font-size:11px;color:#a0a0a0;text-shadow:0 0.5px 1px rgba(0,0,0,0.3);">6月5日</span>
+          </div>
+          <div style="height:2px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:22px;">
+            <div style="width:55%;height:100%;background:rgba(255,255,255,0.15);border-radius:2px;"></div>
+          </div>
+          <div style="display:flex;gap:18px;margin-bottom:20px;">
+            <span style="font-size:11px;font-weight:700;color:#e0e0e0;text-shadow:0 0.5px 1px rgba(0,0,0,0.3);">今日</span>
+            <span style="font-size:11px;color:#777;">全部</span>
+            <span style="font-size:11px;color:#777;">已完成</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#f07070;flex-shrink:0;"></span>
+            <span style="flex:1;font-size:12.5px;color:#e8e8e8;text-shadow:0 0.5px 1.5px rgba(0,0,0,0.4);">完成设计稿审查</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#f0b050;flex-shrink:0;"></span>
+            <span style="flex:1;font-size:12.5px;color:#e8e8e8;text-shadow:0 0.5px 1.5px rgba(0,0,0,0.4);">整理本周笔记</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:18px;height:18px;border:1.5px solid rgba(255,255,255,0.25);border-radius:50%;flex-shrink:0;"></span>
+            <span style="flex:1;font-size:12.5px;color:#e8e8e8;text-shadow:0 0.5px 1.5px rgba(0,0,0,0.4);">回复客户邮件</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#70b8a0;flex-shrink:0;"></span>
+            <span style="flex:1;font-size:12.5px;color:#666;text-decoration:line-through;text-shadow:0 0.5px 1.5px rgba(0,0,0,0.3);">发周报邮件</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+            <span style="font-size:16px;color:#666;line-height:1;">+</span>
+            <span style="font-size:12px;color:#666;">添加新任务...</span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;font-size:11px;color:#999;">窗口背景 12% 黑色 + 30px 模糊 · 无卡片 · 无分割线</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>📐 「无感到极致」的参数策略</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="border-bottom:1px solid rgba(0,0,0,0.08);">
+      <th style="text-align:left;padding:8px;">参数</th>
+      <th style="text-align:left;padding:8px;">极致无感值</th>
+      <th style="text-align:left;padding:8px;">逻辑</th>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+      <td style="padding:8px;">窗口透明度</td><td style="padding:8px;"><strong>85-92%</strong> (即 8-15% 可见)</td><td style="padding:8px;color:#666;">几乎看不见窗口本体</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+      <td style="padding:8px;">模糊强度</td><td style="padding:8px;"><strong>28-36px</strong></td><td style="padding:8px;color:#666;">强模糊补偿透明度，保证文字可读</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+      <td style="padding:8px;">卡片背景</td><td style="padding:8px;"><strong>无</strong></td><td style="padding:8px;color:#666;">任务项无背景色，仅文字 + 优先级点</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+      <td style="padding:8px;">圆角</td><td style="padding:8px;"><strong>28-32px</strong></td><td style="padding:8px;color:#666;">消除"矩形窗口"的锋利感</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+      <td style="padding:8px;">边框</td><td style="padding:8px;"><strong>1px / 5-8% 不透明</strong></td><td style="padding:8px;color:#666;">仅勾勒轮廓，不形成封闭感</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(0,0,0,0.04);">
+      <td style="padding:8px;">文字阴影</td><td style="padding:8px;"><strong>微弱的 text-shadow</strong></td><td style="padding:8px;color:#666;">任何壁纸上都能读清文字</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;">动画</td><td style="padding:8px;"><strong>400-500ms ease-out</strong></td><td style="padding:8px;color:#666;">更慢的过渡，消除急促感</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section" style="margin-top:12px;">
+  <h3>🎨 配色：放弃"主色"，拥抱中性</h3>
+  <p>传统主题有 accent（深绿/金）来建立品牌感。"无感"主题反其道而行——<strong>accent 退让为中性灰</strong>，唯一保留色彩的是优先级圆点。这样小组件在任何壁纸上都不会"跳"出来。</p>
+  <div style="display:flex;gap:12px;margin-top:10px;">
+    <div style="text-align:center;">
+      <div style="width:40px;height:40px;border-radius:10px;background:#6B7280;margin:0 auto;"></div>
+      <span style="font-size:10px;color:#888;">主色<br/>中性灰</span>
+    </div>
+    <div style="text-align:center;">
+      <div style="width:40px;height:40px;border-radius:10px;background:#9CA3AF;margin:0 auto;"></div>
+      <span style="font-size:10px;color:#888;">辅色<br/>浅灰</span>
+    </div>
+    <div style="text-align:center;">
+      <div style="width:40px;height:40px;border-radius:10px;background:transparent;margin:0 auto;border:1px dashed #ccc;"></div>
+      <span style="font-size:10px;color:#888;">底色<br/>无/壁纸</span>
+    </div>
+    <div style="text-align:center;">
+      <div style="width:40px;height:40px;border-radius:999px;background:#EF4444;margin:0 auto;"></div>
+      <span style="font-size:10px;color:#888;">仅保留<br/>优先级色</span>
+    </div>
+  </div>
+</div>

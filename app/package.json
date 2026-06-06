@@ -1,0 +1,104 @@
+{
+  "name": "daily-todo",
+  "version": "1.0.0",
+  "description": "A beautiful transparent daily todo desktop app",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "icons": "node scripts/generate-icons.mjs",
+    "electron:build": "electron-vite build && electron-builder",
+    "dist": "electron-vite build && electron-builder --win dir",
+    "verify:companion": "tsx electron/obsidianCompanion.verify.ts",
+    "verify:window-mode": "tsx electron/windowMode.verify.ts",
+    "verify:settings-sync": "tsx scripts/verify-settings-sync.ts",
+    "verify:delete-review": "tsx scripts/verify-delete-review.ts",
+    "verify:review-fields": "tsx scripts/verify-review-empty-fields.ts",
+    "verify:no-captures": "tsx scripts/verify-no-captures-feature.ts",
+    "verify:daily-command": "tsx scripts/verify-daily-command-editor.ts",
+    "verify:markdown-editor": "tsx scripts/verify-markdown-editor.ts",
+    "verify:rc-sync": "tsx scripts/verify-rc-sync.ts",
+    "verify:rc-strings": "tsx scripts/verify-rc-strings.ts",
+    "verify:rc-ui": "tsx scripts/verify-rc-ui-regressions.ts",
+    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:rc-ui"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.3",
+    "electron-store": "7.0.3",
+    "framer-motion": "^11.18.2",
+    "koffi": "^3.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
+    "electron": "34.2.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "png-to-ico": "^3.0.1",
+    "postcss": "^8.5.3",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0",
+    "vite-plugin-electron": "^0.28.8",
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.dailytodo.app",
+    "productName": "DailyTodo",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "DailyTodo.${ext}",
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "node_modules/koffi/**/*",
+      "node_modules/@koromix/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/koffi/**",
+      "node_modules/@koromix/**"
+    ],
+    "extraResources": [
+      {
+        "from": "build/tray.png",
+        "to": "tray.png"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "dir"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    }
+  }
+}

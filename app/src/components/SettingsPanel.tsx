@@ -1,0 +1,737 @@
+import { CSSProperties, useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  AppBehaviorSettings,
+  AppLanguage,
+  ObsidianTemplateSettings,
+  createDefaultObsidianTemplateSettings,
+} from '../../shared/appSettings';
+import { SyncPreview } from '../../shared/obsidianTemplates';
+import { PersonalizationSettings } from '../types/personalization';
+import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
+import { getShellText } from '../i18n';
+
+type SettingsSection = 'root' | 'personalization' | 'obsidian' | 'rollover' | 'general' | 'developer' | 'theme-minimal' | 'theme-neumorphism' | 'theme-watercolor' | 'theme-invisible' | 'window';
+
+interface SettingsPanelProps {
+  isOpen: boolean;
+  settings: PersonalizationSettings;
+  appSettings: AppBehaviorSettings;
+  obsidianTemplates: ObsidianTemplateSettings;
+  obsidianPath: string;
+  syncPreview: SyncPreview | null;
+  isDark: boolean;
+  selectedDate: string;
+  completedCount: number;
+  onClearCompleted: () => void;
+  onApplyTheme: (preset: ThemePreset) => void;
+  onChange: (settings: PersonalizationSettings) => void;
+  onAppSettingsChange: (settings: AppBehaviorSettings) => void;
+  onObsidianTemplatesChange: (settings: ObsidianTemplateSettings) => void;
+  onChooseObsidian: () => void;
+  onPreviewSync: () => void;
+  onResetTemplates: () => void;
+  onClose: () => void;
+  onOpenCompanionSettings: () => void;
+}
+
+type NavSection = 'personalization' | 'window' | 'obsidian' | 'rollover' | 'general' | 'developer';
+
+const sectionEntries: Array<{ key: NavSection; title: string; description: string }> = [
+  { key: 'personalization', title: 'Personalization', description: '外观、透明度、密度和动效。' },
+  { key: 'window', title: 'Window', description: '窗口行为、置顶、自启动。' },
+  { key: 'obsidian', title: 'Obsidian Sync', description: '路径、删除同步、模板中心和预览。' },
+  { key: 'rollover', title: 'Daily Rollover', description: '业务日期和任务结转规则。' },
+  { key: 'general', title: 'General', description: '语言等低频偏好。' },
+  { key: 'developer', title: 'Developer', description: '高级模板、调试入口和代码结构说明。' },
+];
+
+function RangeControl({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  unit = '',
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  unit?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="settings-control">
+      <span>
+        <strong>{label}</strong>
+        {hint && <small>{hint}</small>}
+      </span>
+      <div className="settings-range-row">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
+        <b>{value}{unit}</b>
+      </div>
+    </label>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  multiline = false,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+  hint?: string;
+}) {
+  return (
+    <label className="settings-field">
+      <span>
+        <strong>{label}</strong>
+        {hint && <small>{hint}</small>}
+      </span>
+      {multiline ? (
+        <textarea value={value} onChange={(event) => onChange(event.target.value)} />
+      ) : (
+        <input value={value} onChange={(event) => onChange(event.target.value)} />
+      )}
+    </label>
+  );
+}
+
+function AutoStartToggle() {
+  const [autoStart, setAutoStart] = useState(false);
+
+  useEffect(() => {
+    window.electronAPI?.getAutoStart().then(setAutoStart);
+  }, []);
+
+  const handleChange = (enabled: boolean) => {
+    window.electronAPI?.setAutoStart(enabled).then((ok) => {
+      if (ok) setAutoStart(enabled);
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      className={`settings-switch-row ${autoStart ? 'settings-switch-on' : ''}`}
+      onClick={() => handleChange(!autoStart)}
+      aria-pressed={autoStart}
+    >
+      <span>
+        <strong>开机自启</strong>
+        <small>启动系统时自动运行 Daily Todo</small>
+      </span>
+      <i aria-hidden="true" />
+    </button>
+  );
+}
+
+function ToggleRow({
+  title,
+  description,
+  checked,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`settings-switch-row ${checked ? 'settings-switch-on' : ''}`}
+      onClick={() => onChange(!checked)}
+      aria-pressed={checked}
+    >
+      <span>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </span>
+      <i aria-hidden="true" />
+    </button>
+  );
+}
+
+export function SettingsPanel({
+  isOpen,
+  settings,
+  appSettings,
+  obsidianTemplates,
+  obsidianPath,
+  syncPreview,
+  selectedDate,
+  completedCount,
+  onClearCompleted,
+  onApplyTheme,
+  onChange,
+  onAppSettingsChange,
+  onObsidianTemplatesChange,
+  onChooseObsidian,
+  onPreviewSync,
+  onResetTemplates,
+  onClose,
+  onOpenCompanionSettings,
+}: SettingsPanelProps) {
+  const [section, setSection] = useState<SettingsSection>('root');
+  const defaultTemplates = useMemo(() => createDefaultObsidianTemplateSettings(), []);
+  const text = getShellText(appSettings.language).settings;
+
+  useEffect(() => {
+    if (isOpen) setSection('root');
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const updatePersonalization = <K extends keyof PersonalizationSettings>(key: K, value: PersonalizationSettings[K]) => {
+    onChange({ ...settings, [key]: value });
+  };
+
+  const updateApp = <K extends keyof AppBehaviorSettings>(key: K, value: AppBehaviorSettings[K]) => {
+    onAppSettingsChange({ ...appSettings, [key]: value });
+  };
+
+  const updateTemplate = <K extends keyof ObsidianTemplateSettings>(key: K, value: ObsidianTemplateSettings[K]) => {
+    onObsidianTemplatesChange({ ...obsidianTemplates, [key]: value });
+  };
+
+  const title = section === 'root'
+    ? text.title
+    : sectionEntries.find((entry) => entry.key === section)?.title || '设置';
+
+  return (
+    <motion.aside
+      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{ duration: 0.18 }}
+      className="settings-panel"
+      style={{ WebkitAppRegion: 'no-drag' }}
+    >
+      <div className="settings-panel-header">
+        <div>
+          {section !== 'root' && (
+            <button type="button" className="settings-back-button" onClick={() => setSection('root')}>
+              {text.back}
+            </button>
+          )}
+          <h2>{title}</h2>
+          <p>{text.intro}</p>
+        </div>
+        <button onClick={onClose} className="settings-icon-button" aria-label={text.close} title={text.close}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      {section === 'root' && (
+        <div className="settings-nav-list">
+          {sectionEntries.map((entry) => (
+            <button key={entry.key} type="button" className="settings-nav-item" onClick={() => setSection(entry.key)}>
+              <span>
+                <strong>{text.sections[entry.key][0]}</strong>
+                <small>{text.sections[entry.key][1]}</small>
+              </span>
+              <b>›</b>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {section === 'personalization' && (
+        <>
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '外观风格' : 'Appearance Style'}</h3>
+            <div className="theme-preset-grid">
+              {THEME_PRESETS.filter(preset =>
+                preset.id === 'minimal' ||
+                preset.id === 'neumorphism' ||
+                preset.id === 'watercolor' ||
+                preset.id === 'invisible'
+              ).map((preset) => {
+                const active = settings.themeId === preset.id;
+                const label = appSettings.language === 'zh-CN' ? preset.labelZh : preset.labelEn;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`theme-preset-card ${active ? 'theme-preset-active' : ''} ${preset.dark ? 'theme-preset-dark' : ''}`}
+                    onClick={() => {
+                      onApplyTheme(preset);
+                    }}
+                    aria-pressed={active}
+                    aria-label={label}
+                    title={label}
+                    style={{
+                      '--tp-accent': preset.settings.accentColor,
+                      '--tp-secondary': preset.settings.secondaryColor,
+                      '--tp-radius': `${Math.max(6, preset.settings.radius - 4)}px`,
+                    } as CSSProperties}
+                  >
+                    <span className="theme-preset-thumb" aria-hidden="true">
+                      <span className="theme-preset-bar" />
+                      <span className="theme-preset-dot" />
+                    </span>
+                    <span className="theme-preset-name">{label}</span>
+                    {active && (
+                      <button
+                        className="theme-preset-edit"
+                        title={appSettings.language === 'zh-CN' ? '调整透明度' : 'Adjust Opacity'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSection(`theme-${preset.id}` as SettingsSection);
+                        }}
+                        aria-label={appSettings.language === 'zh-CN' ? '调整透明度' : 'Adjust Opacity'}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '字体大小' : 'Font Size'}</h3>
+            <div className="settings-grid">
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '全局字体' : 'Global Font'}
+                hint={appSettings.language === 'zh-CN' ? '整体放大或缩小文字，100 为默认' : 'Scale all text, 100 = default'}
+                value={settings.fontScale ?? 100}
+                min={80}
+                max={130}
+                unit="%"
+                onChange={(value) => updatePersonalization('fontScale', value)}
+              />
+            </div>
+          </section>
+        </>
+      )}
+
+      {section === 'theme-minimal' && (
+        <>
+          <button className="settings-back-button" onClick={() => setSection('personalization')}>
+            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
+          </button>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '极简纯白 - 透明度' : 'Minimal White - Opacity'}</h3>
+            <div className="settings-grid">
+              <RangeControl label={text.windowOpacity} hint={text.windowOpacityHint} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
+              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
+              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={36} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
+              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{text.colors}</h3>
+            <div className="settings-color-grid">
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '主色' : 'Primary'}</span>
+                <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
+              </label>
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '强调色' : 'Secondary'}</span>
+                <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
+              </label>
+            </div>
+          </section>
+        </>
+      )}
+
+      {section === 'theme-neumorphism' && (
+        <>
+          <button className="settings-back-button" onClick={() => setSection('personalization')}>
+            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
+          </button>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '新拟态 - 基础透明度' : 'Neumorphism - Basic Opacity'}</h3>
+            <div className="settings-grid">
+              <RangeControl label={text.windowOpacity} hint={text.windowOpacityHint} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
+              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
+              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={36} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
+              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '新拟态 - 高级透明度' : 'Neumorphism - Advanced Opacity'}</h3>
+            <div className="settings-grid">
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '顶部区域' : 'Top Area'}
+                hint={appSettings.language === 'zh-CN' ? '标题栏和头部' : 'Title bar and header'}
+                value={settings.topOpacity ?? 90}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('topOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '任务卡片' : 'Task Cards'}
+                hint={appSettings.language === 'zh-CN' ? '任务列表卡片' : 'Task list cards'}
+                value={settings.cardOpacity ?? 86}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('cardOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '按钮输入框' : 'Controls'}
+                hint={appSettings.language === 'zh-CN' ? '按钮和输入框' : 'Buttons and inputs'}
+                value={settings.controlOpacity ?? 90}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('controlOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '弹出菜单' : 'Menus'}
+                hint={appSettings.language === 'zh-CN' ? '设置面板和日历' : 'Settings and calendar'}
+                value={settings.menuOpacity ?? 96}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('menuOpacity', value)}
+              />
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{text.colors}</h3>
+            <div className="settings-color-grid">
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '主色' : 'Primary'}</span>
+                <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
+              </label>
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '强调色' : 'Secondary'}</span>
+                <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
+              </label>
+            </div>
+          </section>
+        </>
+      )}
+
+      {section === 'theme-watercolor' && (
+        <>
+          <button className="settings-back-button" onClick={() => setSection('personalization')}>
+            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
+          </button>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '水彩画风 - 基础透明度' : 'Watercolor - Basic Opacity'}</h3>
+            <div className="settings-grid">
+              <RangeControl label={text.windowOpacity} hint={text.windowOpacityHint} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
+              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
+              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={36} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
+              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '水彩画风 - 高级透明度' : 'Watercolor - Advanced Opacity'}</h3>
+            <div className="settings-grid">
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '顶部区域' : 'Top Area'}
+                hint={appSettings.language === 'zh-CN' ? '标题栏和头部' : 'Title bar and header'}
+                value={settings.topOpacity ?? 80}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('topOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '任务卡片' : 'Task Cards'}
+                hint={appSettings.language === 'zh-CN' ? '任务列表卡片' : 'Task list cards'}
+                value={settings.cardOpacity ?? 75}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('cardOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '按钮输入框' : 'Controls'}
+                hint={appSettings.language === 'zh-CN' ? '按钮和输入框' : 'Buttons and inputs'}
+                value={settings.controlOpacity ?? 60}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('controlOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '弹出菜单' : 'Menus'}
+                hint={appSettings.language === 'zh-CN' ? '设置面板和日历' : 'Settings and calendar'}
+                value={settings.menuOpacity ?? 90}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('menuOpacity', value)}
+              />
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{text.colors}</h3>
+            <div className="settings-color-grid">
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '主色' : 'Primary'}</span>
+                <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
+              </label>
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '强调色' : 'Secondary'}</span>
+                <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
+              </label>
+            </div>
+          </section>
+        </>
+      )}
+
+      {section === 'theme-invisible' && (
+        <>
+          <button className="settings-back-button" onClick={() => setSection('personalization')}>
+            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
+          </button>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '无感 - 透明度' : 'Invisible - Opacity'}</h3>
+            <div className="settings-grid">
+              <RangeControl label={text.windowOpacity} hint={appSettings.language === 'zh-CN' ? '越低越透明，推荐 2-5' : 'Lower = more transparent, 2-5 recommended'} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
+              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
+              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={48} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
+              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '无感 - 高级透明度' : 'Invisible - Advanced Opacity'}</h3>
+            <div className="settings-grid">
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '顶部区域' : 'Top Area'}
+                hint={appSettings.language === 'zh-CN' ? '标题栏和头部' : 'Title bar and header'}
+                value={settings.topOpacity ?? 2}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('topOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '任务卡片' : 'Task Cards'}
+                hint={appSettings.language === 'zh-CN' ? '任务列表卡片' : 'Task list cards'}
+                value={settings.cardOpacity ?? 3}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('cardOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '按钮输入框' : 'Controls'}
+                hint={appSettings.language === 'zh-CN' ? '按钮和输入框' : 'Buttons and inputs'}
+                value={settings.controlOpacity ?? 2}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('controlOpacity', value)}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '弹出菜单' : 'Menus'}
+                hint={appSettings.language === 'zh-CN' ? '设置面板和日历，建议 85+ 保证可用' : 'Settings and calendar, 85+ recommended'}
+                value={settings.menuOpacity ?? 85}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(value) => updatePersonalization('menuOpacity', value)}
+              />
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{text.colors}</h3>
+            <div className="settings-color-grid">
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '主色' : 'Primary'}</span>
+                <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
+              </label>
+              <label className="settings-color">
+                <span>{appSettings.language === 'zh-CN' ? '强调色' : 'Secondary'}</span>
+                <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
+              </label>
+            </div>
+          </section>
+        </>
+      )}
+
+      {section === 'window' && (
+        <>
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '窗口行为' : 'Window Behavior'}</h3>
+            <AutoStartToggle />
+            <ToggleRow
+              title={appSettings.language === 'zh-CN' ? '启动时窗口置顶' : 'Always on top on start'}
+              description={appSettings.language === 'zh-CN' ? '应用启动时自动置顶' : 'Keep window always on top'}
+              checked={settings.alwaysOnTop ?? false}
+              onChange={(value) => onChange({ ...settings, alwaysOnTop: value })}
+            />
+          </section>
+        </>
+      )}
+
+      {section === 'obsidian' && (
+        <>
+          <section className="settings-section">
+            <h3>{text.paths}</h3>
+            <div className="settings-preview-list">
+              <p><strong>{text.vaultPath}</strong></p>
+              <p>{obsidianPath || text.noVault}</p>
+              <button type="button" className="settings-reset-button" onClick={onChooseObsidian}>{text.chooseVault}</button>
+            </div>
+            <Field label="Daily note target path" value={obsidianTemplates.dailyNotePath} onChange={(value) => updateTemplate('dailyNotePath', value)} />
+            <Field
+              label="Legacy task export path"
+              hint="RC sync no longer writes this file by default. Existing task export files are left untouched."
+              value={obsidianTemplates.taskExportPath}
+              onChange={(value) => updateTemplate('taskExportPath', value)}
+            />
+          </section>
+
+          <section className="settings-section">
+            <h3>{text.deleteSync}</h3>
+            <ToggleRow
+              title={text.syncDeleted}
+              description={text.syncDeletedHint}
+              checked={appSettings.syncDeletedReviewsToObsidian}
+              onChange={(value) => updateApp('syncDeletedReviewsToObsidian', value)}
+            />
+            <ToggleRow
+              title={text.confirmDelete}
+              description={text.confirmDeleteHint}
+              checked={appSettings.confirmBeforeDeletingReview}
+              onChange={(value) => updateApp('confirmBeforeDeletingReview', value)}
+            />
+          </section>
+
+          <section className="settings-section">
+            <h3>{text.templateCenter}</h3>
+            <div className="settings-grid">
+              <Field label="Work section title" value={obsidianTemplates.workSectionTitle} onChange={(value) => updateTemplate('workSectionTitle', value)} />
+              <Field label="Inspiration section title" value={obsidianTemplates.inspirationSectionTitle} onChange={(value) => updateTemplate('inspirationSectionTitle', value)} />
+              <Field label="Task section title" value={obsidianTemplates.taskSectionTitle} onChange={(value) => updateTemplate('taskSectionTitle', value)} />
+              <Field label="Review section title" value={obsidianTemplates.reviewSectionTitle} onChange={(value) => updateTemplate('reviewSectionTitle', value)} />
+              <Field label="Tomorrow task section title" value={obsidianTemplates.tomorrowTaskSectionTitle} onChange={(value) => updateTemplate('tomorrowTaskSectionTitle', value)} />
+              <Field label="Reusable knowledge section title" value={obsidianTemplates.reusableKnowledgeSectionTitle} onChange={(value) => updateTemplate('reusableKnowledgeSectionTitle', value)} />
+            </div>
+            <Field label="Task line template" value={obsidianTemplates.taskLineTemplate} onChange={(value) => updateTemplate('taskLineTemplate', value)} />
+            <Field label="Completion review template" value={obsidianTemplates.completionReviewTemplate} onChange={(value) => updateTemplate('completionReviewTemplate', value)} multiline />
+            <div className="settings-action-row">
+              <button type="button" className="settings-reset-button" onClick={onPreviewSync}>{text.previewSync}</button>
+              <button type="button" className="settings-reset-button" onClick={onResetTemplates}>{text.resetTemplates}</button>
+            </div>
+          </section>
+
+          {syncPreview && (
+            <section className="settings-section">
+              <h3>{text.syncPreview}</h3>
+              <div className="settings-preview-list">
+                <p>文件：{syncPreview.files.map((file) => `${file.action} ${file.filePath}`).join('；')}</p>
+                <p>管理区块：{syncPreview.managedBlocks.map((block) => `${block.action} ${block.marker}`).join('；')}</p>
+                <p>任务 {syncPreview.taskCount} 条，完成记录 {syncPreview.completionRecordCount} 条。</p>
+                <p>{syncPreview.deletedReviewWillDisappear ? text.deletedReview : text.noDeletedReview}</p>
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {section === 'rollover' && (
+        <>
+          <section className="settings-section">
+            <h3>{text.rollover}</h3>
+            <Field label="Rollover time" hint={text.rolloverHint} value={appSettings.rolloverTime} onChange={(value) => updateApp('rolloverTime', value)} />
+            <ToggleRow
+              title={text.autoCarry}
+              description={text.autoCarryHint}
+              checked={appSettings.autoCarryForward}
+              onChange={(value) => updateApp('autoCarryForward', value)}
+            />
+            <div className="settings-preview-list">
+              <p>{text.carryRule}</p>
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3>{appSettings.language === 'zh-CN' ? '清理已完成' : 'Clear Completed'}</h3>
+            <div className="settings-preview-list">
+              <p>
+                {appSettings.language === 'zh-CN'
+                  ? '只把当前日期的已完成任务从应用列表中隐藏，任务本身和 Obsidian 记录都会完整保留。'
+                  : 'Only hides completed tasks of the current date from the app list. The tasks and their Obsidian records stay intact.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="settings-reset-button"
+              onClick={onClearCompleted}
+              disabled={completedCount === 0}
+            >
+              {appSettings.language === 'zh-CN'
+                ? `清理「${selectedDate}」的已完成（${completedCount}）`
+                : `Clear completed on ${selectedDate} (${completedCount})`}
+            </button>
+          </section>
+        </>
+      )}
+
+      {section === 'general' && (
+        <section className="settings-section">
+          <h3>{text.language}</h3>
+          <label className="settings-field">
+            <span>
+              <strong>Language</strong>
+              <small>{text.languageHint}</small>
+            </span>
+            <select value={appSettings.language} onChange={(event) => updateApp('language', event.target.value as AppLanguage)}>
+              <option value="zh-CN">中文</option>
+              <option value="en-US">English</option>
+            </select>
+          </label>
+        </section>
+      )}
+
+      {section === 'developer' && (
+        <>
+          <section className="settings-section">
+            <h3>{text.developerTools}</h3>
+            <div className="settings-action-row">
+              <button type="button" className="settings-reset-button" onClick={onOpenCompanionSettings}>{text.advancedCompanion}</button>
+              <button type="button" className="settings-reset-button" onClick={() => onObsidianTemplatesChange(defaultTemplates)}>{text.resetDraft}</button>
+            </div>
+            <div className="settings-preview-list">
+              <p>{text.developerRisk}</p>
+              <p>{text.codeGuide}</p>
+            </div>
+          </section>
+        </>
+      )}
+    </motion.aside>
+  );
+}
