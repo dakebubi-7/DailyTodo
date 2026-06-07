@@ -10,6 +10,8 @@ type LlmCaller = (messages: Array<{ role: 'system' | 'user'; content: string }>)
 
 export interface WeeklyGenParams extends WeeklyParams {
   vaultPath: string;
+  /** 相对 vault 的输出目录；空/未给 → logs/weekly-review。 */
+  relativeDir?: string;
   callLlm: (messages: ReturnType<typeof buildWeeklyMessages>) => Promise<LlmResult>;
 }
 
@@ -33,13 +35,15 @@ export async function generatePersonalWeekly(params: WeeklyGenParams): Promise<R
   const llm = await params.callLlm(messages);
   if (!llm.ok) return { ok: false, error: llm.error };
 
-  const filePath = path.join(params.vaultPath, 'logs', 'weekly-review', `${params.weekKey}.md`);
+  const filePath = path.join(params.vaultPath, params.relativeDir || 'logs/weekly-review', `${params.weekKey}.md`);
   const fm = `---\ntitle: "个人周报 ${params.weekKey}"\nweek: "${params.weekKey}"\ntags: [weekly-review]\n---`;
   return writeReport(filePath, fm, llm.content);
 }
 
 export interface MonthlyGenParams extends MonthlyParams {
   vaultPath: string;
+  /** 相对 vault 的输出目录；空/未给 → logs/monthly-review。 */
+  relativeDir?: string;
   callLlm: (messages: ReturnType<typeof buildMonthlyMessages>) => Promise<LlmResult>;
 }
 
@@ -48,7 +52,7 @@ export async function generatePersonalMonthly(params: MonthlyGenParams): Promise
   const llm = await params.callLlm(messages);
   if (!llm.ok) return { ok: false, error: llm.error };
 
-  const filePath = path.join(params.vaultPath, 'logs', 'monthly-review', `${params.month}.md`);
+  const filePath = path.join(params.vaultPath, params.relativeDir || 'logs/monthly-review', `${params.month}.md`);
   const fm = `---\ntitle: "个人月报 ${params.month}"\nmonth: "${params.month}"\ntags: [monthly-review]\n---`;
   return writeReport(filePath, fm, llm.content);
 }
@@ -58,6 +62,8 @@ export interface ExternalGenParams {
   /** 'weekly' → exports/weekly-reports/<periodKey>.md；'monthly' → exports/monthly-reports/<periodKey>.md */
   kind: 'weekly' | 'monthly';
   periodKey: string; // 2026-W23 或 2026-06
+  /** 相对 vault 的输出目录；空/未给 → exports/weekly-reports 或 exports/monthly-reports。 */
+  relativeDir?: string;
   /** 原始日记正文（未脱敏）；本函数会先脱敏再交给 LLM。 */
   rawDailyContents: string[];
   buildMessages: (redactedJoined: string) => Array<{ role: 'system' | 'user'; content: string }>;
@@ -74,8 +80,8 @@ export async function generateExternalReport(params: ExternalGenParams): Promise
   const llm = await params.callLlm(messages);
   if (!llm.ok) return { ok: false, error: llm.error };
 
-  const subdir = params.kind === 'weekly' ? 'weekly-reports' : 'monthly-reports';
-  const filePath = path.join(params.vaultPath, 'exports', subdir, `${params.periodKey}.md`);
+  const defaultDir = params.kind === 'weekly' ? 'exports/weekly-reports' : 'exports/monthly-reports';
+  const filePath = path.join(params.vaultPath, params.relativeDir || defaultDir, `${params.periodKey}.md`);
   const fm = `---\ntitle: "对外${params.kind === 'weekly' ? '周' : '月'}报 ${params.periodKey}"\nperiod: "${params.periodKey}"\ntags: [external-report, needs-review]\n---`;
   return writeReport(filePath, fm, llm.content);
 }

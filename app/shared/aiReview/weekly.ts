@@ -20,11 +20,15 @@ export interface WeeklyParams {
   weekKey: string;
   dailyContents: Array<{ date: string; content: string }>;
   stats: RangeStats;
+  /** 自定义生成模板（system prompt）；空/未给 → 用内置默认句。 */
+  systemPrompt?: string;
 }
 
+const DEFAULT_WEEKLY_SYSTEM =
+  '你是周报助手。基于本周日记生成个人周报，包含：概览、关键事件、知识增量、未完成、下周计划。不要编造数字，统计以给定值为准。输出 Markdown。';
+
 export function buildWeeklyMessages(params: WeeklyParams): ChatMessage[] {
-  const system =
-    '你是周报助手。基于本周日记生成个人周报，包含：概览、关键事件、知识增量、未完成、下周计划。不要编造数字，统计以给定值为准。输出 Markdown。';
+  const system = params.systemPrompt?.trim() || DEFAULT_WEEKLY_SYSTEM;
   const user = [
     `周：${params.weekKey}`,
     '确定性统计（以此为准）：',

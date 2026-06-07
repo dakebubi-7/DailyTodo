@@ -101,12 +101,14 @@ function Field({
   onChange,
   multiline = false,
   hint,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
   hint?: string;
+  placeholder?: string;
 }) {
   return (
     <label className="settings-field">
@@ -115,9 +117,9 @@ function Field({
         {hint && <small>{hint}</small>}
       </span>
       {multiline ? (
-        <textarea value={value} onChange={(event) => onChange(event.target.value)} />
+        <textarea value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
       ) : (
-        <input value={value} onChange={(event) => onChange(event.target.value)} />
+        <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
       )}
     </label>
   );
@@ -191,6 +193,12 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
   const [recognizing, setRecognizing] = useState(false);
   const [recognizeStatus, setRecognizeStatus] = useState<string>('');
   const [recognizedSections, setRecognizedSections] = useState<SectionConfig[] | null>(null);
+  // 报告模板展开 + 认报告模板
+  const [openTemplate, setOpenTemplate] = useState<'weekly' | 'monthly' | null>(null);
+  const [reportDraft, setReportDraft] = useState<{ weekly: string; monthly: string }>({ weekly: '', monthly: '' });
+  const [reportRecognizing, setReportRecognizing] = useState<'weekly' | 'monthly' | null>(null);
+  const [reportRecognizeStatus, setReportRecognizeStatus] = useState<{ weekly: string; monthly: string }>({ weekly: '', monthly: '' });
+  const [reportRecognized, setReportRecognized] = useState<{ weekly: string | null; monthly: string | null }>({ weekly: null, monthly: null });
 
   useEffect(() => {
     let active = true;
@@ -210,6 +218,22 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
     setSettings(next);
     window.electronAPI?.aiReview.setSettings(next).then((saved) => setSettings(saved));
   };
+
+  const patchSettings = (patch: Partial<AiReviewSettings>) => {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    window.electronAPI?.aiReview.setSettings(next).then((saved) => setSettings(saved));
+  };
+
+  const PRESETS: Array<{ id: string; label: string; baseUrl: string; provider: AiReviewSettings['provider']; model: string }> = [
+    { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', provider: 'auto', model: 'deepseek-chat' },
+    { id: 'openai', label: 'OpenAI (GPT)', baseUrl: 'https://api.openai.com/v1', provider: 'auto', model: 'gpt-4o-mini' },
+    { id: 'glm', label: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', provider: 'auto', model: 'glm-4-flash' },
+    { id: 'minimax', label: 'MiniMax', baseUrl: 'https://api.minimax.chat/v1', provider: 'auto', model: 'abab6.5s-chat' },
+    { id: 'claude', label: 'Claude (Anthropic)', baseUrl: 'https://api.anthropic.com', provider: 'anthropic', model: 'claude-3-5-haiku-latest' },
+    { id: 'gemini', label: 'Gemini (Google)', baseUrl: 'https://generativelanguage.googleapis.com', provider: 'gemini', model: 'gemini-1.5-flash' },
+  ];
+  const activePreset = PRESETS.find((p) => p.baseUrl === settings.baseUrl)?.id ?? 'custom';
 
   const updateSection = <K extends keyof SectionConfig>(markerKey: SectionConfig['markerKey'], key: K, value: SectionConfig[K]) => {
     const next = sections.map((s) => (s.markerKey === markerKey ? { ...s, [key]: value } : s));
@@ -266,6 +290,39 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
     setTemplateDraft('');
   };
 
+  const rc = text.reportConfig;
+
+  const recognizeReport = async (kind: 'weekly' | 'monthly') => {
+    const draft = reportDraft[kind];
+    if (!draft.trim()) return;
+    setReportRecognizing(kind);
+    setReportRecognizeStatus((s) => ({ ...s, [kind]: rc.recognizing }));
+    setReportRecognized((s) => ({ ...s, [kind]: null }));
+    try {
+      const result = await window.electronAPI?.aiReview.recognizeReportTemplate(kind, draft);
+      if (!result || !result.ok) {
+        setReportRecognizeStatus((s) => ({ ...s, [kind]: `${rc.recognizeFailed}${result?.error ?? ''}` }));
+        return;
+      }
+      setReportRecognized((s) => ({ ...s, [kind]: result.prompt }));
+      setReportRecognizeStatus((s) => ({ ...s, [kind]: rc.recognizeOk }));
+    } catch (error) {
+      setReportRecognizeStatus((s) => ({ ...s, [kind]: `${rc.recognizeFailed}${error instanceof Error ? error.message : String(error)}` }));
+    } finally {
+      setReportRecognizing(null);
+    }
+  };
+
+  const applyReportPrompt = (kind: 'weekly' | 'monthly') => {
+    const prompt = reportRecognized[kind];
+    if (!prompt) return;
+    updateSettings(kind === 'weekly' ? 'weeklyPrompt' : 'monthlyPrompt', prompt);
+    setReportRecognized((s) => ({ ...s, [kind]: null }));
+    setReportRecognizeStatus((s) => ({ ...s, [kind]: '' }));
+    setReportDraft((s) => ({ ...s, [kind]: '' }));
+    setOpenTemplate(kind);
+  };
+
   return (
     <>
       <section className="settings-section">
@@ -277,6 +334,39 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
           onChange={(value) => updateSettings('enabled', value)}
         />
         <div className="settings-grid">
+          <label className="settings-field">
+            <span>
+              <strong>{text.preset}</strong>
+              <small>{text.presetHint}</small>
+            </span>
+            <select
+              value={activePreset}
+              onChange={(event) => {
+                const preset = PRESETS.find((p) => p.id === event.target.value);
+                if (preset) patchSettings({ baseUrl: preset.baseUrl, provider: preset.provider, model: preset.model });
+              }}
+            >
+              {PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+              <option value="custom">{text.presetCustom}</option>
+            </select>
+          </label>
+          <label className="settings-field">
+            <span>
+              <strong>{text.provider}</strong>
+              <small>{text.providerHint}</small>
+            </span>
+            <select
+              value={settings.provider}
+              onChange={(event) => updateSettings('provider', event.target.value as AiReviewSettings['provider'])}
+            >
+              <option value="auto">{text.providerAuto}</option>
+              <option value="openai">{text.providerOpenai}</option>
+              <option value="anthropic">{text.providerAnthropic}</option>
+              <option value="gemini">{text.providerGemini}</option>
+            </select>
+          </label>
           <Field
             label={text.baseUrl}
             hint={text.baseUrlHint}
@@ -450,6 +540,76 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
         {reportStatus && (
           <p className="settings-status" style={{ marginTop: '0.5rem', wordBreak: 'break-all' }}>{reportStatus}</p>
         )}
+      </section>
+
+      <section className="settings-section">
+        <h3>{rc.title}</h3>
+        <div className="settings-preview-list">
+          <p>{rc.hint}</p>
+        </div>
+        <div className="settings-grid">
+          <Field label={rc.weeklyDir} value={settings.weeklyDir} placeholder="logs/weekly-review" onChange={(v) => updateSettings('weeklyDir', v)} />
+          <Field label={rc.monthlyDir} value={settings.monthlyDir} placeholder="logs/monthly-review" onChange={(v) => updateSettings('monthlyDir', v)} />
+          <Field label={rc.extWeeklyDir} value={settings.externalWeeklyDir} placeholder="exports/weekly-reports" onChange={(v) => updateSettings('externalWeeklyDir', v)} />
+          <Field label={rc.extMonthlyDir} value={settings.externalMonthlyDir} placeholder="exports/monthly-reports" onChange={(v) => updateSettings('externalMonthlyDir', v)} />
+        </div>
+
+        {(['weekly', 'monthly'] as const).map((kind) => {
+          const isOpen = openTemplate === kind;
+          const promptLabel = kind === 'weekly' ? rc.weeklyPrompt : rc.monthlyPrompt;
+          const promptValue = kind === 'weekly' ? settings.weeklyPrompt : settings.monthlyPrompt;
+          const recognizeLabel = kind === 'weekly' ? rc.recognizeWeekly : rc.recognizeMonthly;
+          return (
+            <div key={kind} className="settings-grid" style={{ marginTop: '0.75rem' }}>
+              <button
+                type="button"
+                className="settings-reset-button"
+                onClick={() => setOpenTemplate(isOpen ? null : kind)}
+                aria-expanded={isOpen}
+              >
+                {promptLabel}: {isOpen ? rc.hideTemplate : rc.showTemplate}
+              </button>
+              {isOpen && (
+                <>
+                  <Field
+                    label={promptLabel}
+                    value={promptValue}
+                    multiline
+                    onChange={(v) => updateSettings(kind === 'weekly' ? 'weeklyPrompt' : 'monthlyPrompt', v)}
+                  />
+                  <label className="settings-field">
+                    <span><strong>{recognizeLabel}</strong></span>
+                    <textarea
+                      rows={3}
+                      placeholder={rc.recognizePlaceholder}
+                      value={reportDraft[kind]}
+                      onChange={(e) => setReportDraft((s) => ({ ...s, [kind]: e.target.value }))}
+                      style={{ width: '100%' }}
+                    />
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="settings-reset-button"
+                      disabled={reportRecognizing === kind || !reportDraft[kind].trim()}
+                      onClick={() => recognizeReport(kind)}
+                    >
+                      {reportRecognizing === kind ? rc.recognizing : rc.recognizeRun}
+                    </button>
+                    {reportRecognized[kind] && (
+                      <button type="button" className="settings-reset-button" onClick={() => applyReportPrompt(kind)}>
+                        {rc.recognizeApply}
+                      </button>
+                    )}
+                  </div>
+                  {reportRecognizeStatus[kind] && (
+                    <p className="settings-status" style={{ wordBreak: 'break-all' }}>{reportRecognizeStatus[kind]}</p>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
       </section>
 
       <section className="settings-section">

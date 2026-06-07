@@ -47,6 +47,17 @@ assert.equal(monthly.ok, true);
 assert.ok(monthly.filePath!.includes(path.join('logs', 'monthly-review')), '月报落 logs/monthly-review');
 assert.ok(fs.readFileSync(monthly.filePath!, 'utf-8').includes('月度概览'));
 
+// 自定义目录：relativeDir 覆盖默认
+const customWeekly = await generatePersonalWeekly({
+  vaultPath: vault, weekKey: '2026-W25', dailyContents: [{ date: '2026-06-15', content: 'Y' }],
+  stats: { start: '2026-06-15', end: '2026-06-21', activeDays: 1, totalCompleted: 1, totalTasks: 1, streak: 1 },
+  relativeDir: 'custom/wk',
+  callLlm: async () => ({ ok: true, content: '自定义目录周报' }),
+});
+assert.equal(customWeekly.ok, true);
+assert.ok(customWeekly.filePath!.includes(path.join('custom', 'wk')), 'relativeDir 覆盖输出目录');
+assert.ok(!customWeekly.filePath!.includes(path.join('logs', 'weekly-review')), '不再落默认目录');
+
 // 对外周报 → exports/weekly-reports/，脱敏在调 LLM 前完成
 let sawInPrompt = '';
 const external = await generateExternalReport({
@@ -65,6 +76,17 @@ const external = await generateExternalReport({
 });
 assert.equal(external.ok, true);
 assert.ok(external.filePath!.includes(path.join('exports', 'weekly-reports')), '对外稿落 exports/，物理隔离');
+
+// 对外报自定义目录
+const extCustom = await generateExternalReport({
+  vaultPath: vault, kind: 'weekly', periodKey: '2026-W26',
+  rawDailyContents: ['## 工作\n<!-- tag: work -->\nZ'],
+  relativeDir: 'out/ext',
+  buildMessages: (r) => [{ role: 'user', content: r }],
+  callLlm: async () => ({ ok: true, content: '自定义对外周报' }),
+});
+assert.equal(extCustom.ok, true);
+assert.ok(extCustom.filePath!.includes(path.join('out', 'ext')), '对外报 relativeDir 覆盖');
 assert.ok(sawInPrompt.includes('对外项目进展'), 'work 内容进入 prompt');
 assert.ok(!sawInPrompt.includes('私人秘密'), '脱敏在调 LLM 前完成：private 不进 prompt');
 assert.ok(fs.readFileSync(external.filePath!, 'utf-8').includes('needs-review'), '对外稿标注需复核');

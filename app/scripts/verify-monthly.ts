@@ -19,5 +19,15 @@ assert.ok(messages[1].content.includes('2026-06'));
 assert.ok(messages[1].content.includes('第一周做了 A'));
 assert.ok(messages[1].content.includes('20/25'));
 assert.ok(messages[1].content.includes('活跃天数') && messages[1].content.includes('10'));
+assert.ok(messages[0].content.includes('月报助手'), '默认 system prompt');
+
+// systemPrompt 覆盖
+const custom = buildMonthlyMessages({
+  month: '2026-06', weeklyHighlights: [],
+  stats: { start: '2026-06-01', end: '2026-06-30', activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 },
+  systemPrompt: '我的月报格式：成果/复盘/规划',
+});
+assert.ok(custom[0].content.includes('我的月报格式'), '自定义月报模板覆盖');
+assert.ok(!custom[0].content.includes('月报助手'), '覆盖后不含默认句');
 
 console.log('Monthly verification passed');

@@ -19,5 +19,24 @@ assert.ok(messages[1].content.includes('2026-W23'));
 assert.ok(messages[1].content.includes('周一做了 A'));
 assert.ok(messages[1].content.includes('活跃天数') && messages[1].content.includes('2'));
 assert.ok(messages[1].content.includes('5/8'), '完成任务统计注入');
+assert.ok(messages[0].content.includes('周报助手'), '默认 system prompt');
+
+// systemPrompt 覆盖
+const custom = buildWeeklyMessages({
+  weekKey: '2026-W23',
+  dailyContents: [],
+  stats: { start: '2026-06-01', end: '2026-06-07', activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 },
+  systemPrompt: '我的周报格式：亮点/踩坑/下周',
+});
+assert.ok(custom[0].content.includes('我的周报格式'), '自定义模板覆盖默认');
+assert.ok(!custom[0].content.includes('周报助手'), '覆盖后不含默认句');
+
+// 空白 systemPrompt 回落默认
+const blank = buildWeeklyMessages({
+  weekKey: '2026-W23', dailyContents: [],
+  stats: { start: '2026-06-01', end: '2026-06-07', activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 },
+  systemPrompt: '   ',
+});
+assert.ok(blank[0].content.includes('周报助手'), '空白模板回落默认');
 
 console.log('Weekly verification passed');

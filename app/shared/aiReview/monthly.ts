@@ -19,11 +19,15 @@ export interface MonthlyParams {
   month: string; // YYYY-MM
   weeklyHighlights: string[]; // 各周报要点
   stats: RangeStats;
+  /** 自定义生成模板（system prompt）；空/未给 → 用内置默认句。 */
+  systemPrompt?: string;
 }
 
+const DEFAULT_MONTHLY_SYSTEM =
+  '你是月报助手。基于本月各周报要点生成个人月报，包含：月度概览、主要成果、知识沉淀、未完成与下月计划。不要编造数字，统计以给定值为准。输出 Markdown。';
+
 export function buildMonthlyMessages(params: MonthlyParams): ChatMessage[] {
-  const system =
-    '你是月报助手。基于本月各周报要点生成个人月报，包含：月度概览、主要成果、知识沉淀、未完成与下月计划。不要编造数字，统计以给定值为准。输出 Markdown。';
+  const system = params.systemPrompt?.trim() || DEFAULT_MONTHLY_SYSTEM;
   const user = [
     `月：${params.month}`,
     '确定性统计（以此为准）：',

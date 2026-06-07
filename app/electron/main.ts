@@ -48,9 +48,10 @@ import {
 import { runReviewForFile } from './aiReview/runner';
 import { backfillReviews } from './aiReview/backfill';
 import { callChatCompletion } from '../shared/llm/openaiClient';
-import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings } from '../shared/aiReview/aiReviewSettings';
+import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings, DEFAULT_REPORT_DIRS, sanitizeRelDir } from '../shared/aiReview/aiReviewSettings';
 import { normalizeSections } from '../shared/aiReview/sectionConfig';
 import { buildRecognizeMessages, parseRecognizedSections } from '../shared/aiReview/recognizeTemplate';
+import { buildRecognizeReportMessages, parseRecognizedReportPrompt } from '../shared/aiReview/recognizeReportTemplate';
 import type { ChatMessage } from '../shared/llm/openaiClient';
 import type { StatTask } from '../shared/aiReview/stats';
 import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
@@ -559,7 +560,7 @@ function getLlmCaller() {
     callChatCompletion(
       { baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model },
       messages,
-      { timeoutMs: s.timeoutSeconds * 1000 },
+      { timeoutMs: s.timeoutSeconds * 1000, provider: s.provider },
     );
 }
 
@@ -1385,6 +1386,8 @@ function createWindow() {
       weekKey: isoWeekKey(selected),
       dailyContents,
       stats,
+      relativeDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
+      systemPrompt: settings.weeklyPrompt,
       callLlm: getLlmCaller(),
     });
   });
@@ -1409,6 +1412,8 @@ function createWindow() {
       month,
       weeklyHighlights: highlights,
       stats,
+      relativeDir: sanitizeRelDir(settings.monthlyDir, DEFAULT_REPORT_DIRS.monthly),
+      systemPrompt: settings.monthlyPrompt,
       callLlm: getLlmCaller(),
     });
   });
@@ -1437,16 +1442,23 @@ function createWindow() {
         return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
       })
       .filter(Boolean);
+    const externalDir =
+      kind === 'weekly'
+        ? sanitizeRelDir(settings.externalWeeklyDir, DEFAULT_REPORT_DIRS.externalWeekly)
+        : sanitizeRelDir(settings.externalMonthlyDir, DEFAULT_REPORT_DIRS.externalMonthly);
+    const externalPrompt = kind === 'weekly' ? settings.weeklyPrompt : settings.monthlyPrompt;
     return generateExternalReport({
       vaultPath: vaultStatus.vaultPath,
       kind,
       periodKey,
+      relativeDir: externalDir,
       rawDailyContents,
       buildMessages: (redacted) =>
         buildMonthlyMessages({
           month: periodKey,
           weeklyHighlights: [redacted],
           stats: { start: dates[0], end: dates[dates.length - 1], activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 },
+          systemPrompt: externalPrompt,
         }),
       callLlm: getLlmCaller(),
     });
@@ -1464,6 +1476,17 @@ function createWindow() {
     if (!llm.ok) return { ok: false, error: llm.error, sections: fallback, unmatched: true };
     const parsed = parseRecognizedSections(llm.content, fallback);
     return { ok: true, sections: parsed.sections, confidence: parsed.confidence, unmatched: parsed.unmatched };
+  });
+  ipcMain.handle('aiReview:recognizeReportTemplate', async (_e, kind: 'weekly' | 'monthly', rawTemplate: string) => {
+    const settings = getAiReviewSettings();
+    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', prompt: '' };
+    if (typeof rawTemplate !== 'string' || !rawTemplate.trim()) return { ok: false, error: '请粘贴你的报告模板', prompt: '' };
+    const safeKind = kind === 'monthly' ? 'monthly' : 'weekly';
+    const llm = await getLlmCaller()(buildRecognizeReportMessages(rawTemplate, safeKind));
+    if (!llm.ok) return { ok: false, error: llm.error, prompt: '' };
+    const prompt = parseRecognizedReportPrompt(llm.content);
+    if (!prompt) return { ok: false, error: '未能识别出可用的生成指令', prompt: '' };
+    return { ok: true, prompt };
   });
 
   ipcMain.handle('obsidian:getPath', () => store.get(OBSIDIAN_PATH_KEY) || getDefaultVaultPath());
