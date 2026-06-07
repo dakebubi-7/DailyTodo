@@ -59,5 +59,39 @@ const third = await runReviewForFile({
 });
 assert.ok(fs.readFileSync(file, 'utf-8').includes('用户改写了'), 'user edit preserved (skipped)');
 
+// 明日待办：确定性结转未完成任务（不经 LLM）
+const file2 = path.join(dir, '2026-06-08.md');
+fs.writeFileSync(
+  file2,
+  [
+    '# 2026-06-08',
+    '## 复盘',
+    REVIEW_MARKERS.REVIEW.start,
+    REVIEW_MARKERS.REVIEW.end,
+    '## 明日待办',
+    REVIEW_MARKERS.TOMORROW.start,
+    REVIEW_MARKERS.TOMORROW.end,
+    '## 可复用知识',
+    REVIEW_MARKERS.KNOWLEDGE.start,
+    REVIEW_MARKERS.KNOWLEDGE.end,
+  ].join('\n'),
+  'utf-8',
+);
+const det = await runReviewForFile({
+  filePath: file2,
+  date: '2026-06-08',
+  tasks: [
+    { completed: false, taskDate: '2026-06-08', text: '未完成项A' },
+    { completed: true, taskDate: '2026-06-08', text: '已完成项B' },
+  ],
+  sections: createDefaultSections(),
+  callLlm: fakeLlm,
+});
+assert.equal(det.ok, true);
+const tomorrowBody = readBlockBody(fs.readFileSync(file2, 'utf-8'), REVIEW_MARKERS.TOMORROW);
+assert.ok(tomorrowBody.includes('未完成项A'), '未完成任务结转到明日待办');
+assert.ok(tomorrowBody.includes('（结转）'), '结转标记');
+assert.ok(!tomorrowBody.includes('已完成项B'), '已完成任务不结转');
+
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('AI runner verification passed');

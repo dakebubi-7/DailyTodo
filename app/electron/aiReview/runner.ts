@@ -50,8 +50,14 @@ export async function runReviewForFile(params: RunParams): Promise<RunResult> {
     }
 
     if (section.type === SectionType.Deterministic) {
-      // 明日待办：确定性结转在 Task 14 增强；此处先跳过，保证块存在不被破坏。
-      skipped.push(section.markerKey);
+      // 明日待办：确定性地把今天未完成的任务结转进来（不经 LLM）。
+      // 标题在块外，块内只放结转清单；用 embedHash 标记为可托管，用户改后下次跳过。
+      const carried = tasks
+        .filter((t) => !t.completed && t.text && t.text.trim())
+        .map((t) => `- [ ] ${t.text!.trim()}（结转）`);
+      const detBody = embedHash(carried.length ? carried.join('\n') : '- [ ] ');
+      content = upsertBlock(content, marker, detBody);
+      filled.push(section.markerKey);
       continue;
     }
 

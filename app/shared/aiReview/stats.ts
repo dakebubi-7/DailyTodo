@@ -2,6 +2,7 @@ export interface StatTask {
   completed: boolean;
   taskDate?: string;
   createdAt?: string;
+  text?: string;
 }
 
 export interface DailyStats {
