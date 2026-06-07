@@ -26,4 +26,15 @@ assert.equal(/function getInitialDesktopWidgetBounds\(\)/.test(source), true, 'w
 assert.equal(/function persistDesktopWidgetWindowState\(win: BrowserWindow\)/.test(source), true, 'widget should persist its own bounds');
 assert.equal(/resizable:\s*true/.test(source), true, 'widget window should be resizable');
 
+// Widget desktop pin must be event-driven (focus/blur), not a foreground poll.
+assert.equal(/widgetWindow\.on\('focus'/.test(source), true, 'widget should react to its own focus event');
+assert.equal(/widgetWindow\.on\('blur'/.test(source), true, 'widget should react to its own blur event');
+assert.equal(source.includes('startWidgetDesktopPin'), true, 'widget should use the event-driven pin start');
+assert.equal(source.includes('widgetDesktopGuardTimer'), false, 'widget must not run a setInterval poll');
+assert.equal(source.includes('applyWidgetDesktopTopmost'), false, 'widget foreground-polling guard must be removed');
+
+// The abandoned SetParent-into-wallpaper experiment must stay removed.
+assert.equal(source.includes('embedIntoWallpaper'), false, 'wallpaper SetParent experiment must be removed');
+assert.equal(source.includes('toggleWidgetWallpaperEmbed'), false, 'wallpaper embed tray toggle must be removed');
+
 console.log('main-window structure verification passed');
