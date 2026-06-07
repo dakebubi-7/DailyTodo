@@ -11,6 +11,7 @@ import { DailyWorkPanel } from './components/DailyWorkPanel';
 import { ReviewView } from './components/ReviewView';
 import { AddTaskInput } from './components/AddTaskInput';
 import { SettingsPanel } from './components/SettingsPanel';
+import { AiOnboarding } from './components/AiOnboarding';
 import { TaskCompletionDialog } from './components/TaskCompletionDialog';
 import { TaskReviewDialog } from './components/TaskReviewDialog';
 import { ObsidianCompanionPanel } from './components/ObsidianCompanionPanel';
@@ -42,6 +43,10 @@ import {
   writeCompanionSync,
 } from './store/taskStore';
 import { getShellText } from './i18n';
+import {
+  AiReviewSettings,
+} from '../shared/aiReview/aiReviewSettings';
+import { shouldShowOnboarding } from '../shared/aiReview/onboarding';
 
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low';
 const PERSONALIZATION_KEY = 'personalizationSettings';
@@ -103,6 +108,7 @@ export default function App() {
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aiOnboarding, setAiOnboarding] = useState<AiReviewSettings | null>(null);
   const [completionTask, setCompletionTask] = useState<Task | null>(null);
   const [reviewTask, setReviewTask] = useState<Task | null>(null);
   const [personalization, setPersonalization] = useState<PersonalizationSettings>(DEFAULT_PERSONALIZATION);
@@ -206,6 +212,17 @@ export default function App() {
     });
     return off;
   }, [isLoaded]);
+
+  // AI 复盘首次向导：首启且未启用、从未关闭过 → 弹出。
+  useEffect(() => {
+    let active = true;
+    void window.electronAPI?.aiReview?.getSettings().then((settings) => {
+      if (active && settings && shouldShowOnboarding(settings)) setAiOnboarding(settings);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     window.electronAPI?.setWindowCompactMode(compactMode);
@@ -434,6 +451,17 @@ export default function App() {
             setSettingsOpen(false);
           }}
         />
+        {aiOnboarding && (
+          <AiOnboarding
+            isOpen
+            text={getShellText(appSettings.language).settings.aiReview.onboarding}
+            initialSettings={aiOnboarding}
+            onComplete={(next) => {
+              void window.electronAPI?.aiReview?.setSettings(next);
+              setAiOnboarding(null);
+            }}
+          />
+        )}
         <ObsidianCompanionPanel
           isOpen={companionOpen}
           settings={companionSettings}

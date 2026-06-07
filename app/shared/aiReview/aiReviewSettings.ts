@@ -6,6 +6,7 @@ export interface AiReviewSettings {
   backfillDays: number;
   timerEnabled: boolean;
   timerTime: string; // HH:mm
+  onboardingDismissed: boolean;
 }
 
 export const AI_REVIEW_SETTINGS_KEY = 'aiReviewSettings';
@@ -19,6 +20,7 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     backfillDays: 7,
     timerEnabled: false,
     timerTime: '23:00',
+    onboardingDismissed: false,
   };
 }
 
@@ -44,5 +46,7 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     backfillDays: Number.isInteger(backfill) && backfill >= 1 && backfill <= 60 ? backfill : d.backfillDays,
     timerEnabled: typeof value.timerEnabled === 'boolean' ? value.timerEnabled : d.timerEnabled,
     timerTime: isTime(value.timerTime) ? value.timerTime : d.timerTime,
+    onboardingDismissed:
+      typeof value.onboardingDismissed === 'boolean' ? value.onboardingDismissed : d.onboardingDismissed,
   };
 }
