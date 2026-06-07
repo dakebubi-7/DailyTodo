@@ -136,6 +136,7 @@ type DesktopWidgetState = 'desktop-visible' | 'app-background' | 'dt-active';
 const OBSIDIAN_PATH_KEY = 'obsidianVaultPath';
 const COMPANION_SETTINGS_KEY = 'obsidianCompanionSettings';
 const WINDOW_STATE_KEY = 'windowState';
+const DESKTOP_WIDGET_WINDOW_STATE_KEY = 'desktopWidgetWindowState';
 const COMPACT_MODE_KEY = 'compactMode';
 const AUTO_START_KEY = 'autoStart';
 const MIN_WINDOW_WIDTH = 240;
@@ -143,6 +144,10 @@ const DEFAULT_WINDOW_WIDTH = 240;
 const DEFAULT_WINDOW_HEIGHT = 480;
 const RESET_WINDOW_WIDTH = 240;
 const RESET_WINDOW_HEIGHT = 480;
+const DEFAULT_WIDGET_WINDOW_WIDTH = 300;
+const DEFAULT_WIDGET_WINDOW_HEIGHT = 420;
+const MIN_WIDGET_WINDOW_WIDTH = 260;
+const MIN_WIDGET_WINDOW_HEIGHT = 320;
 const APP_ICON_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABiklEQVR4nO3bQRKCMAwFUM7BHbgCB0Dv4PW8ijdx6ca1rpxhFCFpkv6kDTPZgc1/QumCDgPxmJb5FamouZoLrgaBbhwKgW4WioBuEoqAbg6KgG4KjoBuCAqAbgaOgG4ECoBuAl3qAM/H3bRcA1iHt0BQA6gVXhtBBaB2eE0EMQAqvBZCAiRAAiSAGcC0zBetSoAECAjQ/RyQAAmQAOoBQwFMy3wqrb1wXQBQx2wVgDymawCrSa1rgFCToHX4pgBKx2kCQDJGeADpGO4AtJvXAKwGwAmhdXeFAOCcRwl/u543yzXA+tzS8P+CSyCqAkj+eWp4LoL5JFg7/DiOLAST1yAy/KeoCGbrgNoA6/AuADgIVuEpCOYrQcn1R8/4Vnh3ANwF0h7Ad0hKeBcAWwiUa45udUp4cwAOArcoz/tR+CoAVgilkx4EAIUgXRG6/1CSsxByAWBRVuGnSN8Lm4WPAsBBoP5e2D0D0uA/4aMBaFTX+4a63jm2G751BFL4VhFY4VuCKA4eHYKa6w3BqOZexsuoaQAAAABJRU5ErkJggg==';
 
@@ -178,6 +183,7 @@ let mainWindow: BrowserWindow | null = null;
 let desktopWidgetWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let persistTimer: NodeJS.Timeout | null = null;
+let widgetPersistTimer: NodeJS.Timeout | null = null;
 let isQuitting = false;
 // 当前窗口模式的进程内真相源（normal / onTop / desktop）。createWindow 时从存储解析。
 let windowMode: WindowMode = 'onTop';
@@ -796,6 +802,24 @@ function persistWindowState(win: BrowserWindow) {
   }, 250);
 }
 
+function getInitialDesktopWidgetBounds() {
+  const saved = store.get(DESKTOP_WIDGET_WINDOW_STATE_KEY) as WindowState | undefined;
+  const { workArea } = screen.getPrimaryDisplay();
+  const width = Math.max(MIN_WIDGET_WINDOW_WIDTH, saved?.width || DEFAULT_WIDGET_WINDOW_WIDTH);
+  const height = Math.max(MIN_WIDGET_WINDOW_HEIGHT, saved?.height || DEFAULT_WIDGET_WINDOW_HEIGHT);
+  const x = saved?.x ?? workArea.x + workArea.width - width - 30;
+  const y = saved?.y ?? workArea.y + 96;
+  return { width, height, x, y };
+}
+
+function persistDesktopWidgetWindowState(win: BrowserWindow) {
+  if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
+  widgetPersistTimer = setTimeout(() => {
+    if (win.isDestroyed() || win.isMinimized()) return;
+    store.set(DESKTOP_WIDGET_WINDOW_STATE_KEY, win.getBounds());
+  }, 250);
+}
+
 /** 从存储解析当前窗口模式（含旧布尔 alwaysOnTop 的迁移）。 */
 function getStoredWindowMode(): WindowMode {
   return resolveWindowMode(store.get(WINDOW_MODE_KEY), store.get(LEGACY_ALWAYS_ON_TOP_KEY));
@@ -974,6 +998,7 @@ function refreshTrayMenu() {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: zh('打开 DailyTodo'), click: showMainWindow },
+      { label: zh('打开桌面组件'), click: showDesktopWidgetWindow },
       {
         label: zh('钉在桌面（组件模式）'),
         type: 'checkbox',
@@ -1011,9 +1036,9 @@ function createDesktopWidgetWindow(): BrowserWindow {
   }
 
   const widgetWindow = new BrowserWindow({
-    ...getInitialBounds(),
-    minWidth: MIN_WINDOW_WIDTH,
-    minHeight: 480,
+    ...getInitialDesktopWidgetBounds(),
+    minWidth: MIN_WIDGET_WINDOW_WIDTH,
+    minHeight: MIN_WIDGET_WINDOW_HEIGHT,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -1033,11 +1058,24 @@ function createDesktopWidgetWindow(): BrowserWindow {
 
   desktopWidgetWindow = widgetWindow;
   loadRenderer(widgetWindow, { view: 'widget' });
+  widgetWindow.once('ready-to-show', () => {
+    widgetWindow.show();
+  });
+  widgetWindow.on('move', () => persistDesktopWidgetWindowState(widgetWindow));
+  widgetWindow.on('resize', () => persistDesktopWidgetWindowState(widgetWindow));
+  widgetWindow.on('close', () => persistDesktopWidgetWindowState(widgetWindow));
   widgetWindow.on('closed', () => {
     desktopWidgetWindow = null;
   });
 
   return widgetWindow;
+}
+
+function showDesktopWidgetWindow() {
+  const widgetWindow = createDesktopWidgetWindow();
+  if (widgetWindow.isMinimized()) widgetWindow.restore();
+  widgetWindow.show();
+  widgetWindow.focus();
 }
 
 function createWindow() {

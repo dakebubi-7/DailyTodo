@@ -19,4 +19,11 @@ assert.match(minimizeHandler, /win\.showInactive\(\)/, 'minimize handler should 
 assert.equal(source.includes("ipcMain.handle('window:minimize', hideMainWindow)"), true, 'window:minimize should use hideMainWindow');
 assert.equal(source.includes("ipcMain.handle('window:close', hideMainWindow)"), true, 'window:close should use hideMainWindow');
 
+assert.equal(source.includes("const DESKTOP_WIDGET_WINDOW_STATE_KEY = 'desktopWidgetWindowState'"), true, 'widget should use a separate bounds key');
+assert.equal(source.includes("label: zh('打开桌面组件')"), true, 'tray should include a widget entry');
+assert.equal(source.includes('showDesktopWidgetWindow'), true, 'tray entry should use showDesktopWidgetWindow helper');
+assert.equal(/function getInitialDesktopWidgetBounds\(\)/.test(source), true, 'widget should have dedicated initial bounds helper');
+assert.equal(/function persistDesktopWidgetWindowState\(win: BrowserWindow\)/.test(source), true, 'widget should persist its own bounds');
+assert.equal(/resizable:\s*true/.test(source), true, 'widget window should be resizable');
+
 console.log('main-window structure verification passed');
