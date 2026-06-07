@@ -193,12 +193,12 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
   const [recognizing, setRecognizing] = useState(false);
   const [recognizeStatus, setRecognizeStatus] = useState<string>('');
   const [recognizedSections, setRecognizedSections] = useState<SectionConfig[] | null>(null);
-  // 报告模板展开 + 认报告模板
-  const [openTemplate, setOpenTemplate] = useState<'weekly' | 'monthly' | null>(null);
-  const [reportDraft, setReportDraft] = useState<{ weekly: string; monthly: string }>({ weekly: '', monthly: '' });
-  const [reportRecognizing, setReportRecognizing] = useState<'weekly' | 'monthly' | null>(null);
-  const [reportRecognizeStatus, setReportRecognizeStatus] = useState<{ weekly: string; monthly: string }>({ weekly: '', monthly: '' });
-  const [reportRecognized, setReportRecognized] = useState<{ weekly: string | null; monthly: string | null }>({ weekly: null, monthly: null });
+  // 报告模板展开 + 认报告模板（个人周/月 + 对外周/月 各一套）
+  const [openTemplate, setOpenTemplate] = useState<'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly' | null>(null);
+  const [reportDraft, setReportDraft] = useState<{ weekly: string; monthly: string; 'ext-weekly': string; 'ext-monthly': string }>({ weekly: '', monthly: '', 'ext-weekly': '', 'ext-monthly': '' });
+  const [reportRecognizing, setReportRecognizing] = useState<'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly' | null>(null);
+  const [reportRecognizeStatus, setReportRecognizeStatus] = useState<{ weekly: string; monthly: string; 'ext-weekly': string; 'ext-monthly': string }>({ weekly: '', monthly: '', 'ext-weekly': '', 'ext-monthly': '' });
+  const [reportRecognized, setReportRecognized] = useState<{ weekly: string | null; monthly: string | null; 'ext-weekly': string | null; 'ext-monthly': string | null }>({ weekly: null, monthly: null, 'ext-weekly': null, 'ext-monthly': null });
 
   useEffect(() => {
     let active = true;
@@ -292,14 +292,15 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
 
   const rc = text.reportConfig;
 
-  const recognizeReport = async (kind: 'weekly' | 'monthly') => {
+  const recognizeReport = async (kind: 'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly') => {
     const draft = reportDraft[kind];
     if (!draft.trim()) return;
     setReportRecognizing(kind);
     setReportRecognizeStatus((s) => ({ ...s, [kind]: rc.recognizing }));
     setReportRecognized((s) => ({ ...s, [kind]: null }));
     try {
-      const result = await window.electronAPI?.aiReview.recognizeReportTemplate(kind, draft);
+      const apiKind = kind === 'monthly' || kind === 'ext-monthly' ? 'monthly' : 'weekly';
+      const result = await window.electronAPI?.aiReview.recognizeReportTemplate(apiKind, draft);
       if (!result || !result.ok) {
         setReportRecognizeStatus((s) => ({ ...s, [kind]: `${rc.recognizeFailed}${result?.error ?? ''}` }));
         return;
@@ -313,10 +314,18 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
     }
   };
 
-  const applyReportPrompt = (kind: 'weekly' | 'monthly') => {
+  const applyReportPrompt = (kind: 'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly') => {
     const prompt = reportRecognized[kind];
     if (!prompt) return;
-    updateSettings(kind === 'weekly' ? 'weeklyPrompt' : 'monthlyPrompt', prompt);
+    const key =
+      kind === 'weekly'
+        ? 'weeklyPrompt'
+        : kind === 'monthly'
+          ? 'monthlyPrompt'
+          : kind === 'ext-weekly'
+            ? 'externalWeeklyPrompt'
+            : 'externalMonthlyPrompt';
+    updateSettings(key, prompt);
     setReportRecognized((s) => ({ ...s, [kind]: null }));
     setReportRecognizeStatus((s) => ({ ...s, [kind]: '' }));
     setReportDraft((s) => ({ ...s, [kind]: '' }));
@@ -554,11 +563,37 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
           <Field label={rc.extMonthlyDir} value={settings.externalMonthlyDir} placeholder="exports/monthly-reports" onChange={(v) => updateSettings('externalMonthlyDir', v)} />
         </div>
 
-        {(['weekly', 'monthly'] as const).map((kind) => {
+        {([
+          {
+            kind: 'weekly' as const,
+            promptLabel: rc.weeklyPrompt,
+            promptValue: settings.weeklyPrompt,
+            recognizeLabel: rc.recognizeWeekly,
+            settingKey: 'weeklyPrompt' as const,
+          },
+          {
+            kind: 'monthly' as const,
+            promptLabel: rc.monthlyPrompt,
+            promptValue: settings.monthlyPrompt,
+            recognizeLabel: rc.recognizeMonthly,
+            settingKey: 'monthlyPrompt' as const,
+          },
+          {
+            kind: 'ext-weekly' as const,
+            promptLabel: rc.extWeeklyPrompt,
+            promptValue: settings.externalWeeklyPrompt,
+            recognizeLabel: rc.recognizeExtWeekly,
+            settingKey: 'externalWeeklyPrompt' as const,
+          },
+          {
+            kind: 'ext-monthly' as const,
+            promptLabel: rc.extMonthlyPrompt,
+            promptValue: settings.externalMonthlyPrompt,
+            recognizeLabel: rc.recognizeExtMonthly,
+            settingKey: 'externalMonthlyPrompt' as const,
+          },
+        ]).map(({ kind, promptLabel, promptValue, recognizeLabel, settingKey }) => {
           const isOpen = openTemplate === kind;
-          const promptLabel = kind === 'weekly' ? rc.weeklyPrompt : rc.monthlyPrompt;
-          const promptValue = kind === 'weekly' ? settings.weeklyPrompt : settings.monthlyPrompt;
-          const recognizeLabel = kind === 'weekly' ? rc.recognizeWeekly : rc.recognizeMonthly;
           return (
             <div key={kind} className="settings-grid" style={{ marginTop: '0.75rem' }}>
               <button
@@ -575,7 +610,7 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
                     label={promptLabel}
                     value={promptValue}
                     multiline
-                    onChange={(v) => updateSettings(kind === 'weekly' ? 'weeklyPrompt' : 'monthlyPrompt', v)}
+                    onChange={(v) => updateSettings(settingKey, v)}
                   />
                   <label className="settings-field">
                     <span><strong>{recognizeLabel}</strong></span>

@@ -10,7 +10,7 @@ export interface AiReviewSettings {
   timerEnabled: boolean;
   timerTime: string; // HH:mm
   timeoutSeconds: number;
-  // 报告输出目录（相对 vault 根，空 = 用 DEFAULT_REPORT_DIRS 对应默认）
+  // 报告输出目录（相对 vault 根；保存原始输入，实际写入前再 sanitize）
   weeklyDir: string;
   monthlyDir: string;
   externalWeeklyDir: string;
@@ -18,6 +18,8 @@ export interface AiReviewSettings {
   // 报告生成模板（system prompt，空 = 用内置默认句）
   weeklyPrompt: string;
   monthlyPrompt: string;
+  externalWeeklyPrompt: string;
+  externalMonthlyPrompt: string;
   onboardingDismissed: boolean;
 }
 
@@ -57,6 +59,8 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     externalMonthlyDir: '',
     weeklyPrompt: '',
     monthlyPrompt: '',
+    externalWeeklyPrompt: '',
+    externalMonthlyPrompt: '',
     onboardingDismissed: false,
   };
 }
@@ -90,13 +94,15 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     timerEnabled: typeof value.timerEnabled === 'boolean' ? value.timerEnabled : d.timerEnabled,
     timerTime: isTime(value.timerTime) ? value.timerTime : d.timerTime,
     timeoutSeconds: Number.isInteger(timeout) && timeout >= 10 && timeout <= 600 ? timeout : d.timeoutSeconds,
-    // 路径：合法→清洗后保留；非法/空→空串（消费端再回落默认目录）
-    weeklyDir: sanitizeRelDir(value.weeklyDir, ''),
-    monthlyDir: sanitizeRelDir(value.monthlyDir, ''),
-    externalWeeklyDir: sanitizeRelDir(value.externalWeeklyDir, ''),
-    externalMonthlyDir: sanitizeRelDir(value.externalMonthlyDir, ''),
+    // 路径输入保留原样，允许用户输入 / 和 \；真正写文件前再 sanitize。
+    weeklyDir: typeof value.weeklyDir === 'string' ? value.weeklyDir : d.weeklyDir,
+    monthlyDir: typeof value.monthlyDir === 'string' ? value.monthlyDir : d.monthlyDir,
+    externalWeeklyDir: typeof value.externalWeeklyDir === 'string' ? value.externalWeeklyDir : d.externalWeeklyDir,
+    externalMonthlyDir: typeof value.externalMonthlyDir === 'string' ? value.externalMonthlyDir : d.externalMonthlyDir,
     weeklyPrompt: typeof value.weeklyPrompt === 'string' ? value.weeklyPrompt : d.weeklyPrompt,
     monthlyPrompt: typeof value.monthlyPrompt === 'string' ? value.monthlyPrompt : d.monthlyPrompt,
+    externalWeeklyPrompt: typeof value.externalWeeklyPrompt === 'string' ? value.externalWeeklyPrompt : d.externalWeeklyPrompt,
+    externalMonthlyPrompt: typeof value.externalMonthlyPrompt === 'string' ? value.externalMonthlyPrompt : d.externalMonthlyPrompt,
     onboardingDismissed:
       typeof value.onboardingDismissed === 'boolean' ? value.onboardingDismissed : d.onboardingDismissed,
   };

@@ -1446,7 +1446,7 @@ function createWindow() {
       kind === 'weekly'
         ? sanitizeRelDir(settings.externalWeeklyDir, DEFAULT_REPORT_DIRS.externalWeekly)
         : sanitizeRelDir(settings.externalMonthlyDir, DEFAULT_REPORT_DIRS.externalMonthly);
-    const externalPrompt = kind === 'weekly' ? settings.weeklyPrompt : settings.monthlyPrompt;
+    const externalPrompt = kind === 'weekly' ? settings.externalWeeklyPrompt : settings.externalMonthlyPrompt;
     return generateExternalReport({
       vaultPath: vaultStatus.vaultPath,
       kind,
