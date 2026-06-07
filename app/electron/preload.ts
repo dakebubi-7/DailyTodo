@@ -36,4 +36,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getWindowCompactMode: () => ipcRenderer.invoke('window:getCompactMode'),
   getAutoStart: () => ipcRenderer.invoke('window:getAutoStart'),
   setAutoStart: (enabled: boolean) => ipcRenderer.invoke('window:setAutoStart', enabled),
+  aiReview: {
+    getSettings: () => ipcRenderer.invoke('aiReview:getSettings'),
+    setSettings: (v: unknown) => ipcRenderer.invoke('aiReview:setSettings', v),
+    getSections: () => ipcRenderer.invoke('aiReview:getSections'),
+    setSections: (v: unknown) => ipcRenderer.invoke('aiReview:setSections', v),
+    runForDate: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:runForDate', date, tasks),
+    backfill: (tasks: unknown) => ipcRenderer.invoke('aiReview:backfill', tasks),
+  },
 });

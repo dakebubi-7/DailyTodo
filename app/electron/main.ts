@@ -45,6 +45,14 @@ import {
   togglePinnedMode,
   setDesktopMode,
 } from '../shared/windowMode';
+import { runReviewForFile } from './aiReview/runner';
+import { backfillReviews } from './aiReview/backfill';
+import { callChatCompletion } from '../shared/llm/openaiClient';
+import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings } from '../shared/aiReview/aiReviewSettings';
+import { normalizeSections } from '../shared/aiReview/sectionConfig';
+import type { ChatMessage } from '../shared/llm/openaiClient';
+import type { StatTask } from '../shared/aiReview/stats';
+import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
 
 // 关闭 Chromium 在 Windows 上的原生窗口遮挡计算：透明无边框窗口在 Win+D / 点击桌面后
 // 会被判定为「被遮挡」而暂停合成，表现为窗口空白/消失，直到系统弹窗触发重绘。关闭后所有
@@ -531,6 +539,33 @@ function setObsidianTemplateSettings(value: unknown) {
   return settings;
 }
 
+const AI_REVIEW_SECTIONS_KEY = 'aiReviewSections';
+
+function getAiReviewSettings() {
+  return normalizeAiReviewSettings(store.get(AI_REVIEW_SETTINGS_KEY));
+}
+function getReviewSections() {
+  return normalizeSections(store.get(AI_REVIEW_SECTIONS_KEY));
+}
+function getLlmCaller() {
+  const s = getAiReviewSettings();
+  return (messages: ChatMessage[]) =>
+    callChatCompletion({ baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model }, messages);
+}
+
+async function runReviewForDate(date: string, tasks: Task[]) {
+  const settings = getAiReviewSettings();
+  if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', filledMarkers: [], skippedMarkers: [] };
+  const filePath = getDailyFilePath(date);
+  return runReviewForFile({
+    filePath,
+    date,
+    tasks: tasks as StatTask[],
+    sections: getReviewSections(),
+    callLlm: getLlmCaller(),
+  });
+}
+
 function getDailyFilePath(date?: string) {
   return resolveTemplatePath(getVaultPath(), getObsidianTemplateSettings().dailyNotePath, getDateKey(date));
 }
@@ -739,6 +774,7 @@ function syncTasksToObsidian(tasks: Task[], date?: string, dailyWork = '', inspi
     fs.writeFileSync(path.join(LOCAL_BLOG_DRAFT_DIR, `daily-memo-${selected}.md`), buildBlogDraft(selected, tasks, selectedResult.nextContent), 'utf-8');
   }
   triggerOverviewUpdate(selectedResult.filePath);
+  void runReviewForDate(selected, tasks).catch(() => {});
   return { ok: true, filePath: selectedResult.filePath };
 }
 
@@ -1267,6 +1303,35 @@ function createWindow() {
     const settings = createDefaultObsidianTemplateSettings();
     store.set(OBSIDIAN_TEMPLATE_SETTINGS_KEY, settings);
     return settings;
+  });
+
+  ipcMain.handle('aiReview:getSettings', () => getAiReviewSettings());
+  ipcMain.handle('aiReview:setSettings', (_e, v: unknown) => {
+    const next = normalizeAiReviewSettings(v);
+    store.set(AI_REVIEW_SETTINGS_KEY, next);
+    return next;
+  });
+  ipcMain.handle('aiReview:getSections', () => getReviewSections());
+  ipcMain.handle('aiReview:setSections', (_e, v: unknown) => {
+    const next = normalizeSections(v);
+    store.set(AI_REVIEW_SECTIONS_KEY, next);
+    return next;
+  });
+  ipcMain.handle('aiReview:runForDate', (_e, date: string, tasks: Task[]) => runReviewForDate(getDateKey(date), tasks));
+  ipcMain.handle('aiReview:backfill', async (_e, tasks: Task[]) => {
+    const settings = getAiReviewSettings();
+    if (!settings.enabled || !settings.apiKey) return { processed: [], filled: [], errors: [] };
+    const rollover = getAppSettings().rolloverTime;
+    const today = getBusinessDateKey(new Date(), rollover);
+    const dates = Array.from({ length: settings.backfillDays }, (_, i) => shiftDateKey(today, -i));
+    return backfillReviews({
+      dates,
+      resolveFilePath: (d) => getDailyFilePath(d),
+      tasksForDate: () => tasks as StatTask[],
+      sections: getReviewSections(),
+      callLlm: getLlmCaller(),
+      fileExists: (p) => fs.existsSync(p),
+    });
   });
 
   ipcMain.handle('obsidian:getPath', () => store.get(OBSIDIAN_PATH_KEY) || getDefaultVaultPath());
