@@ -32,3 +32,15 @@ export function buildDevRendererUrl(baseUrl: string, route: RendererRoute): stri
 
   return url.toString();
 }
+
+export function resolveRendererView(value: string): RendererView {
+  try {
+    const params = value.startsWith('?')
+      ? new URLSearchParams(value)
+      : new URL(value).searchParams;
+    const view = params.get('view') || 'main';
+    return isRendererView(view) ? view : 'main';
+  } catch {
+    return 'main';
+  }
+}

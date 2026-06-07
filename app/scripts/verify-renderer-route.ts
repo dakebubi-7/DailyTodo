@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   buildRendererQuery,
   buildDevRendererUrl,
+  resolveRendererView,
   type RendererView,
 } from '../shared/rendererRoute';
 
@@ -76,5 +77,12 @@ assert.throws(
   () => buildRendererQuery({ view: 'invalid' as RendererView }),
   /Unsupported renderer view: invalid/
 );
+
+assert.equal(resolveRendererView(''), 'main');
+assert.equal(resolveRendererView('?view=main'), 'main');
+assert.equal(resolveRendererView('?view=widget'), 'widget');
+assert.equal(resolveRendererView('?view=unknown'), 'main');
+assert.equal(resolveRendererView('http://localhost:5173/?view=widget'), 'widget');
+assert.equal(resolveRendererView('not a url'), 'main');
 
 console.log('renderer-route verification passed');
