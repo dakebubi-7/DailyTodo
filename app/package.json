@@ -29,7 +29,8 @@
     "verify:ai-markers": "tsx scripts/verify-ai-markers.ts",
     "verify:ai-hash": "tsx scripts/verify-ai-hash.ts",
     "verify:scan-decision": "tsx scripts/verify-scan-decision.ts",
-    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:widget-model && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision"
+    "verify:ai-stats": "tsx scripts/verify-ai-stats.ts",
+    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:widget-model && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision && npm run verify:ai-stats"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
