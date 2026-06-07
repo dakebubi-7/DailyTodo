@@ -35,6 +35,7 @@ import {
   buildRendererQuery,
   type RendererRoute,
 } from '../shared/rendererRoute';
+import { nextWidgetDesktopState, type WidgetPinState } from '../shared/widgetDesktopState';
 import {
   WINDOW_MODE_KEY,
   LEGACY_ALWAYS_ON_TOP_KEY,
@@ -824,13 +825,8 @@ function persistDesktopWidgetWindowState(win: BrowserWindow) {
 // widget 永远是桌面挂件，不随主窗口的 windowMode 变化。它有独立于主窗口的一套状态，
 // 镜像主窗口的 owner=Progman 豁免 Win+D + 智能置顶轮询，但无条件运行，且绝不触碰主窗口的全局状态，
 // 避免和主窗口的 desktop 模式互相打架。
-let widgetDesktopGuardTimer: NodeJS.Timeout | null = null;
-let widgetDesktopState: DesktopWidgetState = 'app-background';
+let widgetPinState: WidgetPinState = 'idle';
 let widgetDesktopOwnerApplied = false;
-let widgetDesktopShellSeenAt = 0;
-let widgetAppBackgroundSettleUntil = 0;
-let widgetLastAppForegroundClass = '';
-let widgetLastGuardSnapshot = '';
 
 function applyWidgetDesktopOwner(win: BrowserWindow) {
   if (win.isDestroyed()) return;
@@ -857,104 +853,38 @@ function clearWidgetDesktopOwner(win: BrowserWindow) {
   }
 }
 
-function applyWidgetDesktopWidgetState(win: BrowserWindow, nextState: DesktopWidgetState, force = false) {
+// 桌面组件钉桌面：两态、事件驱动（focus/blur），不轮询前台 → 无 z-order 抖动 → 不闪。
+// idle：沉到最底，贴桌面、被 app 盖住。active：用户点了组件，临时浮到最上方便打字/点任务。
+function applyWidgetPin(win: BrowserWindow, state: WidgetPinState) {
   if (win.isDestroyed() || !win32) return;
-  if (!force && widgetDesktopState === nextState) return;
-
   const handle = win.getNativeWindowHandle();
   if (!handle) return;
 
-  widgetDesktopState = nextState;
-
-  if (nextState === 'desktop-visible') {
-    applyWidgetDesktopOwner(win);
-    try {
-      if (!win.isVisible()) win.showInactive();
-      win.setAlwaysOnTop(true, 'screen-saver');
-      win32.setTopmost(handle);
-    } catch (error) {
-      diag(`widget state desktop-visible failed: ${String(error)}`);
-    }
-    return;
-  }
-
-  if (nextState === 'dt-active') {
-    clearWidgetDesktopOwner(win);
-    try {
-      win.setAlwaysOnTop(false, 'normal');
-      win32.clearTopmost(handle);
-      if (!win.isVisible()) win.show();
-    } catch (error) {
-      diag(`widget state dt-active failed: ${String(error)}`);
-    }
-    return;
-  }
-
-  clearWidgetDesktopOwner(win);
+  widgetPinState = state;
   try {
-    win.setAlwaysOnTop(false, 'normal');
-    win32.clearTopmost(handle);
-    win32.sendToBottom(handle);
+    if (state === 'active') {
+      // 用户点了组件：临时浮到最上，方便打字 / 点任务。
+      if (!win.isVisible()) win.showInactive();
+      win32.setTopmost(handle);
+    } else {
+      // idle：贴桌面、沉到最底。sendToBottom 会先摘掉 topmost 再沉底，一次原子操作。
+      win32.sendToBottom(handle);
+    }
   } catch (error) {
-    diag(`widget state app-background failed: ${String(error)}`);
+    diag(`widget pin ${state} failed: ${String(error)}`);
   }
 }
 
-function applyWidgetDesktopTopmost(win: BrowserWindow) {
-  if (win.isDestroyed() || !win32) return;
-  const handle = win.getNativeWindowHandle();
-  if (!handle) return;
-
-  const fgClass = win32.getForegroundClass();
-  const ownForeground = win32.isForegroundWindow(handle);
-  const shellForeground = DESKTOP_FG_CLASSES.has(fgClass);
-  const now = Date.now();
-
-  if (shellForeground) {
-    widgetDesktopShellSeenAt = now;
-  } else if (fgClass && !ownForeground) {
-    widgetDesktopShellSeenAt = 0;
-  }
-  const withinDesktopGrace = fgClass === '' && widgetDesktopShellSeenAt > 0 && now - widgetDesktopShellSeenAt < 700;
-
-  const nextState: DesktopWidgetState = ownForeground
-    ? 'dt-active'
-    : (shellForeground || withinDesktopGrace)
-      ? 'desktop-visible'
-      : 'app-background';
-
-  if (nextState === 'app-background' && fgClass && !ownForeground && fgClass !== widgetLastAppForegroundClass) {
-    widgetLastAppForegroundClass = fgClass;
-    widgetAppBackgroundSettleUntil = now + 900;
-  }
-  if (nextState !== 'app-background') {
-    widgetLastAppForegroundClass = '';
-    widgetAppBackgroundSettleUntil = 0;
-  }
-  const shouldForceAppBackground = nextState === 'app-background' && now < widgetAppBackgroundSettleUntil;
-
-  const snapshot = `fg=${fgClass || '(none)'} own=${ownForeground} shell=${shellForeground} state=${widgetDesktopState}->${nextState}`;
-  if (snapshot !== widgetLastGuardSnapshot) {
-    widgetLastGuardSnapshot = snapshot;
-    diag(`widget guard snapshot: ${snapshot}`);
-  }
-
-  applyWidgetDesktopWidgetState(win, nextState, shouldForceAppBackground);
+// 进入桌面组件模式：owner=Progman 豁免 Win+D（仅设一次），随后沉底进入 idle。
+function startWidgetDesktopPin(win: BrowserWindow) {
+  applyWidgetDesktopOwner(win);
+  applyWidgetPin(win, nextWidgetDesktopState(widgetPinState, 'enter'));
 }
 
-function startWidgetDesktopGuard(win: BrowserWindow) {
-  stopWidgetDesktopGuard();
-  widgetDesktopState = 'app-background';
-  applyWidgetDesktopTopmost(win);
-  widgetDesktopGuardTimer = setInterval(() => applyWidgetDesktopTopmost(win), DESKTOP_GUARD_INTERVAL_MS);
-}
-
-function stopWidgetDesktopGuard() {
-  if (widgetDesktopGuardTimer) {
-    clearInterval(widgetDesktopGuardTimer);
-    widgetDesktopGuardTimer = null;
-  }
-  widgetDesktopState = 'app-background';
+// 退出（窗口关闭）：清掉 owner，回到普通窗口语义。
+function stopWidgetDesktopPin(win: BrowserWindow) {
+  clearWidgetDesktopOwner(win);
+  widgetPinState = 'idle';
 }
 
 /** 从存储解析当前窗口模式（含旧布尔 alwaysOnTop 的迁移）。 */
@@ -1199,9 +1129,16 @@ function createDesktopWidgetWindow(): BrowserWindow {
   widgetWindow.once('ready-to-show', () => {
     widgetWindow.show();
     widgetWindow.focus();
-    // 窗口就绪后再启动桌面守护：此时原生句柄已可用，挂 Progman owner 才有效。
-    startWidgetDesktopGuard(widgetWindow);
+    // 窗口就绪后再进入桌面组件模式：此时原生句柄已可用，挂 Progman owner 才有效。
+    startWidgetDesktopPin(widgetWindow);
   });
+  // 事件驱动 z-order：点组件 → 浮上来；点别处（组件 blur）→ 沉回桌面。无轮询、无闪烁。
+  widgetWindow.on('focus', () =>
+    applyWidgetPin(widgetWindow, nextWidgetDesktopState(widgetPinState, 'widget-focus')),
+  );
+  widgetWindow.on('blur', () =>
+    applyWidgetPin(widgetWindow, nextWidgetDesktopState(widgetPinState, 'widget-blur')),
+  );
   widgetWindow.on('move', () => persistDesktopWidgetWindowState(widgetWindow));
   widgetWindow.on('resize', () => persistDesktopWidgetWindowState(widgetWindow));
   // 兜底：Win+D 偶发真把窗口最小化时，桌面挂件应自动恢复（不抢焦点）。
@@ -1217,8 +1154,7 @@ function createDesktopWidgetWindow(): BrowserWindow {
   widgetWindow.on('close', () => {
     if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
     widgetPersistTimer = null;
-    stopWidgetDesktopGuard();
-    clearWidgetDesktopOwner(widgetWindow);
+    stopWidgetDesktopPin(widgetWindow);
     if (!widgetWindow.isDestroyed() && !widgetWindow.isMinimized()) {
       store.set(DESKTOP_WIDGET_WINDOW_STATE_KEY, widgetWindow.getBounds());
     }
@@ -1504,8 +1440,7 @@ app.on('before-quit', () => {
   if (desktopWidgetWindow && !desktopWidgetWindow.isDestroyed()) {
     if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
     widgetPersistTimer = null;
-    stopWidgetDesktopGuard();
-    clearWidgetDesktopOwner(desktopWidgetWindow);
+    stopWidgetDesktopPin(desktopWidgetWindow);
     desktopWidgetWindow.removeAllListeners();
   }
 });
