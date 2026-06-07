@@ -266,15 +266,15 @@ export function useTasks() {
     }));
   }, [selectedDate]);
 
-  const addTask = useCallback((text: string, priority: Task['priority'] = 'medium') => {
+  const addTask = useCallback((text: string, priority: Task['priority'] = 'medium', taskDate = selectedDate) => {
     const newTask: Task = {
       id: uuidv4(),
       text,
       completed: false,
       priority,
       createdAt: new Date().toISOString(),
-      taskDate: selectedDate,
-      isToday: selectedDate === currentDate,
+      taskDate,
+      isToday: taskDate === currentDate,
     };
     setAllTasks((prev) => [newTask, ...prev]);
   }, [currentDate, selectedDate]);
