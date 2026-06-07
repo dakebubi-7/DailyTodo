@@ -9,16 +9,6 @@ import type { LlmResult } from '../../shared/llm/openaiClient';
 
 const FREEZE_TAG = '<!-- DAILYTODO:FREEZE -->';
 
-/**
- * 模板会把 `## 标题` 写进 marker 块内作为结构脚手架；它不是用户撰写的复盘内容。
- * 决策（UserAuthored vs Unprocessed）应忽略这一行标题，否则全新模板块会被误判为
- * 用户内容而永远 Skip。去掉首行 `## ...` 标题后再交给 decideBlock 判定。
- * （首次填充后 upsertBlock 会整块替换，标题随之消失，后续轮次走 hash 判定不受影响。）
- */
-function stripSectionHeading(body: string): string {
-  return body.replace(/^\s*#{1,6}\s+.*(?:\r?\n|$)/, '').trimStart();
-}
-
 export interface RunParams {
   filePath: string;
   date: string;
@@ -52,7 +42,7 @@ export async function runReviewForFile(params: RunParams): Promise<RunResult> {
     const marker = REVIEW_MARKERS[section.markerKey];
     const body = readBlockBody(content, marker);
     const blockFrozen = fileFrozen || body.includes(FREEZE_TAG);
-    const decision = decideBlock(stripSectionHeading(body), { frozen: blockFrozen, force });
+    const decision = decideBlock(body, { frozen: blockFrozen, force });
 
     if (decision.action === BlockAction.Skip) {
       skipped.push(section.markerKey);
