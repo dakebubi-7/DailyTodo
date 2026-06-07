@@ -556,7 +556,11 @@ function getReviewSections() {
 function getLlmCaller() {
   const s = getAiReviewSettings();
   return (messages: ChatMessage[]) =>
-    callChatCompletion({ baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model }, messages);
+    callChatCompletion(
+      { baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model },
+      messages,
+      { timeoutMs: s.timeoutSeconds * 1000 },
+    );
 }
 
 async function runReviewForDate(date: string, tasks: Task[]) {

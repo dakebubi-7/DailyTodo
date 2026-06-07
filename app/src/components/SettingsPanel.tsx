@@ -318,6 +318,24 @@ function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; ta
               }}
             />
           </label>
+          <label className="settings-field">
+            <span>
+              <strong>{text.requestTimeout}</strong>
+              <small>{text.requestTimeoutHint}</small>
+            </span>
+            <input
+              type="number"
+              min={10}
+              max={600}
+              value={settings.timeoutSeconds}
+              onChange={(event) => {
+                const raw = Number(event.target.value);
+                if (!Number.isFinite(raw)) return;
+                const clamped = Math.min(600, Math.max(10, Math.round(raw)));
+                updateSettings('timeoutSeconds', clamped);
+              }}
+            />
+          </label>
         </div>
       </section>
 

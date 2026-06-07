@@ -6,6 +6,7 @@ export interface AiReviewSettings {
   backfillDays: number;
   timerEnabled: boolean;
   timerTime: string; // HH:mm
+  timeoutSeconds: number;
   onboardingDismissed: boolean;
 }
 
@@ -20,6 +21,7 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     backfillDays: 7,
     timerEnabled: false,
     timerTime: '23:00',
+    timeoutSeconds: 90,
     onboardingDismissed: false,
   };
 }
@@ -38,6 +40,7 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
   const d = createDefaultAiReviewSettings();
   if (!isObject(value)) return d;
   const backfill = Number(value.backfillDays);
+  const timeout = Number(value.timeoutSeconds);
   return {
     enabled: typeof value.enabled === 'boolean' ? value.enabled : d.enabled,
     baseUrl: text(value.baseUrl, d.baseUrl),
@@ -46,6 +49,7 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     backfillDays: Number.isInteger(backfill) && backfill >= 1 && backfill <= 60 ? backfill : d.backfillDays,
     timerEnabled: typeof value.timerEnabled === 'boolean' ? value.timerEnabled : d.timerEnabled,
     timerTime: isTime(value.timerTime) ? value.timerTime : d.timerTime,
+    timeoutSeconds: Number.isInteger(timeout) && timeout >= 10 && timeout <= 600 ? timeout : d.timeoutSeconds,
     onboardingDismissed:
       typeof value.onboardingDismissed === 'boolean' ? value.onboardingDismissed : d.onboardingDismissed,
   };
