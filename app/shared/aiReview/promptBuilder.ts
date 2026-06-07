@@ -1,10 +1,7 @@
 import type { SectionConfig } from './sectionConfig';
 import type { DailyStats } from './stats';
-
-export interface ChatMessage {
-  role: 'system' | 'user';
-  content: string;
-}
+import type { ChatMessage } from '../llm/openaiClient';
+export type { ChatMessage };
 
 export interface BuildMessagesParams {
   date: string;

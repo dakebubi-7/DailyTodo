@@ -28,4 +28,20 @@ const net = await callChatCompletion(base, messages, { fetchImpl: throwFetch });
 assert.equal(net.ok, false);
 assert.ok(net.error.includes('ECONNREFUSED'));
 
+// 缺 baseUrl → ok:false
+const noBase = await callChatCompletion({ ...base, baseUrl: '' }, messages);
+assert.equal(noBase.ok, false);
+
+// 200 但空内容 → ok:false
+const emptyFetch = (async () =>
+  ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: '' } }] }) })) as unknown as typeof fetch;
+const empty = await callChatCompletion(base, messages, { fetchImpl: emptyFetch });
+assert.equal(empty.ok, false);
+
+// 200 但 JSON 解析失败 → ok:false（不抛）
+const badJsonFetch = (async () =>
+  ({ ok: true, status: 200, json: async () => { throw new Error('bad json'); } })) as unknown as typeof fetch;
+const badJson = await callChatCompletion(base, messages, { fetchImpl: badJsonFetch });
+assert.equal(badJson.ok, false);
+
 console.log('OpenAI client verification passed');

@@ -1,4 +1,7 @@
-import type { ChatMessage } from '../aiReview/promptBuilder';
+export interface ChatMessage {
+  role: 'system' | 'user';
+  content: string;
+}
 
 export interface LlmConfig {
   baseUrl: string;
@@ -24,7 +27,8 @@ export async function callChatCompletion(
   const doFetch = options.fetchImpl ?? fetch;
   const url = `${config.baseUrl.replace(/\/$/, '')}/chat/completions`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 30_000);
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, options.timeoutMs ?? 30_000);
 
   try {
     const res = await doFetch(url, {
@@ -42,6 +46,7 @@ export async function callChatCompletion(
     if (!content) return { ok: false, error: 'LLM 返回空内容' };
     return { ok: true, content };
   } catch (error) {
+    if (timedOut) return { ok: false, error: `请求超时（${options.timeoutMs ?? 30_000}ms）` };
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   } finally {
     clearTimeout(timer);
