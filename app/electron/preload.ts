@@ -43,5 +43,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setSections: (v: unknown) => ipcRenderer.invoke('aiReview:setSections', v),
     runForDate: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:runForDate', date, tasks),
     backfill: (tasks: unknown) => ipcRenderer.invoke('aiReview:backfill', tasks),
+    onTick: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('aiReview:tick', listener);
+      return () => ipcRenderer.removeListener('aiReview:tick', listener);
+    },
   },
 });

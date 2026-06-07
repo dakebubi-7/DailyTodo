@@ -45,5 +45,14 @@ interface Window {
     getWindowCompactMode: () => Promise<boolean>;
     getAutoStart: () => Promise<boolean>;
     setAutoStart: (enabled: boolean) => Promise<boolean>;
+    aiReview: {
+      getSettings: () => Promise<import('../shared/aiReview/aiReviewSettings').AiReviewSettings>;
+      setSettings: (settings: import('../shared/aiReview/aiReviewSettings').AiReviewSettings) => Promise<import('../shared/aiReview/aiReviewSettings').AiReviewSettings>;
+      getSections: () => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
+      setSections: (sections: import('../shared/aiReview/sectionConfig').SectionConfig[]) => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
+      runForDate: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; error?: string; filledMarkers: string[]; skippedMarkers: string[] }>;
+      backfill: (tasks: import('./types/task').Task[]) => Promise<{ processed: string[]; filled: string[]; errors: Array<{ date: string; error: string }> }>;
+      onTick: (callback: () => void) => () => void;
+    };
   };
 }

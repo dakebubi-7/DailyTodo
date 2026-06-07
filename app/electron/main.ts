@@ -53,6 +53,7 @@ import { normalizeSections } from '../shared/aiReview/sectionConfig';
 import type { ChatMessage } from '../shared/llm/openaiClient';
 import type { StatTask } from '../shared/aiReview/stats';
 import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
+import { getNextTimerDelay } from '../shared/aiReview/timer';
 
 // 关闭 Chromium 在 Windows 上的原生窗口遮挡计算：透明无边框窗口在 Win+D / 点击桌面后
 // 会被判定为「被遮挡」而暂停合成，表现为窗口空白/消失，直到系统弹窗触发重绘。关闭后所有
@@ -564,6 +565,23 @@ async function runReviewForDate(date: string, tasks: Task[]) {
     sections: getReviewSections(),
     callLlm: getLlmCaller(),
   });
+}
+
+let aiTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** 按设置的时间排程一次定时器；到点向渲染层发 aiReview:tick（由渲染层带 tasks 触发补偿），然后重新排程。 */
+function scheduleAiTimer(win: BrowserWindow) {
+  if (aiTimer) {
+    clearTimeout(aiTimer);
+    aiTimer = null;
+  }
+  const settings = getAiReviewSettings();
+  if (!settings.timerEnabled) return;
+  const delay = getNextTimerDelay(new Date(), settings.timerTime);
+  aiTimer = setTimeout(() => {
+    if (!win.isDestroyed()) win.webContents.send('aiReview:tick');
+    scheduleAiTimer(win);
+  }, delay);
 }
 
 function getDailyFilePath(date?: string) {
@@ -1159,6 +1177,7 @@ function createWindow() {
 
   mainWindow = win;
   diag('BrowserWindow created');
+  scheduleAiTimer(win);
   // 工具窗口样式：不上任务栏 / 不进 Alt+Tab（保持挂件观感）。
   applyToolWindowStyle(win);
   applyWindowMode(win, initialMode);
@@ -1309,6 +1328,7 @@ function createWindow() {
   ipcMain.handle('aiReview:setSettings', (_e, v: unknown) => {
     const next = normalizeAiReviewSettings(v);
     store.set(AI_REVIEW_SETTINGS_KEY, next);
+    if (mainWindow && !mainWindow.isDestroyed()) scheduleAiTimer(mainWindow);
     return next;
   });
   ipcMain.handle('aiReview:getSections', () => getReviewSections());

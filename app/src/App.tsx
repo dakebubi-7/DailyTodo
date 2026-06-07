@@ -194,6 +194,19 @@ export default function App() {
       .catch(() => setObsidianTemplatesState(createDefaultObsidianTemplateSettings()));
   }, []);
 
+  // AI 复盘补偿：启动加载完成后补近 N 天；定时器到点（aiReview:tick）再补一次。
+  // 用 ref 持有最新 allTasks 供 tick 监听器读取；主进程在 AI 未启用/无 key 时会静默跳过。
+  const allTasksRef = useRef(allTasks);
+  allTasksRef.current = allTasks;
+  useEffect(() => {
+    if (!isLoaded) return;
+    void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
+    const off = window.electronAPI?.aiReview?.onTick(() => {
+      void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
+    });
+    return off;
+  }, [isLoaded]);
+
   useEffect(() => {
     window.electronAPI?.setWindowCompactMode(compactMode);
     window.electronAPI?.setStore('dailyWorkOpen', isDailyWorkOpen);
