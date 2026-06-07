@@ -36,8 +36,9 @@
     "verify:atomic-write": "tsx scripts/verify-atomic-write.ts",
     "verify:daily-review-blocks": "tsx scripts/verify-daily-review-blocks.ts",
     "verify:ai-runner": "tsx scripts/verify-ai-runner.ts",
-    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:widget-model && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision && npm run verify:ai-stats && npm run verify:ai-settings && npm run verify:section-config && npm run verify:openai-client && npm run verify:atomic-write && npm run verify:daily-review-blocks && npm run verify:ai-runner && npm run verify:ai-timer",
-    "verify:ai-timer": "tsx scripts/verify-ai-timer.ts"
+    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:widget-model && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision && npm run verify:ai-stats && npm run verify:ai-settings && npm run verify:section-config && npm run verify:openai-client && npm run verify:atomic-write && npm run verify:daily-review-blocks && npm run verify:ai-runner && npm run verify:ai-timer && npm run verify:weekly",
+    "verify:ai-timer": "tsx scripts/verify-ai-timer.ts",
+    "verify:weekly": "tsx scripts/verify-weekly.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
