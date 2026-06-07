@@ -821,10 +821,10 @@ function persistDesktopWidgetWindowState(win: BrowserWindow) {
   }, 250);
 }
 
-// ===== 桌面组件窗口：自包含桌面守护 =====
-// widget 永远是桌面挂件，不随主窗口的 windowMode 变化。它有独立于主窗口的一套状态，
-// 镜像主窗口的 owner=Progman 豁免 Win+D + 智能置顶轮询，但无条件运行，且绝不触碰主窗口的全局状态，
-// 避免和主窗口的 desktop 模式互相打架。
+// ===== 桌面组件窗口：自包含桌面挂件，两态事件驱动 =====
+// widget 永远是桌面挂件，不随主窗口的 windowMode 变化。它有独立于主窗口的一套状态：
+// owner=Progman 豁免 Win+D（仅进入时设一次）+ focus/blur 驱动的两态 z-order（active 浮上 / idle 沉底）。
+// 不轮询前台，故无闪烁；绝不触碰主窗口的全局状态，避免和主窗口的 desktop 模式互相打架。
 let widgetPinState: WidgetPinState = 'idle';
 let widgetDesktopOwnerApplied = false;
 
@@ -859,6 +859,7 @@ function applyWidgetPin(win: BrowserWindow, state: WidgetPinState) {
   if (win.isDestroyed() || !win32) return;
   const handle = win.getNativeWindowHandle();
   if (!handle) return;
+  if (widgetPinState === state) return;
 
   widgetPinState = state;
   try {
@@ -878,6 +879,9 @@ function applyWidgetPin(win: BrowserWindow, state: WidgetPinState) {
 // 进入桌面组件模式：owner=Progman 豁免 Win+D（仅设一次），随后沉底进入 idle。
 function startWidgetDesktopPin(win: BrowserWindow) {
   applyWidgetDesktopOwner(win);
+  // 进入时强制沉底：此刻 widgetPinState 已是 'idle'，applyWidgetPin 的幂等守卫会跳过，
+  // 故直接 reset 再 apply，确保首次 enter 一定执行 sendToBottom。
+  widgetPinState = 'active';
   applyWidgetPin(win, nextWidgetDesktopState(widgetPinState, 'enter'));
 }
 
@@ -1128,9 +1132,9 @@ function createDesktopWidgetWindow(): BrowserWindow {
   // 桌面挂件：不进任务栏，且整窗都不进 Alt+Tab 由 transparent+frame:false 隐式达成。
   widgetWindow.once('ready-to-show', () => {
     widgetWindow.show();
-    widgetWindow.focus();
-    // 窗口就绪后再进入桌面组件模式：此时原生句柄已可用，挂 Progman owner 才有效。
+    // 先进入桌面组件模式（沉底 + 挂 owner），再 focus，避免 focus 事件先于沉底导致首帧错序。
     startWidgetDesktopPin(widgetWindow);
+    widgetWindow.focus();
   });
   // 事件驱动 z-order：点组件 → 浮上来；点别处（组件 blur）→ 沉回桌面。无轮询、无闪烁。
   widgetWindow.on('focus', () =>
@@ -1146,6 +1150,9 @@ function createDesktopWidgetWindow(): BrowserWindow {
     if (isQuitting || widgetWindow.isDestroyed()) return;
     try {
       widgetWindow.showInactive();
+      // 恢复后窗口会浮在普通层之上；事件驱动模型没有轮询心跳来纠正，故主动沉回桌面。
+      widgetPinState = 'active';
+      applyWidgetPin(widgetWindow, 'idle');
     } catch (error) {
       diag(`widget guard: showInactive after minimize failed: ${String(error)}`);
     }
