@@ -10,8 +10,17 @@ import { SyncPreview } from '../../shared/obsidianTemplates';
 import { PersonalizationSettings } from '../types/personalization';
 import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
 import { getShellText } from '../i18n';
+import {
+  AiReviewSettings,
+  createDefaultAiReviewSettings,
+} from '../../shared/aiReview/aiReviewSettings';
+import {
+  SectionConfig,
+  SectionType,
+  createDefaultSections,
+} from '../../shared/aiReview/sectionConfig';
 
-type SettingsSection = 'root' | 'personalization' | 'obsidian' | 'rollover' | 'general' | 'developer' | 'theme-minimal' | 'theme-neumorphism' | 'theme-watercolor' | 'theme-invisible' | 'window';
+type SettingsSection = 'root' | 'personalization' | 'obsidian' | 'rollover' | 'ai-review' | 'general' | 'developer' | 'theme-minimal' | 'theme-neumorphism' | 'theme-watercolor' | 'theme-invisible' | 'window';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -35,13 +44,14 @@ interface SettingsPanelProps {
   onOpenCompanionSettings: () => void;
 }
 
-type NavSection = 'personalization' | 'window' | 'obsidian' | 'rollover' | 'general' | 'developer';
+type NavSection = 'personalization' | 'window' | 'obsidian' | 'rollover' | 'ai-review' | 'general' | 'developer';
 
 const sectionEntries: Array<{ key: NavSection; title: string; description: string }> = [
   { key: 'personalization', title: 'Personalization', description: '外观、透明度、密度和动效。' },
   { key: 'window', title: 'Window', description: '窗口行为、置顶、自启动。' },
   { key: 'obsidian', title: 'Obsidian Sync', description: '路径、删除同步、模板中心和预览。' },
   { key: 'rollover', title: 'Daily Rollover', description: '业务日期和任务结转规则。' },
+  { key: 'ai-review', title: 'AI Review', description: 'API 配置、定时生成和复盘段落。' },
   { key: 'general', title: 'General', description: '语言等低频偏好。' },
   { key: 'developer', title: 'Developer', description: '高级模板、调试入口和代码结构说明。' },
 ];
@@ -164,6 +174,167 @@ function ToggleRow({
       </span>
       <i aria-hidden="true" />
     </button>
+  );
+}
+
+type AiReviewText = ReturnType<typeof getShellText>['settings']['aiReview'];
+
+function AiReviewSection({ text }: { text: AiReviewText }) {
+  const [settings, setSettings] = useState<AiReviewSettings>(() => createDefaultAiReviewSettings());
+  const [sections, setSections] = useState<SectionConfig[]>(() => createDefaultSections());
+  const [openPrompt, setOpenPrompt] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    window.electronAPI?.aiReview.getSettings().then((value) => {
+      if (active) setSettings(value);
+    });
+    window.electronAPI?.aiReview.getSections().then((value) => {
+      if (active && value.length) setSections(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const updateSettings = <K extends keyof AiReviewSettings>(key: K, value: AiReviewSettings[K]) => {
+    const next = { ...settings, [key]: value };
+    setSettings(next);
+    window.electronAPI?.aiReview.setSettings(next).then((saved) => setSettings(saved));
+  };
+
+  const updateSection = <K extends keyof SectionConfig>(markerKey: SectionConfig['markerKey'], key: K, value: SectionConfig[K]) => {
+    const next = sections.map((s) => (s.markerKey === markerKey ? { ...s, [key]: value } : s));
+    setSections(next);
+    window.electronAPI?.aiReview.setSections(next).then((saved) => {
+      if (saved.length) setSections(saved);
+    });
+  };
+
+  return (
+    <>
+      <section className="settings-section">
+        <h3>{text.title}</h3>
+        <ToggleRow
+          title={text.enable}
+          description={text.enableHint}
+          checked={settings.enabled}
+          onChange={(value) => updateSettings('enabled', value)}
+        />
+        <div className="settings-grid">
+          <Field
+            label={text.baseUrl}
+            hint={text.baseUrlHint}
+            value={settings.baseUrl}
+            onChange={(value) => updateSettings('baseUrl', value)}
+          />
+          <label className="settings-field">
+            <span>
+              <strong>{text.apiKey}</strong>
+              <small>{text.apiKeyHint}</small>
+            </span>
+            <input
+              type="password"
+              value={settings.apiKey}
+              onChange={(event) => updateSettings('apiKey', event.target.value)}
+            />
+          </label>
+          <Field
+            label={text.model}
+            hint={text.modelHint}
+            value={settings.model}
+            onChange={(value) => updateSettings('model', value)}
+          />
+          <label className="settings-field">
+            <span>
+              <strong>{text.backfillDays}</strong>
+              <small>{text.backfillDaysHint}</small>
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={settings.backfillDays}
+              onChange={(event) => {
+                const raw = Number(event.target.value);
+                if (!Number.isFinite(raw)) return;
+                const clamped = Math.min(60, Math.max(1, Math.round(raw)));
+                updateSettings('backfillDays', clamped);
+              }}
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <h3>{text.timer}</h3>
+        <ToggleRow
+          title={text.timerEnable}
+          description={text.timerEnableHint}
+          checked={settings.timerEnabled}
+          onChange={(value) => updateSettings('timerEnabled', value)}
+        />
+        <label className="settings-field">
+          <span>
+            <strong>{text.timerTime}</strong>
+            <small>{text.timerTimeHint}</small>
+          </span>
+          <input
+            type="time"
+            value={settings.timerTime}
+            disabled={!settings.timerEnabled}
+            onChange={(event) => updateSettings('timerTime', event.target.value)}
+          />
+        </label>
+      </section>
+
+      <section className="settings-section">
+        <h3>{text.sectionsTitle}</h3>
+        <div className="settings-preview-list">
+          <p>{text.sectionsHint}</p>
+        </div>
+        {sections.map((sectionConfig) => {
+          const isPromptOpen = openPrompt === sectionConfig.markerKey;
+          return (
+            <div key={sectionConfig.markerKey} className="settings-grid">
+              <Field
+                label={text.sectionTitle}
+                value={sectionConfig.title}
+                onChange={(value) => updateSection(sectionConfig.markerKey, 'title', value)}
+              />
+              <label className="settings-field">
+                <span>
+                  <strong>{text.sectionType}</strong>
+                </span>
+                <select
+                  value={sectionConfig.type}
+                  onChange={(event) => updateSection(sectionConfig.markerKey, 'type', event.target.value as SectionType)}
+                >
+                  <option value={SectionType.Ai}>{text.typeAi}</option>
+                  <option value={SectionType.Deterministic}>{text.typeDeterministic}</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="settings-reset-button"
+                onClick={() => setOpenPrompt(isPromptOpen ? null : sectionConfig.markerKey)}
+                aria-expanded={isPromptOpen}
+              >
+                {isPromptOpen ? text.hidePrompt : text.showPrompt}
+              </button>
+              {isPromptOpen && (
+                <Field
+                  label={text.prompt}
+                  value={sectionConfig.prompt}
+                  multiline
+                  onChange={(value) => updateSection(sectionConfig.markerKey, 'prompt', value)}
+                />
+              )}
+            </div>
+          );
+        })}
+      </section>
+    </>
   );
 }
 
@@ -699,6 +870,10 @@ export function SettingsPanel({
             </button>
           </section>
         </>
+      )}
+
+      {section === 'ai-review' && (
+        <AiReviewSection text={text.aiReview} />
       )}
 
       {section === 'general' && (
