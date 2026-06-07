@@ -24,4 +24,9 @@ assert.equal(hashMatches(cosmetic), true, 'trailing whitespace is not a real edi
 assert.equal(extractHash('纯用户文本'), null);
 assert.equal(hashMatches('纯用户文本'), false);
 
+
+// 幂等：对已盖章内容再次盖章后仍可校验通过（normalizeBody 必须剥离所有 hash 行）
+const restamped = embedHash(stamped);
+assert.equal(hashMatches(restamped), true, 're-embed must stay verifiable');
+
 console.log('AI hash verification passed');

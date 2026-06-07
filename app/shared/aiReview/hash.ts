@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-const HASH_LINE = /^\s*<!--\s*DAILYTODO:AI_HASH:sha256:[0-9a-f]+\s*-->\s*$/im;
+const HASH_LINE = /^\s*<!--\s*DAILYTODO:AI_HASH:sha256:[0-9a-f]+\s*-->\s*$/gim;
 
 /** 去掉 hash 行后逐行 trimEnd、统一换行、去首尾空行。 */
 export function normalizeBody(body: string): string {
