@@ -437,6 +437,7 @@ export default function App() {
           isDark={isDark}
           selectedDate={selectedDate}
           completedCount={completedCount}
+          tasks={allTasks}
           onClearCompleted={clearCompleted}
           onApplyTheme={applyThemePreset}
           onChange={handlePersonalizationChange}

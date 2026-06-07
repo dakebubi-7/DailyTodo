@@ -8,6 +8,7 @@ import {
 } from '../../shared/appSettings';
 import { SyncPreview } from '../../shared/obsidianTemplates';
 import { PersonalizationSettings } from '../types/personalization';
+import { Task } from '../types/task';
 import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
 import { getShellText } from '../i18n';
 import {
@@ -32,6 +33,7 @@ interface SettingsPanelProps {
   isDark: boolean;
   selectedDate: string;
   completedCount: number;
+  tasks: Task[];
   onClearCompleted: () => void;
   onApplyTheme: (preset: ThemePreset) => void;
   onChange: (settings: PersonalizationSettings) => void;
@@ -179,10 +181,16 @@ function ToggleRow({
 
 type AiReviewText = ReturnType<typeof getShellText>['settings']['aiReview'];
 
-function AiReviewSection({ text }: { text: AiReviewText }) {
+function AiReviewSection({ text, tasks, selectedDate }: { text: AiReviewText; tasks: Task[]; selectedDate: string }) {
   const [settings, setSettings] = useState<AiReviewSettings>(() => createDefaultAiReviewSettings());
   const [sections, setSections] = useState<SectionConfig[]>(() => createDefaultSections());
   const [openPrompt, setOpenPrompt] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<string>('');
+  const [templateDraft, setTemplateDraft] = useState('');
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizeStatus, setRecognizeStatus] = useState<string>('');
+  const [recognizedSections, setRecognizedSections] = useState<SectionConfig[] | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -209,6 +217,53 @@ function AiReviewSection({ text }: { text: AiReviewText }) {
     window.electronAPI?.aiReview.setSections(next).then((saved) => {
       if (saved.length) setSections(saved);
     });
+  };
+
+  const runReport = async (
+    kind: 'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly',
+    run: () => Promise<{ ok: boolean; filePath?: string; error?: string }>,
+  ) => {
+    setBusy(kind);
+    setReportStatus(text.generating);
+    try {
+      const result = await run();
+      setReportStatus(result.ok ? `${text.genSuccess}${result.filePath ?? ''}` : `${text.genFailed}${result.error ?? ''}`);
+    } catch (error) {
+      setReportStatus(`${text.genFailed}${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const recognizeTemplate = async () => {
+    if (!templateDraft.trim()) return;
+    setRecognizing(true);
+    setRecognizeStatus(text.recognizing);
+    setRecognizedSections(null);
+    try {
+      const result = await window.electronAPI?.aiReview.recognizeTemplate(templateDraft);
+      if (!result || !result.ok) {
+        setRecognizeStatus(`${text.genFailed}${result?.error ?? ''}`);
+        return;
+      }
+      setRecognizedSections(result.sections);
+      setRecognizeStatus(result.unmatched ? text.recognizeUnmatched : text.recognizeReady);
+    } catch (error) {
+      setRecognizeStatus(`${text.genFailed}${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setRecognizing(false);
+    }
+  };
+
+  const applyRecognized = () => {
+    if (!recognizedSections) return;
+    setSections(recognizedSections);
+    window.electronAPI?.aiReview.setSections(recognizedSections).then((saved) => {
+      if (saved.length) setSections(saved);
+    });
+    setRecognizedSections(null);
+    setRecognizeStatus('');
+    setTemplateDraft('');
   };
 
   return (
@@ -334,6 +389,83 @@ function AiReviewSection({ text }: { text: AiReviewText }) {
           );
         })}
       </section>
+
+      <section className="settings-section">
+        <h3>{text.reportsTitle}</h3>
+        <div className="settings-preview-list">
+          <p>{text.reportsHint}</p>
+        </div>
+        <div className="settings-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <button
+            type="button"
+            className="settings-reset-button"
+            disabled={busy !== null}
+            onClick={() => runReport('weekly', () => window.electronAPI!.aiReview.generateWeekly(selectedDate, tasks))}
+          >
+            {busy === 'weekly' ? text.generating : text.genWeekly}
+          </button>
+          <button
+            type="button"
+            className="settings-reset-button"
+            disabled={busy !== null}
+            onClick={() => runReport('monthly', () => window.electronAPI!.aiReview.generateMonthly(selectedDate, tasks))}
+          >
+            {busy === 'monthly' ? text.generating : text.genMonthly}
+          </button>
+          <button
+            type="button"
+            className="settings-reset-button"
+            disabled={busy !== null}
+            onClick={() => runReport('ext-weekly', () => window.electronAPI!.aiReview.generateExternal('weekly', selectedDate))}
+          >
+            {busy === 'ext-weekly' ? text.generating : text.genExternalWeekly}
+          </button>
+          <button
+            type="button"
+            className="settings-reset-button"
+            disabled={busy !== null}
+            onClick={() => runReport('ext-monthly', () => window.electronAPI!.aiReview.generateExternal('monthly', selectedDate))}
+          >
+            {busy === 'ext-monthly' ? text.generating : text.genExternalMonthly}
+          </button>
+        </div>
+        {reportStatus && (
+          <p className="settings-status" style={{ marginTop: '0.5rem', wordBreak: 'break-all' }}>{reportStatus}</p>
+        )}
+      </section>
+
+      <section className="settings-section">
+        <h3>{text.recognizeTitle}</h3>
+        <div className="settings-preview-list">
+          <p>{text.recognizeHint}</p>
+        </div>
+        <textarea
+          className="settings-textarea"
+          rows={4}
+          placeholder={text.recognizePlaceholder}
+          value={templateDraft}
+          onChange={(event) => setTemplateDraft(event.target.value)}
+          style={{ width: '100%' }}
+        />
+        <div className="settings-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <button
+            type="button"
+            className="settings-reset-button"
+            disabled={recognizing || !templateDraft.trim()}
+            onClick={recognizeTemplate}
+          >
+            {recognizing ? text.recognizing : text.recognizeButton}
+          </button>
+          {recognizedSections && (
+            <button type="button" className="settings-reset-button" onClick={applyRecognized}>
+              {text.recognizeApply}
+            </button>
+          )}
+        </div>
+        {recognizeStatus && (
+          <p className="settings-status" style={{ marginTop: '0.5rem' }}>{recognizeStatus}</p>
+        )}
+      </section>
     </>
   );
 }
@@ -347,6 +479,7 @@ export function SettingsPanel({
   syncPreview,
   selectedDate,
   completedCount,
+  tasks,
   onClearCompleted,
   onApplyTheme,
   onChange,
@@ -873,7 +1006,7 @@ export function SettingsPanel({
       )}
 
       {section === 'ai-review' && (
-        <AiReviewSection text={text.aiReview} />
+        <AiReviewSection text={text.aiReview} tasks={tasks} selectedDate={selectedDate} />
       )}
 
       {section === 'general' && (

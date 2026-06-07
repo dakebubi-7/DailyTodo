@@ -55,6 +55,7 @@ interface Window {
       generateWeekly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string }>;
       generateMonthly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string }>;
       generateExternal: (kind: 'weekly' | 'monthly', date: string) => Promise<{ ok: boolean; filePath?: string; error?: string }>;
+      recognizeTemplate: (rawTemplate: string) => Promise<{ ok: boolean; error?: string; sections: import('../shared/aiReview/sectionConfig').SectionConfig[]; confidence?: 'high' | 'medium' | 'low'; unmatched?: boolean }>;
       onTick: (callback: () => void) => () => void;
     };
   };

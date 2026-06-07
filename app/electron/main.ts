@@ -50,6 +50,7 @@ import { backfillReviews } from './aiReview/backfill';
 import { callChatCompletion } from '../shared/llm/openaiClient';
 import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings } from '../shared/aiReview/aiReviewSettings';
 import { normalizeSections } from '../shared/aiReview/sectionConfig';
+import { buildRecognizeMessages, parseRecognizedSections } from '../shared/aiReview/recognizeTemplate';
 import type { ChatMessage } from '../shared/llm/openaiClient';
 import type { StatTask } from '../shared/aiReview/stats';
 import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
@@ -1445,6 +1446,20 @@ function createWindow() {
         }),
       callLlm: getLlmCaller(),
     });
+  });
+  ipcMain.handle('aiReview:recognizeTemplate', async (_e, rawTemplate: string) => {
+    const fallback = getReviewSections();
+    const settings = getAiReviewSettings();
+    if (!settings.enabled || !settings.apiKey) {
+      return { ok: false, error: 'AI 复盘未启用或缺少 Key', sections: fallback, unmatched: true };
+    }
+    if (typeof rawTemplate !== 'string' || !rawTemplate.trim()) {
+      return { ok: false, error: '请粘贴你的模板内容', sections: fallback, unmatched: true };
+    }
+    const llm = await getLlmCaller()(buildRecognizeMessages(rawTemplate));
+    if (!llm.ok) return { ok: false, error: llm.error, sections: fallback, unmatched: true };
+    const parsed = parseRecognizedSections(llm.content, fallback);
+    return { ok: true, sections: parsed.sections, confidence: parsed.confidence, unmatched: parsed.unmatched };
   });
 
   ipcMain.handle('obsidian:getPath', () => store.get(OBSIDIAN_PATH_KEY) || getDefaultVaultPath());
