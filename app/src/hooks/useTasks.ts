@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Task, TabType, TaskCompletionReview } from '../types/task';
 import {
@@ -143,6 +143,8 @@ export function useTasks() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [obsidianPath, setObsidianPath] = useState('');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'synced' | 'needs-path' | 'error'>('idle');
+  // 收到其它窗口广播的任务变更后，跳过下一次保存副作用，避免主窗口 ↔ 桌面组件来回写形成回声循环。
+  const skipNextTaskPersistRef = useRef(false);
 
   useEffect(() => {
     const init = async () => {
@@ -218,7 +220,12 @@ export function useTasks() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    saveTasks(allTasks);
+    // 这次 allTasks 变化来自其它窗口的广播：内存已对齐，跳过写回 tasks（否则与发送方来回写）。
+    // 注意只跳过 tasks 这一项——其它字段（每日工作/灵感/选中日期等）可能在同一批次里独立变化，必须照常保存。
+    const skipTasksWrite = skipNextTaskPersistRef.current;
+    if (skipTasksWrite) skipNextTaskPersistRef.current = false;
+
+    if (!skipTasksWrite) saveTasks(allTasks);
     window.electronAPI?.setStore(DAILY_WORK_KEY, dailyWorkNotes);
     window.electronAPI?.setStore(DAILY_INSPIRATION_KEY, dailyInspirationNotes);
     window.electronAPI?.setStore(SELECTED_DATE_KEY, selectedDate);
@@ -242,6 +249,25 @@ export function useTasks() {
 
     return () => window.clearTimeout(timer);
   }, [activeTab, allTasks, appSettings.syncDeletedReviewsToObsidian, currentDate, dailyInspirationNotes, dailyWorkNotes, isLoaded, obsidianPath, retainedObsidianReviews, selectedDate]);
+
+  // 订阅其它窗口的任务变更广播，实现主窗口 ↔ 桌面组件双向实时同步。
+  useEffect(() => {
+    if (!isLoaded) return;
+    const unsubscribe = window.electronAPI?.onTasksChanged((incoming) => {
+      const nextTasks = Array.isArray(incoming) ? incoming : [];
+      setAllTasks((prev) => {
+        // 内容相同则忽略，避免无谓重渲染并切断回声循环。
+        if (JSON.stringify(prev) === JSON.stringify(nextTasks)) return prev;
+        // 这次更新来自广播：标记跳过下一次保存，防止把同样内容又写回 store。
+        skipNextTaskPersistRef.current = true;
+        const today = getBusinessDateKey(new Date(), appSettings.rolloverTime);
+        return nextTasks.map((task) => normalizeTask(task, today));
+      });
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [appSettings.rolloverTime, isLoaded]);
 
   const updateAppSettings = useCallback((next: AppBehaviorSettings) => {
     if (next.syncDeletedReviewsToObsidian) {

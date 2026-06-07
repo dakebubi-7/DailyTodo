@@ -14,6 +14,7 @@ interface Window {
     setLockWindowPosition: (locked: boolean) => Promise<boolean>;
     getStore: (key: string) => Promise<unknown>;
     setStore: (key: string, value: unknown) => Promise<void>;
+    onTasksChanged: (callback: (tasks: import('./types/task').Task[]) => void) => () => void;
     getAppSettings: () => Promise<import('../shared/appSettings').AppBehaviorSettings>;
     setAppSettings: (settings: import('../shared/appSettings').AppBehaviorSettings) => Promise<{ ok: boolean }>;
     getObsidianTemplateSettings: () => Promise<import('../shared/appSettings').ObsidianTemplateSettings>;

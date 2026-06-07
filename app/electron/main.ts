@@ -820,6 +820,143 @@ function persistDesktopWidgetWindowState(win: BrowserWindow) {
   }, 250);
 }
 
+// ===== 桌面组件窗口：自包含桌面守护 =====
+// widget 永远是桌面挂件，不随主窗口的 windowMode 变化。它有独立于主窗口的一套状态，
+// 镜像主窗口的 owner=Progman 豁免 Win+D + 智能置顶轮询，但无条件运行，且绝不触碰主窗口的全局状态，
+// 避免和主窗口的 desktop 模式互相打架。
+let widgetDesktopGuardTimer: NodeJS.Timeout | null = null;
+let widgetDesktopState: DesktopWidgetState = 'app-background';
+let widgetDesktopOwnerApplied = false;
+let widgetDesktopShellSeenAt = 0;
+let widgetAppBackgroundSettleUntil = 0;
+let widgetLastAppForegroundClass = '';
+let widgetLastGuardSnapshot = '';
+
+function applyWidgetDesktopOwner(win: BrowserWindow) {
+  if (win.isDestroyed()) return;
+  const handle = win.getNativeWindowHandle();
+  if (!win32 || !handle) return;
+  try {
+    widgetDesktopOwnerApplied = win32.setDesktopOwner(handle);
+  } catch (error) {
+    widgetDesktopOwnerApplied = false;
+    diag(`widget owner: set threw → skip: ${String(error)}`);
+  }
+}
+
+function clearWidgetDesktopOwner(win: BrowserWindow) {
+  if (!widgetDesktopOwnerApplied || win.isDestroyed()) return;
+  const handle = win.getNativeWindowHandle();
+  if (!win32 || !handle) return;
+  try {
+    win32.clearDesktopOwner(handle);
+  } catch (error) {
+    diag(`widget owner: clear threw: ${String(error)}`);
+  } finally {
+    widgetDesktopOwnerApplied = false;
+  }
+}
+
+function applyWidgetDesktopWidgetState(win: BrowserWindow, nextState: DesktopWidgetState, force = false) {
+  if (win.isDestroyed() || !win32) return;
+  if (!force && widgetDesktopState === nextState) return;
+
+  const handle = win.getNativeWindowHandle();
+  if (!handle) return;
+
+  widgetDesktopState = nextState;
+
+  if (nextState === 'desktop-visible') {
+    applyWidgetDesktopOwner(win);
+    try {
+      if (!win.isVisible()) win.showInactive();
+      win.setAlwaysOnTop(true, 'screen-saver');
+      win32.setTopmost(handle);
+    } catch (error) {
+      diag(`widget state desktop-visible failed: ${String(error)}`);
+    }
+    return;
+  }
+
+  if (nextState === 'dt-active') {
+    clearWidgetDesktopOwner(win);
+    try {
+      win.setAlwaysOnTop(false, 'normal');
+      win32.clearTopmost(handle);
+      if (!win.isVisible()) win.show();
+    } catch (error) {
+      diag(`widget state dt-active failed: ${String(error)}`);
+    }
+    return;
+  }
+
+  clearWidgetDesktopOwner(win);
+  try {
+    win.setAlwaysOnTop(false, 'normal');
+    win32.clearTopmost(handle);
+    win32.sendToBottom(handle);
+  } catch (error) {
+    diag(`widget state app-background failed: ${String(error)}`);
+  }
+}
+
+function applyWidgetDesktopTopmost(win: BrowserWindow) {
+  if (win.isDestroyed() || !win32) return;
+  const handle = win.getNativeWindowHandle();
+  if (!handle) return;
+
+  const fgClass = win32.getForegroundClass();
+  const ownForeground = win32.isForegroundWindow(handle);
+  const shellForeground = DESKTOP_FG_CLASSES.has(fgClass);
+  const now = Date.now();
+
+  if (shellForeground) {
+    widgetDesktopShellSeenAt = now;
+  } else if (fgClass && !ownForeground) {
+    widgetDesktopShellSeenAt = 0;
+  }
+  const withinDesktopGrace = fgClass === '' && widgetDesktopShellSeenAt > 0 && now - widgetDesktopShellSeenAt < 700;
+
+  const nextState: DesktopWidgetState = ownForeground
+    ? 'dt-active'
+    : (shellForeground || withinDesktopGrace)
+      ? 'desktop-visible'
+      : 'app-background';
+
+  if (nextState === 'app-background' && fgClass && !ownForeground && fgClass !== widgetLastAppForegroundClass) {
+    widgetLastAppForegroundClass = fgClass;
+    widgetAppBackgroundSettleUntil = now + 900;
+  }
+  if (nextState !== 'app-background') {
+    widgetLastAppForegroundClass = '';
+    widgetAppBackgroundSettleUntil = 0;
+  }
+  const shouldForceAppBackground = nextState === 'app-background' && now < widgetAppBackgroundSettleUntil;
+
+  const snapshot = `fg=${fgClass || '(none)'} own=${ownForeground} shell=${shellForeground} state=${widgetDesktopState}->${nextState}`;
+  if (snapshot !== widgetLastGuardSnapshot) {
+    widgetLastGuardSnapshot = snapshot;
+    diag(`widget guard snapshot: ${snapshot}`);
+  }
+
+  applyWidgetDesktopWidgetState(win, nextState, shouldForceAppBackground);
+}
+
+function startWidgetDesktopGuard(win: BrowserWindow) {
+  stopWidgetDesktopGuard();
+  widgetDesktopState = 'app-background';
+  applyWidgetDesktopTopmost(win);
+  widgetDesktopGuardTimer = setInterval(() => applyWidgetDesktopTopmost(win), DESKTOP_GUARD_INTERVAL_MS);
+}
+
+function stopWidgetDesktopGuard() {
+  if (widgetDesktopGuardTimer) {
+    clearInterval(widgetDesktopGuardTimer);
+    widgetDesktopGuardTimer = null;
+  }
+  widgetDesktopState = 'app-background';
+}
+
 /** 从存储解析当前窗口模式（含旧布尔 alwaysOnTop 的迁移）。 */
 function getStoredWindowMode(): WindowMode {
   return resolveWindowMode(store.get(WINDOW_MODE_KEY), store.get(LEGACY_ALWAYS_ON_TOP_KEY));
@@ -1058,16 +1195,30 @@ function createDesktopWidgetWindow(): BrowserWindow {
 
   desktopWidgetWindow = widgetWindow;
   loadRenderer(widgetWindow, { view: 'widget' });
+  // 桌面挂件：不进任务栏，且整窗都不进 Alt+Tab 由 transparent+frame:false 隐式达成。
   widgetWindow.once('ready-to-show', () => {
     widgetWindow.show();
     widgetWindow.focus();
+    // 窗口就绪后再启动桌面守护：此时原生句柄已可用，挂 Progman owner 才有效。
+    startWidgetDesktopGuard(widgetWindow);
   });
   widgetWindow.on('move', () => persistDesktopWidgetWindowState(widgetWindow));
   widgetWindow.on('resize', () => persistDesktopWidgetWindowState(widgetWindow));
+  // 兜底：Win+D 偶发真把窗口最小化时，桌面挂件应自动恢复（不抢焦点）。
+  widgetWindow.on('minimize', () => {
+    if (isQuitting || widgetWindow.isDestroyed()) return;
+    try {
+      widgetWindow.showInactive();
+    } catch (error) {
+      diag(`widget guard: showInactive after minimize failed: ${String(error)}`);
+    }
+  });
   // 关闭即销毁：必须同步保存 bounds，防抖定时器会在窗口销毁后才触发、永远存不下来。
   widgetWindow.on('close', () => {
     if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
     widgetPersistTimer = null;
+    stopWidgetDesktopGuard();
+    clearWidgetDesktopOwner(widgetWindow);
     if (!widgetWindow.isDestroyed() && !widgetWindow.isMinimized()) {
       store.set(DESKTOP_WIDGET_WINDOW_STATE_KEY, widgetWindow.getBounds());
     }
@@ -1249,8 +1400,17 @@ function createWindow() {
   });
 
   ipcMain.handle('store:get', (_, key: string) => store.get(key));
-  ipcMain.handle('store:set', (_, key: string, value: unknown) => {
+  ipcMain.handle('store:set', (event, key: string, value: unknown) => {
     store.set(key, value);
+    // 任务变更广播给其它窗口（主窗口 ↔ 桌面组件双向实时同步）。
+    // 排除发送方自身，避免回声；接收方靠内容比对跳过无变化更新，防止来回写形成死循环。
+    if (key === 'tasks') {
+      const senderId = event.sender.id;
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (win.isDestroyed() || win.webContents.id === senderId) return;
+        win.webContents.send('tasks:changed', value);
+      });
+    }
   });
 
   ipcMain.handle('settings:getApp', () => getAppSettings());
@@ -1344,6 +1504,8 @@ app.on('before-quit', () => {
   if (desktopWidgetWindow && !desktopWidgetWindow.isDestroyed()) {
     if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
     widgetPersistTimer = null;
+    stopWidgetDesktopGuard();
+    clearWidgetDesktopOwner(desktopWidgetWindow);
     desktopWidgetWindow.removeAllListeners();
   }
 });

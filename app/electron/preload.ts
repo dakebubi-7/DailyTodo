@@ -17,6 +17,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLockWindowPosition: (locked: boolean) => ipcRenderer.invoke('window:setLockWindowPosition', locked),
   getStore: (key: string) => ipcRenderer.invoke('store:get', key),
   setStore: (key: string, value: unknown) => ipcRenderer.invoke('store:set', key, value),
+  onTasksChanged: (callback: (tasks: unknown) => void) => {
+    const listener = (_event: unknown, tasks: unknown) => callback(tasks);
+    ipcRenderer.on('tasks:changed', listener);
+    return () => ipcRenderer.removeListener('tasks:changed', listener);
+  },
   getAppSettings: () => ipcRenderer.invoke('settings:getApp'),
   setAppSettings: (settings: unknown) => ipcRenderer.invoke('settings:setApp', settings),
   getObsidianTemplateSettings: () => ipcRenderer.invoke('settings:getObsidianTemplates'),
