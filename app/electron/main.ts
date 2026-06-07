@@ -54,6 +54,9 @@ import type { ChatMessage } from '../shared/llm/openaiClient';
 import type { StatTask } from '../shared/aiReview/stats';
 import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
 import { getNextTimerDelay } from '../shared/aiReview/timer';
+import { generatePersonalWeekly } from './aiReview/exportReports';
+import { isoWeekKey } from '../shared/aiReview/weekly';
+import { computeRangeStats } from '../shared/aiReview/stats';
 
 // 关闭 Chromium 在 Windows 上的原生窗口遮挡计算：透明无边框窗口在 Win+D / 点击桌面后
 // 会被判定为「被遮挡」而暂停合成，表现为窗口空白/消失，直到系统弹窗触发重绘。关闭后所有
@@ -1351,6 +1354,32 @@ function createWindow() {
       sections: getReviewSections(),
       callLlm: getLlmCaller(),
       fileExists: (p) => fs.existsSync(p),
+    });
+  });
+  ipcMain.handle('aiReview:generateWeekly', async (_e, date: string, tasks: Task[]) => {
+    const settings = getAiReviewSettings();
+    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    const vaultStatus = getVaultStatus();
+    if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
+    const selected = getDateKey(date);
+    // 取所在 ISO 周的周一到周日 7 天。
+    const d = new Date(`${selected}T00:00:00`);
+    const dayNr = (d.getDay() + 6) % 7;
+    const monday = shiftDateKey(selected, -dayNr);
+    const weekDates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
+    const dailyContents = weekDates
+      .map((wd) => {
+        const filePath = getDailyFilePath(wd);
+        return fs.existsSync(filePath) ? { date: wd, content: fs.readFileSync(filePath, 'utf-8') } : null;
+      })
+      .filter((x): x is { date: string; content: string } => x !== null);
+    const stats = computeRangeStats(tasks as StatTask[], monday, weekDates[6]);
+    return generatePersonalWeekly({
+      vaultPath: vaultStatus.vaultPath,
+      weekKey: isoWeekKey(selected),
+      dailyContents,
+      stats,
+      callLlm: getLlmCaller(),
     });
   });
 

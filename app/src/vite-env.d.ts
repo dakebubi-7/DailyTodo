@@ -52,6 +52,7 @@ interface Window {
       setSections: (sections: import('../shared/aiReview/sectionConfig').SectionConfig[]) => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
       runForDate: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; error?: string; filledMarkers: string[]; skippedMarkers: string[] }>;
       backfill: (tasks: import('./types/task').Task[]) => Promise<{ processed: string[]; filled: string[]; errors: Array<{ date: string; error: string }> }>;
+      generateWeekly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string }>;
       onTick: (callback: () => void) => () => void;
     };
   };
