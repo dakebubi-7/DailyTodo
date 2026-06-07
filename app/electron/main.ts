@@ -54,8 +54,9 @@ import type { ChatMessage } from '../shared/llm/openaiClient';
 import type { StatTask } from '../shared/aiReview/stats';
 import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
 import { getNextTimerDelay } from '../shared/aiReview/timer';
-import { generatePersonalWeekly } from './aiReview/exportReports';
+import { generatePersonalWeekly, generatePersonalMonthly, generateExternalReport } from './aiReview/exportReports';
 import { isoWeekKey } from '../shared/aiReview/weekly';
+import { buildMonthlyMessages, monthKey, monthRange } from '../shared/aiReview/monthly';
 import { computeRangeStats } from '../shared/aiReview/stats';
 
 // 关闭 Chromium 在 Windows 上的原生窗口遮挡计算：透明无边框窗口在 Win+D / 点击桌面后
@@ -1379,6 +1380,69 @@ function createWindow() {
       weekKey: isoWeekKey(selected),
       dailyContents,
       stats,
+      callLlm: getLlmCaller(),
+    });
+  });
+  ipcMain.handle('aiReview:generateMonthly', async (_e, date: string, tasks: Task[]) => {
+    const settings = getAiReviewSettings();
+    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    const vaultStatus = getVaultStatus();
+    if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
+    const month = monthKey(getDateKey(date));
+    const { first, last } = monthRange(month);
+    // 收集当月各 daily 正文作为周要点的简化来源。
+    const dayCount = Number(last.slice(-2));
+    const highlights: string[] = [];
+    for (let i = 0; i < dayCount; i++) {
+      const wd = shiftDateKey(first, i);
+      const filePath = getDailyFilePath(wd);
+      if (fs.existsSync(filePath)) highlights.push(`${wd}: ${fs.readFileSync(filePath, 'utf-8').slice(0, 500)}`);
+    }
+    const stats = computeRangeStats(tasks as StatTask[], first, last);
+    return generatePersonalMonthly({
+      vaultPath: vaultStatus.vaultPath,
+      month,
+      weeklyHighlights: highlights,
+      stats,
+      callLlm: getLlmCaller(),
+    });
+  });
+  ipcMain.handle('aiReview:generateExternal', async (_e, kind: 'weekly' | 'monthly', date: string) => {
+    const settings = getAiReviewSettings();
+    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    const vaultStatus = getVaultStatus();
+    if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
+    const selected = getDateKey(date);
+    let periodKey: string;
+    let dates: string[];
+    if (kind === 'weekly') {
+      const d = new Date(`${selected}T00:00:00`);
+      const monday = shiftDateKey(selected, -((d.getDay() + 6) % 7));
+      dates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
+      periodKey = isoWeekKey(selected);
+    } else {
+      const month = monthKey(selected);
+      const { first, last } = monthRange(month);
+      dates = Array.from({ length: Number(last.slice(-2)) }, (_, i) => shiftDateKey(first, i));
+      periodKey = month;
+    }
+    const rawDailyContents = dates
+      .map((d) => {
+        const filePath = getDailyFilePath(d);
+        return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
+      })
+      .filter(Boolean);
+    return generateExternalReport({
+      vaultPath: vaultStatus.vaultPath,
+      kind,
+      periodKey,
+      rawDailyContents,
+      buildMessages: (redacted) =>
+        buildMonthlyMessages({
+          month: periodKey,
+          weeklyHighlights: [redacted],
+          stats: { start: dates[0], end: dates[dates.length - 1], activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 },
+        }),
       callLlm: getLlmCaller(),
     });
   });

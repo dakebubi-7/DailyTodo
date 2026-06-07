@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     runForDate: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:runForDate', date, tasks),
     backfill: (tasks: unknown) => ipcRenderer.invoke('aiReview:backfill', tasks),
     generateWeekly: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:generateWeekly', date, tasks),
+    generateMonthly: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:generateMonthly', date, tasks),
+    generateExternal: (kind: 'weekly' | 'monthly', date: string) => ipcRenderer.invoke('aiReview:generateExternal', kind, date),
     onTick: (callback: () => void) => {
       const listener = () => callback();
       ipcRenderer.on('aiReview:tick', listener);
