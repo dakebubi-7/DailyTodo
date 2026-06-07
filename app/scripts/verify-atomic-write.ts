@@ -23,5 +23,21 @@ assert.equal(conflict.ok, false);
 assert.ok(conflict.error!.includes('冲突') || conflict.error!.includes('changed'));
 assert.equal(fs.readFileSync(file, 'utf-8'), '外部进程改的', '冲突时绝不覆盖');
 
+
+// 新建文件路径：文件不存在 + expected 为 null → 成功创建
+const newFile = path.join(dir, 'sub', 'fresh.md');
+const created = atomicReplace(newFile, '全新内容', null);
+assert.equal(created.ok, true, 'null stamp + missing file → create');
+assert.equal(fs.readFileSync(newFile, 'utf-8'), '全新内容');
+
+// 文件被删除冲突：expected 有 stamp 但文件已不存在 → 拒绝，不创建
+const toDelete = path.join(dir, 'gone.md');
+fs.writeFileSync(toDelete, '即将删除', 'utf-8');
+const goneStamp = readWithStamp(toDelete).stamp;
+fs.rmSync(toDelete);
+const deleted = atomicReplace(toDelete, '复活', goneStamp);
+assert.equal(deleted.ok, false, 'stamp present + file deleted → refuse');
+assert.equal(fs.existsSync(toDelete), false, '拒绝时不应创建文件');
+
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('Atomic write verification passed');
