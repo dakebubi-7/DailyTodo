@@ -28,4 +28,13 @@ assert.deepEqual(decideBlock('', { frozen: true }), { state: BlockState.Frozen, 
 assert.equal(decideBlock(edited, { force: true }).action, BlockAction.Overwrite);
 assert.equal(decideBlock('', { frozen: true, force: true }).action, BlockAction.Skip);
 
+
+// 契约文档：仅含 FREEZE 注释但未传 frozen 选项 → Unprocessed/Fill。
+// 检测 FREEZE 标签是调用方（runner）的职责，状态机本身不自动识别。
+assert.deepEqual(
+  decideBlock('<!-- DAILYTODO:FREEZE -->'),
+  { state: BlockState.Unprocessed, action: BlockAction.Fill },
+  'bare FREEZE comment without frozen:true → Unprocessed (caller must detect and pass frozen)',
+);
+
 console.log('Scan decision verification passed');
