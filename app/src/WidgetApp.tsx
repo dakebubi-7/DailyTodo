@@ -66,7 +66,9 @@ export function WidgetApp() {
               )}
             </>
           ) : (
-            <p className="widget-empty">今天清空了，继续保持。</p>
+            <p className="widget-empty">
+              {selectedDate === getTodayDateKey() ? '今天清空了，继续保持。' : `${selectedDate} 没有任务。`}
+            </p>
           )}
         </main>
 

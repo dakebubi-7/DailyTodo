@@ -1060,10 +1060,18 @@ function createDesktopWidgetWindow(): BrowserWindow {
   loadRenderer(widgetWindow, { view: 'widget' });
   widgetWindow.once('ready-to-show', () => {
     widgetWindow.show();
+    widgetWindow.focus();
   });
   widgetWindow.on('move', () => persistDesktopWidgetWindowState(widgetWindow));
   widgetWindow.on('resize', () => persistDesktopWidgetWindowState(widgetWindow));
-  widgetWindow.on('close', () => persistDesktopWidgetWindowState(widgetWindow));
+  // 关闭即销毁：必须同步保存 bounds，防抖定时器会在窗口销毁后才触发、永远存不下来。
+  widgetWindow.on('close', () => {
+    if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
+    widgetPersistTimer = null;
+    if (!widgetWindow.isDestroyed() && !widgetWindow.isMinimized()) {
+      store.set(DESKTOP_WIDGET_WINDOW_STATE_KEY, widgetWindow.getBounds());
+    }
+  });
   widgetWindow.on('closed', () => {
     desktopWidgetWindow = null;
   });
@@ -1072,10 +1080,15 @@ function createDesktopWidgetWindow(): BrowserWindow {
 }
 
 function showDesktopWidgetWindow() {
+  // 新建窗口由 ready-to-show 负责首次 show()，避免渲染就绪前 show 出现透明空窗闪烁；
+  // 已存在的窗口不会再触发 ready-to-show，需要在这里直接 show/focus。
+  const isExisting = !!desktopWidgetWindow && !desktopWidgetWindow.isDestroyed();
   const widgetWindow = createDesktopWidgetWindow();
   if (widgetWindow.isMinimized()) widgetWindow.restore();
-  widgetWindow.show();
-  widgetWindow.focus();
+  if (isExisting) {
+    widgetWindow.show();
+    widgetWindow.focus();
+  }
 }
 
 function createWindow() {
@@ -1329,6 +1342,8 @@ app.on('before-quit', () => {
     clearDesktopOwner(mainWindow);
   }
   if (desktopWidgetWindow && !desktopWidgetWindow.isDestroyed()) {
+    if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
+    widgetPersistTimer = null;
     desktopWidgetWindow.removeAllListeners();
   }
 });
