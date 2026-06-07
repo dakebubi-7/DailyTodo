@@ -1,6 +1,7 @@
 import path from 'path';
 import { ObsidianTemplateSettings } from './appSettings';
 import type { Task } from '../src/types/task';
+import { REVIEW_MARKERS } from './aiReview/markers';
 
 export const TASK_START_MARKER = '<!-- DAILYTODO:TASKS:START -->';
 export const TASK_END_MARKER = '<!-- DAILYTODO:TASKS:END -->';
@@ -202,16 +203,22 @@ export function buildDailyNoteContent(params: {
     '',
     buildTaskBlock(date, tasks, templates),
     '',
+    REVIEW_MARKERS.REVIEW.start,
     `## ${templates.reviewSectionTitle}`,
     '- 今天最值得保留的经验：',
     '- 可以改进的地方：',
+    REVIEW_MARKERS.REVIEW.end,
     '',
+    REVIEW_MARKERS.TOMORROW.start,
     `## ${templates.tomorrowTaskSectionTitle}`,
     '- [ ] ',
+    REVIEW_MARKERS.TOMORROW.end,
     '',
+    REVIEW_MARKERS.KNOWLEDGE.start,
     `## ${templates.reusableKnowledgeSectionTitle}`,
     '- 从每日任务、工作记录和灵感闪念中提炼可复用经验。',
     '- 后续可以把稳定结论拆到主题笔记，并在这里保留日期索引。',
+    REVIEW_MARKERS.KNOWLEDGE.end,
     '',
   ].join('\n');
 }
