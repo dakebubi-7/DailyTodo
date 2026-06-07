@@ -31,6 +31,11 @@ import {
 import { createDefaultCompanionSettings } from '../shared/obsidianCompanionDefaults';
 import { CompanionSettings } from '../shared/obsidianCompanion';
 import {
+  buildDevRendererUrl,
+  buildRendererQuery,
+  type RendererRoute,
+} from '../shared/rendererRoute';
+import {
   WINDOW_MODE_KEY,
   LEGACY_ALWAYS_ON_TOP_KEY,
   WindowMode,
@@ -170,6 +175,7 @@ function createTrayIcon() {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let desktopWidgetWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let persistTimer: NodeJS.Timeout | null = null;
 let isQuitting = false;
@@ -768,6 +774,20 @@ function getInitialBounds() {
   return { width, height, x, y };
 }
 
+function loadRenderer(win: BrowserWindow, route: RendererRoute) {
+  const devServerUrl = process.env.ELECTRON_RENDERER_URL || process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl) {
+    const url = buildDevRendererUrl(devServerUrl, route);
+    diag(`loadURL ${url}`);
+    win.loadURL(url);
+    return;
+  }
+
+  const query = buildRendererQuery(route);
+  diag(`loadFile dist/index.html ${JSON.stringify(query)}`);
+  win.loadFile(path.join(__dirname, '../dist/index.html'), { query });
+}
+
 function persistWindowState(win: BrowserWindow) {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
@@ -985,6 +1005,41 @@ function createTray() {
   tray.on('click', showMainWindow);
 }
 
+function createDesktopWidgetWindow(): BrowserWindow {
+  if (desktopWidgetWindow && !desktopWidgetWindow.isDestroyed()) {
+    return desktopWidgetWindow;
+  }
+
+  const widgetWindow = new BrowserWindow({
+    ...getInitialBounds(),
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: 480,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    hasShadow: true,
+    skipTaskbar: true,
+    resizable: true,
+    show: false,
+    alwaysOnTop: false,
+    icon: createAppIcon(),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      backgroundThrottling: false,
+    },
+  });
+
+  desktopWidgetWindow = widgetWindow;
+  loadRenderer(widgetWindow, { view: 'widget' });
+  widgetWindow.on('closed', () => {
+    desktopWidgetWindow = null;
+  });
+
+  return widgetWindow;
+}
+
 function createWindow() {
   if (!store.get(OBSIDIAN_PATH_KEY) && getDefaultVaultPath()) {
     store.set(OBSIDIAN_PATH_KEY, getDefaultVaultPath());
@@ -1023,14 +1078,7 @@ function createWindow() {
   createTray();
   diag('tray created');
 
-  const devServerUrl = process.env.ELECTRON_RENDERER_URL || process.env.VITE_DEV_SERVER_URL;
-  if (devServerUrl) {
-    diag(`loadURL ${devServerUrl}`);
-    win.loadURL(devServerUrl);
-  } else {
-    diag('loadFile dist/index.html');
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
-  }
+  loadRenderer(win, { view: 'main' });
 
   win.once('ready-to-show', () => {
     diag('ready-to-show → show()');
@@ -1055,9 +1103,7 @@ function createWindow() {
   win.on('minimize', () => {
     diag('evt: minimize');
     diag(`  userHidden=${userHidden} windowMode=${windowMode} isVisible=${win.isVisible()}`);
-  });
-  win.on('minimize', () => {
-    diag('evt: minimize');
+
     // 兜底：某些情况下 Win+D 会真的最小化窗口。desktop 模式且非用户主动隐藏时恢复（不抢焦点）。
     if (!needsDesktopGuard(windowMode) || isQuitting || win.isDestroyed() || userHidden) return;
     try {
@@ -1244,6 +1290,9 @@ app.on('before-quit', () => {
   if (mainWindow && !mainWindow.isDestroyed() && windowMode === 'desktop') {
     clearDesktopOwner(mainWindow);
   }
+  if (desktopWidgetWindow && !desktopWidgetWindow.isDestroyed()) {
+    desktopWidgetWindow.removeAllListeners();
+  }
 });
 app.on('will-quit', () => diag('will-quit'));
 app.on('quit', (_e, code) => diag(`quit code=${code}`));
@@ -1251,6 +1300,7 @@ app.on('quit', (_e, code) => diag(`quit code=${code}`));
 app.on('window-all-closed', () => {
   diag('window-all-closed');
   mainWindow = null;
+  desktopWidgetWindow = null;
   if (isQuitting && process.platform !== 'darwin') {
     app.quit();
   }

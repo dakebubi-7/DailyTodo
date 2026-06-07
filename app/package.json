@@ -22,7 +22,10 @@
     "verify:rc-sync": "tsx scripts/verify-rc-sync.ts",
     "verify:rc-strings": "tsx scripts/verify-rc-strings.ts",
     "verify:rc-ui": "tsx scripts/verify-rc-ui-regressions.ts",
-    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:rc-ui"
+    "verify:renderer-route": "tsx scripts/verify-renderer-route.ts",
+    "verify:main-window-structure": "tsx scripts/verify-main-window-structure.ts",
+    "verify:widget-structure": "npm run verify:renderer-route && npm run verify:main-window-structure",
+    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:main-window-structure && npm run verify:rc-ui"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
