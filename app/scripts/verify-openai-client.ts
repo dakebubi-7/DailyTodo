@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { callChatCompletion, detectProvider, listModels, parseModelList } from '../shared/llm/openaiClient';
+import { buildAutoCandidates, callChatCompletion, detectProvider, listModels, parseModelList } from '../shared/llm/openaiClient';
 
 const base = { baseUrl: 'https://x/v1', apiKey: 'sk-test', model: 'm' };
 const messages = [{ role: 'user' as const, content: 'hi' }];
@@ -34,6 +34,25 @@ const badFetch = (async () => ({ ok: false, status: 401, text: async () => 'unau
 const bad = await callChatCompletion(base, messages, { fetchImpl: badFetch });
 assert.equal(bad.ok, false);
 assert.ok(bad.error.includes('401'));
+
+// 404 给出小白可操作的 URL/path 提示
+const notFoundFetch = (async () => ({ ok: false, status: 404, text: async () => '{"error":"not found"}' })) as unknown as typeof fetch;
+const notFound = await callChatCompletion(base, messages, { fetchImpl: notFoundFetch, provider: 'openai' });
+assert.equal(notFound.ok, false);
+assert.ok(!notFound.ok && notFound.error.includes('没有找到请求路径'), '404 说明路径未找到');
+assert.ok(!notFound.ok && notFound.error.includes('/v1'), '404 提示检查 /v1');
+
+// Claude Code 专用服务限制给出明确说明
+const claudeCodeDeniedText = 'Access Denied: This service is restricted to authorized use through the official Claude Code client only.';
+const claudeDeniedFetch = (async () => ({ ok: false, status: 403, text: async () => claudeCodeDeniedText })) as unknown as typeof fetch;
+const claudeDenied = await callChatCompletion(
+  { baseUrl: 'https://api.anthropic.com', apiKey: 'sk-ant-x', model: 'claude-sonnet-4-6' },
+  messages,
+  { fetchImpl: claudeDeniedFetch, provider: 'anthropic' },
+);
+assert.equal(claudeDenied.ok, false);
+assert.ok(!claudeDenied.ok && claudeDenied.error.includes('Claude Code 官方客户端专用'), '识别 Claude Code 专用限制');
+assert.ok(!claudeDenied.ok && !claudeDenied.error.includes('sk-ant-x'), '错误不泄露 key');
 
 // fetch 抛错 → ok:false，不冒泡
 const throwFetch = (async () => { throw new Error('ECONNREFUSED'); }) as unknown as typeof fetch;
@@ -80,6 +99,23 @@ assert.equal(sse.ok, true, 'SSE 流式不再崩');
 assert.equal(sse.ok && sse.content, '你好世界', 'SSE 多 chunk 聚合');
 assert.equal(sse.ok && sse.truncated, false, 'finish_reason=stop → 不截断');
 
+// SSE chunk 内前导/尾随空格必须保留，避免 "Hello" + " world" 或 "Hello " + "world" 被拼坏
+const sseSpaceBody = [
+  'data: {"choices":[{"delta":{"content":"Hello"}}]}',
+  'data: {"choices":[{"delta":{"content":" world"}}]}',
+  'data: [DONE]',
+].join('\n');
+const sseSpace = await callChatCompletion(base, messages, { fetchImpl: (async () => sseRes(sseSpaceBody)) as unknown as typeof fetch });
+assert.equal(sseSpace.ok && sseSpace.content, 'Hello world', 'SSE 分片拼接保留分片内前导空格');
+
+const sseTrailingSpaceBody = [
+  'data: {"choices":[{"delta":{"content":"Hello "}}]}',
+  'data: {"choices":[{"delta":{"content":"world"}}]}',
+  'data: [DONE]',
+].join('\n');
+const sseTrailingSpace = await callChatCompletion(base, messages, { fetchImpl: (async () => sseRes(sseTrailingSpaceBody)) as unknown as typeof fetch });
+assert.equal(sseTrailingSpace.ok && sseTrailingSpace.content, 'Hello world', 'SSE 分片拼接保留分片内尾随空格');
+
 // SSE 截断信号
 const sseTruncBody = [
   'data: {"choices":[{"delta":{"content":"半"}}]}',
@@ -100,6 +136,35 @@ const sseByPrefix = await callChatCompletion(base, messages, {
 });
 assert.equal(sseByPrefix.ok && sseByPrefix.content, '嗨', 'body 以 data: 开头也按 SSE 兜底');
 
+// 非标准 OpenAI JSON 字段：中转站可能把正文放在 choices[0].text 或顶层字段
+const choiceText = await callChatCompletion(base, messages, {
+  fetchImpl: (async () => jsonRes({ choices: [{ text: 'choice text 正文' }] })) as unknown as typeof fetch,
+});
+assert.equal(choiceText.ok && choiceText.content, 'choice text 正文', '支持 choices[0].text');
+
+const topLevelText = await callChatCompletion(base, messages, {
+  fetchImpl: (async () => jsonRes({ output_text: '顶层正文' })) as unknown as typeof fetch,
+});
+assert.equal(topLevelText.ok && topLevelText.content, '顶层正文', '支持顶层 output_text');
+
+// 非标准 OpenAI SSE 字段：delta.text 和顶层 output_text
+const sseNonstandard = await callChatCompletion(base, messages, {
+  fetchImpl: (async () => sseRes([
+    'data: {"choices":[{"delta":{"text":"非标"}}]}',
+    'data: {"output_text":"流式"}',
+    'data: [DONE]',
+  ].join('\n'))) as unknown as typeof fetch,
+});
+assert.equal(sseNonstandard.ok && sseNonstandard.content, '非标流式', '支持非标准 SSE 正文字段');
+
+// usage-only SSE：只有用量统计，没有正文，给出可理解诊断
+const usageOnly = await callChatCompletion(base, messages, {
+  fetchImpl: (async () => sseRes('data: {"choices":[],"usage":{"prompt_tokens":24403,"completion_tokens":0,"total_tokens":24403}}\n')) as unknown as typeof fetch,
+});
+assert.equal(usageOnly.ok, false);
+assert.ok(!usageOnly.ok && usageOnly.error.includes('只返回了 token 用量统计'), 'usage-only 流提示没有正文');
+assert.ok(!usageOnly.ok && usageOnly.error.includes('24403'), 'usage-only 流展示 prompt token 数');
+
 // === 协议自动识别（detectProvider）===
 assert.equal(detectProvider('https://api.anthropic.com'), 'anthropic');
 assert.equal(detectProvider('https://api.anthropic.com/v1'), 'anthropic');
@@ -108,6 +173,66 @@ assert.equal(detectProvider('https://generativelanguage.googleapis.com/v1beta/op
 assert.equal(detectProvider('https://api.deepseek.com'), 'openai');
 assert.equal(detectProvider('https://api.openai.com/v1'), 'openai');
 assert.equal(detectProvider('https://my-relay.com/v1'), 'openai', '未知中转站默认 openai');
+
+// === 自动兼容候选：URL 修正 + 协议排序 ===
+const bareCandidates = buildAutoCandidates('https://token.offerya.cc');
+assert.deepEqual(
+  bareCandidates.slice(0, 2),
+  [
+    { provider: 'openai', baseUrl: 'https://token.offerya.cc' },
+    { provider: 'openai', baseUrl: 'https://token.offerya.cc/v1' },
+  ],
+  '裸域名先试原始地址，再试 /v1',
+);
+
+const v1Candidates = buildAutoCandidates('https://token.offerya.cc/v1');
+assert.equal(
+  v1Candidates.filter((c) => c.baseUrl === 'https://token.offerya.cc/v1' && c.provider === 'openai').length,
+  1,
+  '/v1 不重复追加',
+);
+
+const fullPathCandidates = buildAutoCandidates('https://token.offerya.cc/v1/chat/completions');
+assert.equal(fullPathCandidates[0].baseUrl, 'https://token.offerya.cc/v1', '误填完整 chat/completions 时截回 /v1');
+assert.equal(fullPathCandidates[0].provider, 'openai', '修正后的完整 OpenAI 路径仍走 OpenAI 兼容');
+
+assert.equal(buildAutoCandidates('https://api.anthropic.com')[0].provider, 'anthropic', 'Anthropic 官方地址优先 Claude 原生');
+assert.equal(buildAutoCandidates('https://generativelanguage.googleapis.com')[0].provider, 'gemini', 'Gemini 官方原生地址优先 Gemini 原生');
+assert.equal(buildAutoCandidates('https://generativelanguage.googleapis.com/v1beta/openai')[0].provider, 'openai', 'Gemini OpenAI 兼容地址优先 OpenAI 兼容');
+
+// provider=auto：裸域名 404 后自动尝试 /v1 并成功
+const autoTriedUrls: string[] = [];
+const autoRetryFetch = (async (url: string) => {
+  autoTriedUrls.push(url);
+  if (url === 'https://relay.example/chat/completions') {
+    return { ok: false, status: 404, text: async () => '{"error":"not found"}' };
+  }
+  if (url === 'https://relay.example/v1/chat/completions') {
+    return jsonRes({ choices: [{ message: { content: '自动成功' } }] });
+  }
+  return { ok: false, status: 500, text: async () => 'unexpected candidate' };
+}) as unknown as typeof fetch;
+const autoRetry = await callChatCompletion(
+  { baseUrl: 'https://relay.example', apiKey: 'k', model: 'm' },
+  messages,
+  { fetchImpl: autoRetryFetch, provider: 'auto' },
+);
+assert.equal(autoRetry.ok && autoRetry.content, '自动成功', 'auto 会尝试 /v1 候选直到成功');
+assert.deepEqual(autoTriedUrls.slice(0, 2), ['https://relay.example/chat/completions', 'https://relay.example/v1/chat/completions']);
+
+// 显式 provider=openai：不自动尝试 /v1，保持用户指定协议行为
+const explicitTriedUrls: string[] = [];
+const explicitFetch = (async (url: string) => {
+  explicitTriedUrls.push(url);
+  return { ok: false, status: 404, text: async () => '{"error":"not found"}' };
+}) as unknown as typeof fetch;
+const explicit = await callChatCompletion(
+  { baseUrl: 'https://relay.example', apiKey: 'k', model: 'm' },
+  messages,
+  { fetchImpl: explicitFetch, provider: 'openai' },
+);
+assert.equal(explicit.ok, false);
+assert.deepEqual(explicitTriedUrls, ['https://relay.example/chat/completions'], '显式 provider 不做自动候选重试');
 
 // === Anthropic 原生格式：请求体 + 响应解析 ===
 let anthropicCapture: { url: string; body: any; headers: any } | null = null;
@@ -229,6 +354,39 @@ const ml = await listModels({ baseUrl: 'https://api.minimax.chat/v1', apiKey: 'k
 assert.equal(ml.ok, true);
 assert.deepEqual(ml.ok && ml.models, ['a-model', 'b-model'], '去重 + 排序');
 assert.ok(modelsUrl.includes('/models'), 'openai 兼容走 /models');
+
+// listModels：provider=auto 时也尝试 /v1 候选，和生成请求保持一致
+const autoModelUrls: string[] = [];
+const autoModelsFetch = (async (url: string) => {
+  autoModelUrls.push(url);
+  if (url === 'https://relay.example/models') {
+    return { ok: false, status: 404, text: async () => '{"error":"not found"}' };
+  }
+  if (url === 'https://relay.example/v1/models') {
+    return { ok: true, status: 200, json: async () => ({ data: [{ id: 'relay-model' }] }) };
+  }
+  return { ok: false, status: 500, text: async () => 'unexpected candidate' };
+}) as unknown as typeof fetch;
+const autoModels = await listModels(
+  { baseUrl: 'https://relay.example', apiKey: 'k', model: '' },
+  { fetchImpl: autoModelsFetch, provider: 'auto' },
+);
+assert.equal(autoModels.ok, true);
+assert.deepEqual(autoModels.ok && autoModels.models, ['relay-model'], 'listModels auto 尝试 /v1 后成功');
+assert.deepEqual(autoModelUrls.slice(0, 2), ['https://relay.example/models', 'https://relay.example/v1/models']);
+
+// listModels：显式 provider=openai 时不自动尝试 /v1
+const explicitModelUrls: string[] = [];
+const explicitModelsFetch = (async (url: string) => {
+  explicitModelUrls.push(url);
+  return { ok: false, status: 404, text: async () => '{"error":"not found"}' };
+}) as unknown as typeof fetch;
+const explicitModels = await listModels(
+  { baseUrl: 'https://relay.example', apiKey: 'k', model: '' },
+  { fetchImpl: explicitModelsFetch, provider: 'openai' },
+);
+assert.equal(explicitModels.ok, false);
+assert.deepEqual(explicitModelUrls, ['https://relay.example/models'], 'listModels 显式 provider 不做自动候选重试');
 
 // listModels：缺 key → ok:false
 const mlNoKey = await listModels({ baseUrl: 'https://x/v1', apiKey: '', model: '' });
