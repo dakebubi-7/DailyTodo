@@ -48,10 +48,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     generateExternal: (kind: 'weekly' | 'monthly', date: string) => ipcRenderer.invoke('aiReview:generateExternal', kind, date),
     recognizeTemplate: (rawTemplate: string) => ipcRenderer.invoke('aiReview:recognizeTemplate', rawTemplate),
     recognizeReportTemplate: (kind: 'weekly' | 'monthly', rawTemplate: string) => ipcRenderer.invoke('aiReview:recognizeReportTemplate', kind, rawTemplate),
+    pickTemplateFile: () => ipcRenderer.invoke('aiReview:pickTemplateFile'),
+    listModels: (cfg: { baseUrl?: string; apiKey?: string; provider?: string }) => ipcRenderer.invoke('aiReview:listModels', cfg),
     onTick: (callback: () => void) => {
       const listener = () => callback();
       ipcRenderer.on('aiReview:tick', listener);
       return () => ipcRenderer.removeListener('aiReview:tick', listener);
+    },
+    onWeeklyTick: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('aiReview:weeklyTick', listener);
+      return () => ipcRenderer.removeListener('aiReview:weeklyTick', listener);
+    },
+    onMonthlyTick: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('aiReview:monthlyTick', listener);
+      return () => ipcRenderer.removeListener('aiReview:monthlyTick', listener);
     },
   },
 });

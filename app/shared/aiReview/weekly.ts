@@ -1,5 +1,6 @@
 import type { RangeStats } from './stats';
 import type { ChatMessage } from '../llm/openaiClient';
+import { DEFAULT_WEEKLY_SYSTEM } from './defaultPrompts';
 
 /** ISO 8601 周键，如 2026-W23。周一为一周起点，含当年第一个周四的那周为第 1 周。 */
 export function isoWeekKey(date: string): string {
@@ -16,6 +17,24 @@ export function isoWeekKey(date: string): string {
   return `${target.getFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** ISO 周键（YYYY-Www）→ 该周周一的日期键（YYYY-MM-DD）。isoWeekKey 的逆运算。非法输入原样返回。 */
+export function isoWeekToMonday(weekKey: string): string {
+  const m = weekKey.match(/^(\d{4})-W(\d{2})$/);
+  if (!m) return weekKey;
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  // 1 月 4 日恒在 ISO 第 1 周；由它回推第 1 周的周一，再按周数平移。
+  const jan4 = new Date(year, 0, 4);
+  const jan4Mon = (jan4.getDay() + 6) % 7; // 周一=0
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - jan4Mon + (week - 1) * 7);
+  return `${monday.getFullYear()}-${pad2(monday.getMonth() + 1)}-${pad2(monday.getDate())}`;
+}
+
 export interface WeeklyParams {
   weekKey: string;
   dailyContents: Array<{ date: string; content: string }>;
@@ -23,9 +42,6 @@ export interface WeeklyParams {
   /** 自定义生成模板（system prompt）；空/未给 → 用内置默认句。 */
   systemPrompt?: string;
 }
-
-const DEFAULT_WEEKLY_SYSTEM =
-  '你是周报助手。基于本周日记生成个人周报，包含：概览、关键事件、知识增量、未完成、下周计划。不要编造数字，统计以给定值为准。输出 Markdown。';
 
 export function buildWeeklyMessages(params: WeeklyParams): ChatMessage[] {
   const system = params.systemPrompt?.trim() || DEFAULT_WEEKLY_SYSTEM;

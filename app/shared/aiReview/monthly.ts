@@ -1,5 +1,6 @@
 import type { RangeStats } from './stats';
 import type { ChatMessage } from '../llm/openaiClient';
+import { DEFAULT_MONTHLY_SYSTEM } from './defaultPrompts';
 
 /** 月键，如 2026-06。 */
 export function monthKey(date: string): string {
@@ -15,16 +16,27 @@ export function monthRange(month: string): { first: string; last: string } {
   return { first, last };
 }
 
+/** 月报的一条输入来源（周报或日报），label 用于在 prompt 里标注，如「第 1 周周报」「06-01 日报」。 */
+export interface MonthlySource {
+  label: string;
+  content: string;
+}
+
 export interface MonthlyParams {
   month: string; // YYYY-MM
-  weeklyHighlights: string[]; // 各周报要点
+  /** 月报输入来源：优先整月周报，缺失时回落当月日报全文（见 selectMonthlySources）。 */
+  sources: MonthlySource[];
   stats: RangeStats;
   /** 自定义生成模板（system prompt）；空/未给 → 用内置默认句。 */
   systemPrompt?: string;
 }
 
-const DEFAULT_MONTHLY_SYSTEM =
-  '你是月报助手。基于本月各周报要点生成个人月报，包含：月度概览、主要成果、知识沉淀、未完成与下月计划。不要编造数字，统计以给定值为准。输出 Markdown。';
+/** 月报输入选择：本月已有周报就只喂周报；一篇都没有则回落喂当月所有日报全文。空内容剔除。 */
+export function selectMonthlySources(weeklyReports: MonthlySource[], dailyReports: MonthlySource[]): MonthlySource[] {
+  const weekly = weeklyReports.filter((s) => s.content.trim());
+  if (weekly.length) return weekly;
+  return dailyReports.filter((s) => s.content.trim());
+}
 
 export function buildMonthlyMessages(params: MonthlyParams): ChatMessage[] {
   const system = params.systemPrompt?.trim() || DEFAULT_MONTHLY_SYSTEM;
@@ -35,8 +47,8 @@ export function buildMonthlyMessages(params: MonthlyParams): ChatMessage[] {
     `- 完成任务：${params.stats.totalCompleted}/${params.stats.totalTasks}`,
     `- 连续天数（截至月末）：${params.stats.streak}`,
     '',
-    '本月各周要点：',
-    ...params.weeklyHighlights.map((h, i) => `### 第 ${i + 1} 周\n${h.trim()}`),
+    '本月输入：',
+    ...params.sources.map((s) => `### ${s.label}\n${s.content.trim()}`),
   ].join('\n');
   return [
     { role: 'system', content: system },

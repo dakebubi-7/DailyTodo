@@ -19,15 +19,37 @@ export interface ReportResult {
   ok: boolean;
   filePath?: string;
   error?: string;
+  /** LLM 因输出上限被截断；文件仍写入，但提示用户调高 max_tokens。 */
+  truncated?: boolean;
 }
 
-/** 通用写入：原子写 + AI 草稿标注。 */
-async function writeReport(filePath: string, frontmatter: string, body: string): Promise<ReportResult> {
+const DRAFT_NOTE = '> 🤖 AI 草稿，请复核（对外稿需自行复核脱敏）';
+
+/**
+ * 组装最终写入内容：
+ * - 模型输出已自带 frontmatter（`---` 开头）：保留模型的 frontmatter，在其后插入草稿提示，
+ *   不再叠加 app 的 frontmatter（避免双重 frontmatter 破坏 Obsidian 解析）。
+ * - 否则：用 app 的 frontmatter + 草稿提示 + 正文（兼容不带 frontmatter 的旧/自定义模板）。
+ */
+export function composeReportContent(appFrontmatter: string, body: string): string {
+  const trimmed = body.trim();
+  const fm = trimmed.match(/^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n?/);
+  if (fm) {
+    const head = fm[0].trimEnd();
+    const rest = trimmed.slice(fm[0].length).replace(/^\s+/, '');
+    return `${head}\n\n${DRAFT_NOTE}\n\n${rest}\n`;
+  }
+  return `${appFrontmatter}\n\n${DRAFT_NOTE}\n\n${trimmed}\n`;
+}
+
+/** 通用写入：原子写 + AI 草稿标注。truncated 透传给调用方，文件照常写。 */
+async function writeReport(filePath: string, frontmatter: string, body: string, truncated?: boolean): Promise<ReportResult> {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const snap = readWithStamp(filePath);
-  const content = `${frontmatter}\n\n> 🤖 AI 草稿，请复核（对外稿需自行复核脱敏）\n\n${body.trim()}\n`;
+  const content = composeReportContent(frontmatter, body);
   const write = atomicReplace(filePath, content, snap.stamp);
-  return write.ok ? { ok: true, filePath } : { ok: false, error: write.error };
+  if (!write.ok) return { ok: false, error: write.error };
+  return truncated ? { ok: true, filePath, truncated: true } : { ok: true, filePath };
 }
 
 export async function generatePersonalWeekly(params: WeeklyGenParams): Promise<ReportResult> {
@@ -37,7 +59,7 @@ export async function generatePersonalWeekly(params: WeeklyGenParams): Promise<R
 
   const filePath = path.join(params.vaultPath, params.relativeDir || 'logs/weekly-review', `${params.weekKey}.md`);
   const fm = `---\ntitle: "个人周报 ${params.weekKey}"\nweek: "${params.weekKey}"\ntags: [weekly-review]\n---`;
-  return writeReport(filePath, fm, llm.content);
+  return writeReport(filePath, fm, llm.content, llm.truncated);
 }
 
 export interface MonthlyGenParams extends MonthlyParams {
@@ -54,7 +76,7 @@ export async function generatePersonalMonthly(params: MonthlyGenParams): Promise
 
   const filePath = path.join(params.vaultPath, params.relativeDir || 'logs/monthly-review', `${params.month}.md`);
   const fm = `---\ntitle: "个人月报 ${params.month}"\nmonth: "${params.month}"\ntags: [monthly-review]\n---`;
-  return writeReport(filePath, fm, llm.content);
+  return writeReport(filePath, fm, llm.content, llm.truncated);
 }
 
 export interface ExternalGenParams {
@@ -83,6 +105,6 @@ export async function generateExternalReport(params: ExternalGenParams): Promise
   const defaultDir = params.kind === 'weekly' ? 'exports/weekly-reports' : 'exports/monthly-reports';
   const filePath = path.join(params.vaultPath, params.relativeDir || defaultDir, `${params.periodKey}.md`);
   const fm = `---\ntitle: "对外${params.kind === 'weekly' ? '周' : '月'}报 ${params.periodKey}"\nperiod: "${params.periodKey}"\ntags: [external-report, needs-review]\n---`;
-  return writeReport(filePath, fm, llm.content);
+  return writeReport(filePath, fm, llm.content, llm.truncated);
 }
 

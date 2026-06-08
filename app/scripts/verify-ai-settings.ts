@@ -5,6 +5,8 @@ import {
   normalizeAiReviewSettings,
   sanitizeRelDir,
   DEFAULT_REPORT_DIRS,
+  createDefaultAiProfile,
+  resolveActiveProfile,
 } from '../shared/aiReview/aiReviewSettings';
 
 assert.equal(AI_REVIEW_SETTINGS_KEY, 'aiReviewSettings');
@@ -62,5 +64,66 @@ assert.equal(rep.monthlyPrompt, '', '非字符串模板 → 空');
 assert.equal(rep.externalWeeklyDir, '/out/wk/', '路径原样保留');
 assert.equal(rep.weeklyPrompt, '自定义周报', '合法模板保留');
 assert.equal(rep.externalWeeklyPrompt, '外部周报模板', '新增外部周报模板保留');
+
+// === 轻量多账号 profiles + activeProfileId ===
+const defProfile = createDefaultAiProfile();
+assert.ok(defProfile.id.length > 0, 'default profile has id');
+assert.equal(defProfile.provider, 'auto');
+assert.equal(defProfile.baseUrl, 'https://api.openai.com/v1');
+assert.equal(def.activeProfileId, '', '默认未显式选择 activeProfileId');
+assert.equal(def.profiles.length, 0, '新安装默认没有 profiles，迁移时再生成');
+
+// 旧版单配置自动迁移成 1 个默认 profile
+const migrated = normalizeAiReviewSettings({
+  provider: 'gemini',
+  baseUrl: 'https://generativelanguage.googleapis.com',
+  apiKey: 'g-key',
+  model: 'gemini-1.5-flash',
+  timeoutSeconds: 120,
+});
+assert.equal(migrated.profiles.length, 1, '旧单配置自动迁移');
+assert.equal(migrated.activeProfileId, migrated.profiles[0].id, '迁移后 active 指向默认 profile');
+assert.equal(migrated.profiles[0].provider, 'gemini');
+assert.equal(migrated.profiles[0].apiKey, 'g-key');
+
+// 显式 profiles 保留，坏 activeProfileId 回落到第一个 profile
+const kept = normalizeAiReviewSettings({
+  profiles: [
+    { id: 'p1', name: 'A', provider: 'openai', baseUrl: 'https://x/v1', apiKey: 'k1', model: 'm1', timeoutSeconds: 60 },
+    { id: 'p2', name: 'B', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', apiKey: 'k2', model: 'claude-3-5-haiku-latest', timeoutSeconds: 90 },
+  ],
+  activeProfileId: 'missing',
+});
+assert.equal(kept.profiles.length, 2, '显式 profiles 保留');
+assert.equal(kept.activeProfileId, 'p1', '坏 activeProfileId 回落首个 profile');
+assert.equal(kept.profiles[1].provider, 'anthropic');
+
+// resolveActiveProfile：按 activeProfileId 取当前生效账号
+const active = resolveActiveProfile(
+  normalizeAiReviewSettings({
+    profiles: [
+      { id: 'p1', name: 'A', provider: 'openai', baseUrl: 'https://x/v1', apiKey: 'k1', model: 'm1', timeoutSeconds: 60 },
+      { id: 'p2', name: 'B', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', apiKey: 'k2', model: 'claude-3-5-haiku-latest', timeoutSeconds: 90 },
+    ],
+    activeProfileId: 'p2',
+  }),
+);
+assert.equal(active.id, 'p2', 'resolve 返回 active 指向的 profile');
+assert.equal(active.apiKey, 'k2');
+assert.equal(active.model, 'claude-3-5-haiku-latest');
+
+// resolveActiveProfile：activeProfileId 失效 → 回落第一个 profile
+const activeFallback = resolveActiveProfile(
+  normalizeAiReviewSettings({
+    profiles: [{ id: 'only', name: 'X', provider: 'auto', baseUrl: 'https://y/v1', apiKey: 'ky', model: 'my', timeoutSeconds: 90 }],
+    activeProfileId: 'gone',
+  }),
+);
+assert.equal(activeFallback.id, 'only', 'active 失效回落首个 profile');
+
+// resolveActiveProfile：没有任何 profile（全新默认）→ 用顶层字段合成一个
+const activeSynth = resolveActiveProfile(createDefaultAiReviewSettings());
+assert.equal(activeSynth.baseUrl, 'https://api.openai.com/v1', '无 profile 时用顶层字段合成');
+assert.equal(activeSynth.model, 'gpt-4o-mini');
 
 console.log('AI settings verification passed');

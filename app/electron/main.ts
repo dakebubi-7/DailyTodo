@@ -47,18 +47,21 @@ import {
 } from '../shared/windowMode';
 import { runReviewForFile } from './aiReview/runner';
 import { backfillReviews } from './aiReview/backfill';
-import { callChatCompletion } from '../shared/llm/openaiClient';
-import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings, DEFAULT_REPORT_DIRS, sanitizeRelDir } from '../shared/aiReview/aiReviewSettings';
+import { callChatCompletion, listModels } from '../shared/llm/openaiClient';
+import type { LlmProvider } from '../shared/llm/openaiClient';
+import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings, DEFAULT_REPORT_DIRS, sanitizeRelDir, resolveActiveProfile } from '../shared/aiReview/aiReviewSettings';
 import { normalizeSections } from '../shared/aiReview/sectionConfig';
 import { buildRecognizeMessages, parseRecognizedSections } from '../shared/aiReview/recognizeTemplate';
 import { buildRecognizeReportMessages, parseRecognizedReportPrompt } from '../shared/aiReview/recognizeReportTemplate';
+import { parseTemplateFile } from '../shared/aiReview/templateFile';
 import type { ChatMessage } from '../shared/llm/openaiClient';
 import type { StatTask } from '../shared/aiReview/stats';
 import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
-import { getNextTimerDelay } from '../shared/aiReview/timer';
+import { getNextTimerDelay, getNextWeeklyDelay, getNextMonthlyDelay } from '../shared/aiReview/timer';
 import { generatePersonalWeekly, generatePersonalMonthly, generateExternalReport } from './aiReview/exportReports';
 import { isoWeekKey } from '../shared/aiReview/weekly';
-import { buildMonthlyMessages, monthKey, monthRange } from '../shared/aiReview/monthly';
+import { buildMonthlyMessages, monthKey, monthRange, selectMonthlySources, type MonthlySource } from '../shared/aiReview/monthly';
+import { DEFAULT_EXTERNAL_WEEKLY_SYSTEM, DEFAULT_EXTERNAL_MONTHLY_SYSTEM } from '../shared/aiReview/defaultPrompts';
 import { computeRangeStats } from '../shared/aiReview/stats';
 
 // 关闭 Chromium 在 Windows 上的原生窗口遮挡计算：透明无边框窗口在 Win+D / 点击桌面后
@@ -556,17 +559,25 @@ function getReviewSections() {
 }
 function getLlmCaller() {
   const s = getAiReviewSettings();
+  const p = resolveActiveProfile(s);
   return (messages: ChatMessage[]) =>
     callChatCompletion(
-      { baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model },
+      { baseUrl: p.baseUrl, apiKey: p.apiKey, model: p.model, maxTokens: p.maxTokens },
       messages,
-      { timeoutMs: s.timeoutSeconds * 1000, provider: s.provider },
+      { timeoutMs: p.timeoutSeconds * 1000, provider: p.provider },
     );
+}
+
+/** .docx → 纯文本（mammoth）。仅主进程用，动态引入避免进入 renderer 包。 */
+async function extractDocxText(buffer: Buffer): Promise<string> {
+  const mammoth = await import('mammoth');
+  const { value } = await mammoth.extractRawText({ buffer });
+  return value;
 }
 
 async function runReviewForDate(date: string, tasks: Task[]) {
   const settings = getAiReviewSettings();
-  if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', filledMarkers: [], skippedMarkers: [] };
+  if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', filledMarkers: [], skippedMarkers: [] };
   const filePath = getDailyFilePath(date);
   return runReviewForFile({
     filePath,
@@ -578,6 +589,8 @@ async function runReviewForDate(date: string, tasks: Task[]) {
 }
 
 let aiTimer: ReturnType<typeof setTimeout> | null = null;
+let weeklyTimer: ReturnType<typeof setTimeout> | null = null;
+let monthlyTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** 按设置的时间排程一次定时器；到点向渲染层发 aiReview:tick（由渲染层带 tasks 触发补偿），然后重新排程。 */
 function scheduleAiTimer(win: BrowserWindow) {
@@ -591,6 +604,36 @@ function scheduleAiTimer(win: BrowserWindow) {
   aiTimer = setTimeout(() => {
     if (!win.isDestroyed()) win.webContents.send('aiReview:tick');
     scheduleAiTimer(win);
+  }, delay);
+}
+
+/** 周报定时：到点发 aiReview:weeklyTick（渲染层带 tasks 生成上一周），然后重新排程。 */
+function scheduleWeeklyTimer(win: BrowserWindow) {
+  if (weeklyTimer) {
+    clearTimeout(weeklyTimer);
+    weeklyTimer = null;
+  }
+  const settings = getAiReviewSettings();
+  if (!settings.weeklyTimerEnabled) return;
+  const delay = getNextWeeklyDelay(new Date(), settings.weeklyTimerWeekday, settings.weeklyTimerTime);
+  weeklyTimer = setTimeout(() => {
+    if (!win.isDestroyed()) win.webContents.send('aiReview:weeklyTick');
+    scheduleWeeklyTimer(win);
+  }, delay);
+}
+
+/** 月报定时：到点发 aiReview:monthlyTick（渲染层带 tasks 生成上一月），然后重新排程。 */
+function scheduleMonthlyTimer(win: BrowserWindow) {
+  if (monthlyTimer) {
+    clearTimeout(monthlyTimer);
+    monthlyTimer = null;
+  }
+  const settings = getAiReviewSettings();
+  if (!settings.monthlyTimerEnabled) return;
+  const delay = getNextMonthlyDelay(new Date(), settings.monthlyTimerDay, settings.monthlyTimerTime);
+  monthlyTimer = setTimeout(() => {
+    if (!win.isDestroyed()) win.webContents.send('aiReview:monthlyTick');
+    scheduleMonthlyTimer(win);
   }, delay);
 }
 
@@ -1188,6 +1231,8 @@ function createWindow() {
   mainWindow = win;
   diag('BrowserWindow created');
   scheduleAiTimer(win);
+  scheduleWeeklyTimer(win);
+  scheduleMonthlyTimer(win);
   // 工具窗口样式：不上任务栏 / 不进 Alt+Tab（保持挂件观感）。
   applyToolWindowStyle(win);
   applyWindowMode(win, initialMode);
@@ -1338,7 +1383,11 @@ function createWindow() {
   ipcMain.handle('aiReview:setSettings', (_e, v: unknown) => {
     const next = normalizeAiReviewSettings(v);
     store.set(AI_REVIEW_SETTINGS_KEY, next);
-    if (mainWindow && !mainWindow.isDestroyed()) scheduleAiTimer(mainWindow);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      scheduleAiTimer(mainWindow);
+      scheduleWeeklyTimer(mainWindow);
+      scheduleMonthlyTimer(mainWindow);
+    }
     return next;
   });
   ipcMain.handle('aiReview:getSections', () => getReviewSections());
@@ -1350,7 +1399,7 @@ function createWindow() {
   ipcMain.handle('aiReview:runForDate', (_e, date: string, tasks: Task[]) => runReviewForDate(getDateKey(date), tasks));
   ipcMain.handle('aiReview:backfill', async (_e, tasks: Task[]) => {
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !settings.apiKey) return { processed: [], filled: [], errors: [] };
+    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { processed: [], filled: [], errors: [] };
     const rollover = getAppSettings().rolloverTime;
     const today = getBusinessDateKey(new Date(), rollover);
     const dates = Array.from({ length: settings.backfillDays }, (_, i) => shiftDateKey(today, -i));
@@ -1365,7 +1414,7 @@ function createWindow() {
   });
   ipcMain.handle('aiReview:generateWeekly', async (_e, date: string, tasks: Task[]) => {
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
     const vaultStatus = getVaultStatus();
     if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
     const selected = getDateKey(date);
@@ -1393,24 +1442,34 @@ function createWindow() {
   });
   ipcMain.handle('aiReview:generateMonthly', async (_e, date: string, tasks: Task[]) => {
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
     const vaultStatus = getVaultStatus();
     if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
     const month = monthKey(getDateKey(date));
     const { first, last } = monthRange(month);
-    // 收集当月各 daily 正文作为周要点的简化来源。
     const dayCount = Number(last.slice(-2));
-    const highlights: string[] = [];
+    // 当月所有日报全文（不再截断），同时收集本月相交 ISO 周的周报。
+    const dailyReports: MonthlySource[] = [];
+    const weekKeys = new Set<string>();
     for (let i = 0; i < dayCount; i++) {
       const wd = shiftDateKey(first, i);
+      weekKeys.add(isoWeekKey(wd));
       const filePath = getDailyFilePath(wd);
-      if (fs.existsSync(filePath)) highlights.push(`${wd}: ${fs.readFileSync(filePath, 'utf-8').slice(0, 500)}`);
+      if (fs.existsSync(filePath)) dailyReports.push({ label: `${wd} 日报`, content: fs.readFileSync(filePath, 'utf-8') });
     }
+    const weeklyDir = sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly);
+    const weeklyReports: MonthlySource[] = [];
+    for (const wk of weekKeys) {
+      const wkPath = path.join(vaultStatus.vaultPath, weeklyDir, `${wk}.md`);
+      if (fs.existsSync(wkPath)) weeklyReports.push({ label: `${wk} 周报`, content: fs.readFileSync(wkPath, 'utf-8') });
+    }
+    // 周报优先，没有则回落当月日报全文。
+    const sources = selectMonthlySources(weeklyReports, dailyReports);
     const stats = computeRangeStats(tasks as StatTask[], first, last);
     return generatePersonalMonthly({
       vaultPath: vaultStatus.vaultPath,
       month,
-      weeklyHighlights: highlights,
+      sources,
       stats,
       relativeDir: sanitizeRelDir(settings.monthlyDir, DEFAULT_REPORT_DIRS.monthly),
       systemPrompt: settings.monthlyPrompt,
@@ -1419,7 +1478,7 @@ function createWindow() {
   });
   ipcMain.handle('aiReview:generateExternal', async (_e, kind: 'weekly' | 'monthly', date: string) => {
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
     const vaultStatus = getVaultStatus();
     if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
     const selected = getDateKey(date);
@@ -1447,6 +1506,7 @@ function createWindow() {
         ? sanitizeRelDir(settings.externalWeeklyDir, DEFAULT_REPORT_DIRS.externalWeekly)
         : sanitizeRelDir(settings.externalMonthlyDir, DEFAULT_REPORT_DIRS.externalMonthly);
     const externalPrompt = kind === 'weekly' ? settings.externalWeeklyPrompt : settings.externalMonthlyPrompt;
+    const externalDefault = kind === 'weekly' ? DEFAULT_EXTERNAL_WEEKLY_SYSTEM : DEFAULT_EXTERNAL_MONTHLY_SYSTEM;
     return generateExternalReport({
       vaultPath: vaultStatus.vaultPath,
       kind,
@@ -1456,9 +1516,9 @@ function createWindow() {
       buildMessages: (redacted) =>
         buildMonthlyMessages({
           month: periodKey,
-          weeklyHighlights: [redacted],
+          sources: [{ label: periodKey, content: redacted }],
           stats: { start: dates[0], end: dates[dates.length - 1], activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 },
-          systemPrompt: externalPrompt,
+          systemPrompt: externalPrompt?.trim() || externalDefault,
         }),
       callLlm: getLlmCaller(),
     });
@@ -1466,7 +1526,7 @@ function createWindow() {
   ipcMain.handle('aiReview:recognizeTemplate', async (_e, rawTemplate: string) => {
     const fallback = getReviewSections();
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !settings.apiKey) {
+    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) {
       return { ok: false, error: 'AI 复盘未启用或缺少 Key', sections: fallback, unmatched: true };
     }
     if (typeof rawTemplate !== 'string' || !rawTemplate.trim()) {
@@ -1479,7 +1539,7 @@ function createWindow() {
   });
   ipcMain.handle('aiReview:recognizeReportTemplate', async (_e, kind: 'weekly' | 'monthly', rawTemplate: string) => {
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !settings.apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', prompt: '' };
+    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', prompt: '' };
     if (typeof rawTemplate !== 'string' || !rawTemplate.trim()) return { ok: false, error: '请粘贴你的报告模板', prompt: '' };
     const safeKind = kind === 'monthly' ? 'monthly' : 'weekly';
     const llm = await getLlmCaller()(buildRecognizeReportMessages(rawTemplate, safeKind));
@@ -1487,6 +1547,38 @@ function createWindow() {
     const prompt = parseRecognizedReportPrompt(llm.content);
     if (!prompt) return { ok: false, error: '未能识别出可用的生成指令', prompt: '' };
     return { ok: true, prompt };
+  });
+
+  // 一键拉取模型列表：用「正在编辑」的账号配置（前端传入，不必是当前生效账号）。
+  ipcMain.handle('aiReview:listModels', async (
+    _e,
+    cfg: { baseUrl?: string; apiKey?: string; provider?: LlmProvider | 'auto' },
+  ) => {
+    const baseUrl = typeof cfg?.baseUrl === 'string' ? cfg.baseUrl : '';
+    const apiKey = typeof cfg?.apiKey === 'string' ? cfg.apiKey : '';
+    const provider = cfg?.provider ?? 'auto';
+    return listModels({ baseUrl, apiKey, model: '' }, { provider, timeoutMs: 20_000 });
+  });
+
+  // 「选文件」识别模板：弹文件框 → 读取 → 解析纯文本，回填到识别草稿框。
+  ipcMain.handle('aiReview:pickTemplateFile', async () => {
+    const result = await dialog.showOpenDialog(win, {
+      title: zh('选择模板文件（.md / .txt / .docx）'),
+      defaultPath: getVaultPath() || app.getPath('documents'),
+      properties: ['openFile'],
+      filters: [{ name: zh('模板文件'), extensions: ['md', 'txt', 'docx'] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, canceled: true };
+    const filePath = result.filePaths[0];
+    const fileName = path.basename(filePath);
+    try {
+      const buffer = fs.readFileSync(filePath);
+      const parsed = await parseTemplateFile(buffer, fileName, extractDocxText);
+      if (!parsed.ok) return { ok: false, error: parsed.error };
+      return { ok: true, text: parsed.text, fileName };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
   });
 
   ipcMain.handle('obsidian:getPath', () => store.get(OBSIDIAN_PATH_KEY) || getDefaultVaultPath());

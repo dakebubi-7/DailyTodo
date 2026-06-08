@@ -207,10 +207,28 @@ export default function App() {
   useEffect(() => {
     if (!isLoaded) return;
     void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
-    const off = window.electronAPI?.aiReview?.onTick(() => {
+    const offDaily = window.electronAPI?.aiReview?.onTick(() => {
       void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
     });
-    return off;
+    // 周报定时：到点生成「上一周」（今天往前 7 天落在上一个完整周）。
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    const ymd = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    const offWeekly = window.electronAPI?.aiReview?.onWeeklyTick(() => {
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      void window.electronAPI?.aiReview?.generateWeekly(ymd(lastWeek), allTasksRef.current);
+    });
+    // 月报定时：到点生成「上一个月」（用上月最后一天，落在该月内）。
+    const offMonthly = window.electronAPI?.aiReview?.onMonthlyTick(() => {
+      const now = new Date();
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      void window.electronAPI?.aiReview?.generateMonthly(ymd(prevMonthEnd), allTasksRef.current);
+    });
+    return () => {
+      offDaily?.();
+      offWeekly?.();
+      offMonthly?.();
+    };
   }, [isLoaded]);
 
   // AI 复盘首次向导：首启且未启用、从未关闭过 → 弹出。

@@ -6,8 +6,26 @@ import {
   generatePersonalWeekly,
   generatePersonalMonthly,
   generateExternalReport,
+  composeReportContent,
 } from '../electron/aiReview/exportReports';
 import { buildMonthlyMessages } from '../shared/aiReview/monthly';
+
+// === composeReportContent：模型自带 frontmatter 时不叠加 app frontmatter ===
+const withFm = composeReportContent(
+  '---\ntitle: "app"\n---',
+  '---\n类型: 周报\n周期: 2026-W23\n---\n\n# 正文\n内容',
+);
+assert.ok(withFm.includes('类型: 周报'), '保留模型 frontmatter');
+assert.ok(!withFm.includes('title: "app"'), '不叠加 app frontmatter');
+assert.equal(withFm.indexOf('---'), 0, '文件以模型 frontmatter 开头');
+assert.ok(withFm.includes('AI 草稿'), '草稿提示注入');
+assert.ok(withFm.indexOf('AI 草稿') > withFm.indexOf('类型: 周报'), '草稿提示在 frontmatter 之后');
+assert.ok(withFm.indexOf('# 正文') > withFm.indexOf('AI 草稿'), '正文在草稿提示之后');
+
+// 不带 frontmatter → 用 app frontmatter
+const noFm = composeReportContent('---\ntitle: "app"\n---', '# 正文\n内容');
+assert.ok(noFm.startsWith('---\ntitle: "app"\n---'), '无 frontmatter 时用 app 的');
+assert.ok(noFm.includes('AI 草稿') && noFm.includes('# 正文'));
 
 const vault = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-weekly-'));
 const out = await generatePersonalWeekly({
@@ -39,7 +57,7 @@ assert.equal(fs.existsSync(path.join(vault, 'logs', 'weekly-review', '2026-W24.m
 const monthly = await generatePersonalMonthly({
   vaultPath: vault,
   month: '2026-06',
-  weeklyHighlights: ['第一周 X'],
+  sources: [{ label: '2026-W23 周报', content: '第一周 X' }],
   stats: { start: '2026-06-01', end: '2026-06-30', activeDays: 5, totalCompleted: 3, totalTasks: 4, streak: 2 },
   callLlm: async () => ({ ok: true, content: '# 月报\n月度概览' }),
 });
@@ -70,7 +88,7 @@ const external = await generateExternalReport({
   ],
   buildMessages: (redacted) => {
     sawInPrompt = redacted;
-    return buildMonthlyMessages({ month: 'x', weeklyHighlights: [redacted], stats: { start: '', end: '', activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 } });
+    return buildMonthlyMessages({ month: 'x', sources: [{ label: 'x', content: redacted }], stats: { start: '', end: '', activeDays: 0, totalCompleted: 0, totalTasks: 0, streak: 0 } });
   },
   callLlm: async () => ({ ok: true, content: '对外周报正文' }),
 });
