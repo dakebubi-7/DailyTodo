@@ -154,7 +154,6 @@ type DesktopWidgetState = 'desktop-visible' | 'app-background' | 'dt-active';
 const OBSIDIAN_PATH_KEY = 'obsidianVaultPath';
 const COMPANION_SETTINGS_KEY = 'obsidianCompanionSettings';
 const WINDOW_STATE_KEY = 'windowState';
-const DESKTOP_WIDGET_WINDOW_STATE_KEY = 'desktopWidgetWindowState';
 const COMPACT_MODE_KEY = 'compactMode';
 const AUTO_START_KEY = 'autoStart';
 const MIN_WINDOW_WIDTH = 240;
@@ -162,10 +161,6 @@ const DEFAULT_WINDOW_WIDTH = 240;
 const DEFAULT_WINDOW_HEIGHT = 480;
 const RESET_WINDOW_WIDTH = 240;
 const RESET_WINDOW_HEIGHT = 480;
-const DEFAULT_WIDGET_WINDOW_WIDTH = 300;
-const DEFAULT_WIDGET_WINDOW_HEIGHT = 420;
-const MIN_WIDGET_WINDOW_WIDTH = 260;
-const MIN_WIDGET_WINDOW_HEIGHT = 320;
 const APP_ICON_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABiklEQVR4nO3bQRKCMAwFUM7BHbgCB0Dv4PW8ijdx6ca1rpxhFCFpkv6kDTPZgc1/QumCDgPxmJb5FamouZoLrgaBbhwKgW4WioBuEoqAbg6KgG4KjoBuCAqAbgaOgG4ECoBuAl3qAM/H3bRcA1iHt0BQA6gVXhtBBaB2eE0EMQAqvBZCAiRAAiSAGcC0zBetSoAECAjQ/RyQAAmQAOoBQwFMy3wqrb1wXQBQx2wVgDymawCrSa1rgFCToHX4pgBKx2kCQDJGeADpGO4AtJvXAKwGwAmhdXeFAOCcRwl/u543yzXA+tzS8P+CSyCqAkj+eWp4LoL5JFg7/DiOLAST1yAy/KeoCGbrgNoA6/AuADgIVuEpCOYrQcn1R8/4Vnh3ANwF0h7Ad0hKeBcAWwiUa45udUp4cwAOArcoz/tR+CoAVgilkx4EAIUgXRG6/1CSsxByAWBRVuGnSN8Lm4WPAsBBoP5e2D0D0uA/4aMBaFTX+4a63jm2G751BFL4VhFY4VuCKA4eHYKa6w3BqOZexsuoaQAAAABJRU5ErkJggg==';
 
@@ -198,10 +193,8 @@ function createTrayIcon() {
 }
 
 let mainWindow: BrowserWindow | null = null;
-let desktopWidgetWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let persistTimer: NodeJS.Timeout | null = null;
-let widgetPersistTimer: NodeJS.Timeout | null = null;
 let isQuitting = false;
 // 当前窗口模式的进程内真相源（normal / onTop / desktop）。createWindow 时从存储解析。
 let windowMode: WindowMode = 'onTop';
@@ -909,134 +902,6 @@ function persistWindowState(win: BrowserWindow) {
   }, 250);
 }
 
-function getInitialDesktopWidgetBounds() {
-  const saved = store.get(DESKTOP_WIDGET_WINDOW_STATE_KEY) as WindowState | undefined;
-  const { workArea } = screen.getPrimaryDisplay();
-  const width = Math.max(MIN_WIDGET_WINDOW_WIDTH, saved?.width || DEFAULT_WIDGET_WINDOW_WIDTH);
-  const height = Math.max(MIN_WIDGET_WINDOW_HEIGHT, saved?.height || DEFAULT_WIDGET_WINDOW_HEIGHT);
-  const x = saved?.x ?? workArea.x + workArea.width - width - 30;
-  const y = saved?.y ?? workArea.y + 96;
-  return { width, height, x, y };
-}
-
-function persistDesktopWidgetWindowState(win: BrowserWindow) {
-  if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
-  widgetPersistTimer = setTimeout(() => {
-    if (win.isDestroyed() || win.isMinimized()) return;
-    store.set(DESKTOP_WIDGET_WINDOW_STATE_KEY, win.getBounds());
-  }, 250);
-}
-
-// ===== 桌面组件窗口：自包含桌面挂件 =====
-// widget 永远是桌面挂件，不随主窗口的 windowMode 变化。
-// z 序拆成两套机制，各管一件事，互不打架：
-//  1) focus/blur 事件管「浮起 / 沉底」：点组件 → 浮到顶方便打字；点别处 → 沉回桌面。
-//     只在用户真的切换焦点时动一次，不随前台抖动，故不会「蹦到别的软件上面」。
-//  2) 低频轮询(700ms)只管「被 Win+D 收起就复现」：发现窗口不可见/最小化 → showInactive 复现并沉底。
-//     它「绝不」置顶——置顶交给 focus 事件，避免轮询被 WorkerW 前台抖动骗到而盖住其它 app。
-// owner=Progman 仅进入时设一次（豁免尝试，单独不可靠，靠轮询兜底）。用独立 widget* 状态，绝不碰主窗口全局态。
-const WIDGET_GUARD_INTERVAL_MS = 700;
-let widgetDesktopGuardTimer: NodeJS.Timeout | null = null;
-let widgetDesktopOwnerApplied = false;
-let widgetRaised = false; // 当前是否处于「浮起」态（用户点了组件）。
-
-function applyWidgetDesktopOwner(win: BrowserWindow) {
-  if (win.isDestroyed()) return;
-  const handle = win.getNativeWindowHandle();
-  if (!win32 || !handle) return;
-  try {
-    widgetDesktopOwnerApplied = win32.setDesktopOwner(handle);
-    diag(`widget owner: setDesktopOwner -> ${widgetDesktopOwnerApplied}`);
-  } catch (error) {
-    widgetDesktopOwnerApplied = false;
-    diag(`widget owner: set threw → skip: ${String(error)}`);
-  }
-}
-
-function clearWidgetDesktopOwner(win: BrowserWindow) {
-  if (!widgetDesktopOwnerApplied || win.isDestroyed()) return;
-  const handle = win.getNativeWindowHandle();
-  if (!win32 || !handle) return;
-  try {
-    win32.clearDesktopOwner(handle);
-  } catch (error) {
-    diag(`widget owner: clear threw: ${String(error)}`);
-  } finally {
-    widgetDesktopOwnerApplied = false;
-  }
-}
-
-// 浮起：用户点了组件 → 浮到顶，方便打字 / 点任务。仅由 focus 事件触发。
-function raiseWidget(win: BrowserWindow) {
-  if (win.isDestroyed() || !win32) return;
-  const handle = win.getNativeWindowHandle();
-  if (!handle) return;
-  widgetRaised = true;
-  try {
-    if (!win.isVisible()) win.showInactive();
-    win.setAlwaysOnTop(true, 'screen-saver');
-    win32.setTopmost(handle);
-  } catch (error) {
-    diag(`widget raise failed: ${String(error)}`);
-  }
-}
-
-// 沉底：贴回桌面（壁纸之上、所有 app 之下）。由 blur 事件、以及轮询复现后触发。
-function sinkWidget(win: BrowserWindow) {
-  if (win.isDestroyed() || !win32) return;
-  const handle = win.getNativeWindowHandle();
-  if (!handle) return;
-  widgetRaised = false;
-  try {
-    win.setAlwaysOnTop(false, 'normal');
-    win32.clearTopmost(handle);
-    win32.sendToBottom(handle);
-  } catch (error) {
-    diag(`widget sink failed: ${String(error)}`);
-  }
-}
-
-// 低频轮询：唯一职责是「被 Win+D 收起就复现」。绝不置顶 —— 置顶交给 focus 事件，
-// 避免轮询被 WorkerW 前台抖动骗到而把组件盖到其它 app 上。复现后保持当前 z 序意图（浮/沉）。
-function startWidgetDesktopPin(win: BrowserWindow) {
-  stopWidgetDesktopGuard();
-  applyWidgetDesktopOwner(win); // 豁免尝试，单独不可靠，靠下面的轮询兜底。
-  sinkWidget(win); // 进入即沉到桌面。
-  widgetDesktopGuardTimer = setInterval(() => {
-    if (isQuitting || win.isDestroyed()) {
-      stopWidgetDesktopGuard();
-      return;
-    }
-    if (win.isMinimized() || !win.isVisible()) {
-      diag('widget guard: hidden by system → re-show on desktop');
-      try {
-        if (win.isMinimized()) win.restore();
-        win.showInactive();
-        // 复现后归位：用户没在用就沉回桌面（绝不主动置顶，避免盖住其它 app）。
-        const handle = win.getNativeWindowHandle();
-        const stillRaised = widgetRaised && !!win32 && !!handle && win32.isForegroundWindow(handle);
-        if (stillRaised) raiseWidget(win);
-        else sinkWidget(win);
-      } catch (error) {
-        diag(`widget guard: re-show failed: ${String(error)}`);
-      }
-    }
-  }, WIDGET_GUARD_INTERVAL_MS);
-}
-
-// 退出（窗口关闭）：停轮询 + 清 owner，回到普通窗口语义。
-function stopWidgetDesktopPin(win: BrowserWindow) {
-  stopWidgetDesktopGuard();
-  clearWidgetDesktopOwner(win);
-}
-
-function stopWidgetDesktopGuard() {
-  if (widgetDesktopGuardTimer) {
-    clearInterval(widgetDesktopGuardTimer);
-    widgetDesktopGuardTimer = null;
-  }
-}
-
 /** 从存储解析当前窗口模式（含旧布尔 alwaysOnTop 的迁移）。 */
 function getStoredWindowMode(): WindowMode {
   return resolveWindowMode(store.get(WINDOW_MODE_KEY), store.get(LEGACY_ALWAYS_ON_TOP_KEY));
@@ -1215,7 +1080,6 @@ function refreshTrayMenu() {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: zh('打开 DailyTodo'), click: showMainWindow },
-      { label: zh('打开桌面组件'), click: showDesktopWidgetWindow },
       {
         label: zh('钉在桌面（组件模式）'),
         type: 'checkbox',
@@ -1245,73 +1109,6 @@ function createTray() {
   tray.setToolTip('DailyTodo');
   refreshTrayMenu();
   tray.on('click', showMainWindow);
-}
-
-function createDesktopWidgetWindow(): BrowserWindow {
-  if (desktopWidgetWindow && !desktopWidgetWindow.isDestroyed()) {
-    return desktopWidgetWindow;
-  }
-
-  const widgetWindow = new BrowserWindow({
-    ...getInitialDesktopWidgetBounds(),
-    minWidth: MIN_WIDGET_WINDOW_WIDTH,
-    minHeight: MIN_WIDGET_WINDOW_HEIGHT,
-    frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    hasShadow: true,
-    skipTaskbar: true,
-    resizable: true,
-    show: false,
-    alwaysOnTop: false,
-    icon: createAppIcon(),
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      backgroundThrottling: false,
-    },
-  });
-
-  desktopWidgetWindow = widgetWindow;
-  loadRenderer(widgetWindow, { view: 'widget' });
-  // 桌面挂件：不进任务栏；不进 Alt+Tab 由 frame:false + skipTaskbar 达成。
-  widgetWindow.once('ready-to-show', () => {
-    widgetWindow.show();
-    // 窗口就绪后再进入桌面组件模式：此时原生句柄已可用，沉到桌面 + 启动复现轮询。
-    startWidgetDesktopPin(widgetWindow);
-  });
-  // z 序由焦点驱动：点组件 → 浮起方便打字/点任务；点别处 → 沉回桌面。不随前台抖动，故不会盖到别的 app。
-  widgetWindow.on('focus', () => raiseWidget(widgetWindow));
-  widgetWindow.on('blur', () => sinkWidget(widgetWindow));
-  widgetWindow.on('move', () => persistDesktopWidgetWindowState(widgetWindow));
-  widgetWindow.on('resize', () => persistDesktopWidgetWindowState(widgetWindow));
-  // 关闭即销毁：必须同步保存 bounds，防抖定时器会在窗口销毁后才触发、永远存不下来。
-  widgetWindow.on('close', () => {
-    if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
-    widgetPersistTimer = null;
-    stopWidgetDesktopPin(widgetWindow);
-    if (!widgetWindow.isDestroyed() && !widgetWindow.isMinimized()) {
-      store.set(DESKTOP_WIDGET_WINDOW_STATE_KEY, widgetWindow.getBounds());
-    }
-  });
-  widgetWindow.on('closed', () => {
-    desktopWidgetWindow = null;
-  });
-
-  return widgetWindow;
-}
-
-function showDesktopWidgetWindow() {
-  // 新建窗口由 ready-to-show 负责首次 show()，避免渲染就绪前 show 出现透明空窗闪烁；
-  // 已存在的窗口不会再触发 ready-to-show，需要在这里直接 show/focus。
-  const isExisting = !!desktopWidgetWindow && !desktopWidgetWindow.isDestroyed();
-  const widgetWindow = createDesktopWidgetWindow();
-  if (widgetWindow.isMinimized()) widgetWindow.restore();
-  if (isExisting) {
-    widgetWindow.show();
-    widgetWindow.focus();
-  }
 }
 
 function createWindow() {
@@ -1778,12 +1575,6 @@ app.on('before-quit', () => {
   if (mainWindow && !mainWindow.isDestroyed() && windowMode === 'desktop') {
     clearDesktopOwner(mainWindow);
   }
-  if (desktopWidgetWindow && !desktopWidgetWindow.isDestroyed()) {
-    if (widgetPersistTimer) clearTimeout(widgetPersistTimer);
-    widgetPersistTimer = null;
-    stopWidgetDesktopPin(desktopWidgetWindow);
-    desktopWidgetWindow.removeAllListeners();
-  }
 });
 app.on('will-quit', () => diag('will-quit'));
 app.on('quit', (_e, code) => diag(`quit code=${code}`));
@@ -1791,7 +1582,6 @@ app.on('quit', (_e, code) => diag(`quit code=${code}`));
 app.on('window-all-closed', () => {
   diag('window-all-closed');
   mainWindow = null;
-  desktopWidgetWindow = null;
   if (isQuitting && process.platform !== 'darwin') {
     app.quit();
   }

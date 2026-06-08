@@ -1,4 +1,4 @@
-export type RendererView = 'main' | 'widget';
+export type RendererView = 'main';
 
 export type RendererRoute = {
   view: RendererView;
@@ -6,7 +6,7 @@ export type RendererRoute = {
 };
 
 function isRendererView(value: string): value is RendererView {
-  return value === 'main' || value === 'widget';
+  return value === 'main';
 }
 
 export function buildRendererQuery(route: RendererRoute): Record<string, string> {
@@ -34,13 +34,7 @@ export function buildDevRendererUrl(baseUrl: string, route: RendererRoute): stri
 }
 
 export function resolveRendererView(value: string): RendererView {
-  try {
-    const params = value.startsWith('?')
-      ? new URLSearchParams(value)
-      : new URL(value).searchParams;
-    const view = params.get('view') || 'main';
-    return isRendererView(view) ? view : 'main';
-  } catch {
-    return 'main';
-  }
+  // 仅剩主视图；保留函数签名供 main 进程的 loadRenderer 复用。
+  void value;
+  return 'main';
 }
