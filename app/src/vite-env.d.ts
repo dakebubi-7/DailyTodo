@@ -46,5 +46,23 @@ interface Window {
     getWindowCompactMode: () => Promise<boolean>;
     getAutoStart: () => Promise<boolean>;
     setAutoStart: (enabled: boolean) => Promise<boolean>;
+    aiReview: {
+      getSettings: () => Promise<import('../shared/aiReview/aiReviewSettings').AiReviewSettings>;
+      setSettings: (settings: import('../shared/aiReview/aiReviewSettings').AiReviewSettings) => Promise<import('../shared/aiReview/aiReviewSettings').AiReviewSettings>;
+      getSections: () => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
+      setSections: (sections: import('../shared/aiReview/sectionConfig').SectionConfig[]) => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
+      runForDate: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; error?: string; filledMarkers: string[]; skippedMarkers: string[] }>;
+      backfill: (tasks: import('./types/task').Task[]) => Promise<{ processed: string[]; filled: string[]; errors: Array<{ date: string; error: string }> }>;
+      generateWeekly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean }>;
+      generateMonthly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean }>;
+      generateExternal: (kind: 'weekly' | 'monthly', date: string) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean }>;
+      recognizeTemplate: (rawTemplate: string) => Promise<{ ok: boolean; error?: string; sections: import('../shared/aiReview/sectionConfig').SectionConfig[]; confidence?: 'high' | 'medium' | 'low'; unmatched?: boolean }>;
+      recognizeReportTemplate: (kind: 'weekly' | 'monthly', rawTemplate: string) => Promise<{ ok: boolean; error?: string; prompt: string }>;
+      pickTemplateFile: () => Promise<{ ok: boolean; text?: string; fileName?: string; error?: string; canceled?: boolean }>;
+      listModels: (cfg: { baseUrl?: string; apiKey?: string; provider?: string }) => Promise<{ ok: true; models: string[] } | { ok: false; error: string }>;
+      onTick: (callback: () => void) => () => void;
+      onWeeklyTick: (callback: () => void) => () => void;
+      onMonthlyTick: (callback: () => void) => () => void;
+    };
   };
 }

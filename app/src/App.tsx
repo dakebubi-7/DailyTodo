@@ -11,6 +11,7 @@ import { DailyWorkPanel } from './components/DailyWorkPanel';
 import { ReviewView } from './components/ReviewView';
 import { AddTaskInput } from './components/AddTaskInput';
 import { SettingsPanel } from './components/SettingsPanel';
+import { AiOnboarding } from './components/AiOnboarding';
 import { TaskCompletionDialog } from './components/TaskCompletionDialog';
 import { TaskReviewDialog } from './components/TaskReviewDialog';
 import { ObsidianCompanionPanel } from './components/ObsidianCompanionPanel';
@@ -42,6 +43,10 @@ import {
   writeCompanionSync,
 } from './store/taskStore';
 import { getShellText } from './i18n';
+import {
+  AiReviewSettings,
+} from '../shared/aiReview/aiReviewSettings';
+import { shouldShowOnboarding } from '../shared/aiReview/onboarding';
 
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low';
 const PERSONALIZATION_KEY = 'personalizationSettings';
@@ -103,6 +108,7 @@ export default function App() {
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aiOnboarding, setAiOnboarding] = useState<AiReviewSettings | null>(null);
   const [completionTask, setCompletionTask] = useState<Task | null>(null);
   const [reviewTask, setReviewTask] = useState<Task | null>(null);
   const [personalization, setPersonalization] = useState<PersonalizationSettings>(DEFAULT_PERSONALIZATION);
@@ -192,6 +198,48 @@ export default function App() {
         if (settings) setObsidianTemplatesState(settings);
       })
       .catch(() => setObsidianTemplatesState(createDefaultObsidianTemplateSettings()));
+  }, []);
+
+  // AI 复盘补偿：启动加载完成后补近 N 天；定时器到点（aiReview:tick）再补一次。
+  // 用 ref 持有最新 allTasks 供 tick 监听器读取；主进程在 AI 未启用/无 key 时会静默跳过。
+  const allTasksRef = useRef(allTasks);
+  allTasksRef.current = allTasks;
+  useEffect(() => {
+    if (!isLoaded) return;
+    void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
+    const offDaily = window.electronAPI?.aiReview?.onTick(() => {
+      void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
+    });
+    // 周报定时：到点生成「上一周」（今天往前 7 天落在上一个完整周）。
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    const ymd = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    const offWeekly = window.electronAPI?.aiReview?.onWeeklyTick(() => {
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      void window.electronAPI?.aiReview?.generateWeekly(ymd(lastWeek), allTasksRef.current);
+    });
+    // 月报定时：到点生成「上一个月」（用上月最后一天，落在该月内）。
+    const offMonthly = window.electronAPI?.aiReview?.onMonthlyTick(() => {
+      const now = new Date();
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      void window.electronAPI?.aiReview?.generateMonthly(ymd(prevMonthEnd), allTasksRef.current);
+    });
+    return () => {
+      offDaily?.();
+      offWeekly?.();
+      offMonthly?.();
+    };
+  }, [isLoaded]);
+
+  // AI 复盘首次向导：首启且未启用、从未关闭过 → 弹出。
+  useEffect(() => {
+    let active = true;
+    void window.electronAPI?.aiReview?.getSettings().then((settings) => {
+      if (active && settings && shouldShowOnboarding(settings)) setAiOnboarding(settings);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -407,6 +455,7 @@ export default function App() {
           isDark={isDark}
           selectedDate={selectedDate}
           completedCount={completedCount}
+          tasks={allTasks}
           onClearCompleted={clearCompleted}
           onApplyTheme={applyThemePreset}
           onChange={handlePersonalizationChange}
@@ -421,6 +470,17 @@ export default function App() {
             setSettingsOpen(false);
           }}
         />
+        {aiOnboarding && (
+          <AiOnboarding
+            isOpen
+            text={getShellText(appSettings.language).settings.aiReview.onboarding}
+            initialSettings={aiOnboarding}
+            onComplete={(next) => {
+              void window.electronAPI?.aiReview?.setSettings(next);
+              setAiOnboarding(null);
+            }}
+          />
+        )}
         <ObsidianCompanionPanel
           isOpen={companionOpen}
           settings={companionSettings}
