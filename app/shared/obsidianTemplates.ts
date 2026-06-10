@@ -188,7 +188,7 @@ export function buildDailyNoteContent(params: {
   templates: ObsidianTemplateSettings;
 }) {
   const { date, tasks, dailyWork, dailyInspiration, templates } = params;
-  return [
+  const content = [
     '---',
     `title: "DailyTodo ${date}"`,
     `date: "${date}"`,
@@ -197,27 +197,35 @@ export function buildDailyNoteContent(params: {
     '',
     `# ${date} 每日记录`,
     '',
-    buildWorkBlock(dailyWork, templates),
-    '',
-    buildInspirationBlock(dailyInspiration, templates),
-    '',
-    buildTaskBlock(date, tasks, templates),
-    '',
-    // 标题在 marker 块外，块内只放 AI 托管内容并默认留空，
-    // 这样补偿扫描会把空块判为 Unprocessed 并填充，标题始终可见。
-    `## ${templates.reviewSectionTitle}`,
-    REVIEW_MARKERS.REVIEW.start,
-    REVIEW_MARKERS.REVIEW.end,
-    '',
-    `## ${templates.tomorrowTaskSectionTitle}`,
-    REVIEW_MARKERS.TOMORROW.start,
-    REVIEW_MARKERS.TOMORROW.end,
-    '',
-    `## ${templates.reusableKnowledgeSectionTitle}`,
-    REVIEW_MARKERS.KNOWLEDGE.start,
-    REVIEW_MARKERS.KNOWLEDGE.end,
-    '',
-  ].join('\n');
+  ];
+
+  if (templates.modules.work.enabled) {
+    content.push(buildWorkBlock(dailyWork, templates), '');
+  }
+
+  if (templates.modules.inspiration.enabled) {
+    content.push(buildInspirationBlock(dailyInspiration, templates), '');
+  }
+
+  if (templates.modules.tasks.enabled) {
+    content.push(buildTaskBlock(date, tasks, templates), '');
+  }
+
+  // 标题在 marker 块外，块内只放 AI 托管内容并默认留空，
+  // 这样补偿扫描会把空块判为 Unprocessed 并填充，标题始终可见。
+  if (templates.modules.review.enabled) {
+    content.push(`## ${templates.reviewSectionTitle}`, REVIEW_MARKERS.REVIEW.start, REVIEW_MARKERS.REVIEW.end, '');
+  }
+
+  if (templates.modules.tomorrow.enabled) {
+    content.push(`## ${templates.tomorrowTaskSectionTitle}`, REVIEW_MARKERS.TOMORROW.start, REVIEW_MARKERS.TOMORROW.end, '');
+  }
+
+  if (templates.modules.knowledge.enabled) {
+    content.push(`## ${templates.reusableKnowledgeSectionTitle}`, REVIEW_MARKERS.KNOWLEDGE.start, REVIEW_MARKERS.KNOWLEDGE.end, '');
+  }
+
+  return content.join('\n');
 }
 
 export function replaceManagedBlock(existing: string, startMarker: string, endMarker: string, block: string) {
@@ -273,15 +281,22 @@ export function buildSyncPreview(params: {
   const deletedReviewWillDisappear = [...beforeReviewKeys].some((key) => !afterReviewKeys.has(key));
   const dailyPath = resolveTemplatePath(params.vaultPath, params.templates.dailyNotePath, params.date);
 
+  const managedBlocks: SyncPreviewBlock[] = [];
+  if (params.templates.modules.work.enabled) {
+    managedBlocks.push({ marker: 'DAILYTODO:WORK', action: existingDailyNote.includes(WORK_START_MARKER) ? 'replace' : 'insert' });
+  }
+  if (params.templates.modules.inspiration.enabled) {
+    managedBlocks.push({ marker: 'DAILYTODO:INSPIRATION', action: existingDailyNote.includes(INSPIRATION_START_MARKER) ? 'replace' : 'insert' });
+  }
+  if (params.templates.modules.tasks.enabled) {
+    managedBlocks.push({ marker: 'DAILYTODO:TASKS', action: existingDailyNote.includes(TASK_START_MARKER) ? 'replace' : 'insert' });
+  }
+
   return {
     files: [
       { filePath: dailyPath, action: existingDailyNote ? 'update' : 'create' },
     ],
-    managedBlocks: [
-      { marker: 'DAILYTODO:WORK', action: existingDailyNote.includes(WORK_START_MARKER) ? 'replace' : 'insert' },
-      { marker: 'DAILYTODO:INSPIRATION', action: existingDailyNote.includes(INSPIRATION_START_MARKER) ? 'replace' : 'insert' },
-      { marker: 'DAILYTODO:TASKS', action: existingDailyNote.includes(TASK_START_MARKER) ? 'replace' : 'insert' },
-    ],
+    managedBlocks,
     taskCount: params.tasksAfterDelete.filter((task) => getTaskDate(task) === params.date).length,
     completionRecordCount: countCompletionRecords(params.tasksAfterDelete),
     deletedReviewWillDisappear,

@@ -1,3 +1,37 @@
+import {
+  DEFAULT_COMPLETION_REVIEW_TEMPLATE,
+  DEFAULT_TASK_LINE_TEMPLATE,
+  createDefaultModules,
+  normalizeTemplateModules,
+  normalizeTemplatePresetId,
+  syncTemplateTitlesFromModules,
+} from './obsidianTemplateCenter';
+import type { ObsidianTemplateModules, ObsidianTemplatePresetId } from './obsidianTemplateCenter';
+
+export type {
+  ObsidianTemplateModuleId,
+  ObsidianTemplateModuleSettings,
+  ObsidianTemplateModules,
+  ObsidianTemplatePreset,
+  ObsidianTemplatePresetId,
+} from './obsidianTemplateCenter';
+export {
+  DEFAULT_COMPLETION_REVIEW_TEMPLATE,
+  DEFAULT_TASK_LINE_TEMPLATE,
+  OBSIDIAN_TEMPLATE_MODULE_IDS,
+  OBSIDIAN_TEMPLATE_MODULE_LABELS,
+  OBSIDIAN_TEMPLATE_PRESETS,
+  applyObsidianTemplatePreset,
+  createDefaultModules,
+  getObsidianTemplatePreset,
+  moduleTitleKey,
+  normalizeTemplateModules,
+  normalizeTemplatePresetId,
+  syncTemplateTitlesFromModules,
+  updateAdvancedTemplateField,
+  updateTemplateModule,
+} from './obsidianTemplateCenter';
+
 export type AppLanguage = 'zh-CN' | 'en-US';
 
 export interface AppBehaviorSettings {
@@ -12,6 +46,8 @@ export interface AppBehaviorSettings {
 export interface ObsidianTemplateSettings {
   dailyNotePath: string;
   taskExportPath: string;
+  presetId: ObsidianTemplatePresetId;
+  modules: ObsidianTemplateModules;
   workSectionTitle: string;
   inspirationSectionTitle: string;
   taskSectionTitle: string;
@@ -42,23 +78,20 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
 }
 
 export function createDefaultObsidianTemplateSettings(): ObsidianTemplateSettings {
-  return {
+  return syncTemplateTitlesFromModules({
     dailyNotePath: 'logs/daily/DailyTodo/{{date}}.md',
     taskExportPath: 'logs/daily/DailyTodo/tasks/{{date}}.md',
+    presetId: 'simple',
+    modules: createDefaultModules(),
     workSectionTitle: '今日工作',
     inspirationSectionTitle: '灵感闪念',
     taskSectionTitle: '每日任务',
     reviewSectionTitle: '复盘',
     tomorrowTaskSectionTitle: '明日待办',
     reusableKnowledgeSectionTitle: '可复用知识',
-    taskLineTemplate: '- [{{checked}}] {{text}} #{{priority}}{{dateNote}}',
-    completionReviewTemplate: [
-      '  - 阶段记录 {{index}}：{{status}}，完成度 {{percent}}%，记录时间 {{reviewedAt}}',
-      '    - 今天情况：{{summary}}',
-      '    - 还没懂/卡点：{{unknowns}}',
-      '    - 下一步：{{nextStep}}',
-    ].join('\n'),
-  };
+    taskLineTemplate: DEFAULT_TASK_LINE_TEMPLATE,
+    completionReviewTemplate: DEFAULT_COMPLETION_REVIEW_TEMPLATE,
+  });
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -75,6 +108,10 @@ function isTime(value: unknown): value is string {
 
 function text(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function optionalText(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
 export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
@@ -102,18 +139,30 @@ export function normalizeObsidianTemplateSettings(value: unknown): ObsidianTempl
   const defaults = createDefaultObsidianTemplateSettings();
   if (!isObject(value)) return defaults;
 
-  return {
+  const legacyTitles = {
+    work: optionalText(value.workSectionTitle),
+    inspiration: optionalText(value.inspirationSectionTitle),
+    tasks: optionalText(value.taskSectionTitle),
+    review: optionalText(value.reviewSectionTitle),
+    tomorrow: optionalText(value.tomorrowTaskSectionTitle),
+    knowledge: optionalText(value.reusableKnowledgeSectionTitle),
+  };
+  const modules = normalizeTemplateModules(value.modules, legacyTitles);
+
+  return syncTemplateTitlesFromModules({
     dailyNotePath: text(value.dailyNotePath, defaults.dailyNotePath),
     taskExportPath: text(value.taskExportPath, defaults.taskExportPath),
-    workSectionTitle: text(value.workSectionTitle, defaults.workSectionTitle),
-    inspirationSectionTitle: text(value.inspirationSectionTitle, defaults.inspirationSectionTitle),
-    taskSectionTitle: text(value.taskSectionTitle, defaults.taskSectionTitle),
-    reviewSectionTitle: text(value.reviewSectionTitle, defaults.reviewSectionTitle),
-    tomorrowTaskSectionTitle: text(value.tomorrowTaskSectionTitle, defaults.tomorrowTaskSectionTitle),
-    reusableKnowledgeSectionTitle: text(value.reusableKnowledgeSectionTitle, defaults.reusableKnowledgeSectionTitle),
+    presetId: normalizeTemplatePresetId(value.presetId),
+    modules,
+    workSectionTitle: modules.work.title,
+    inspirationSectionTitle: modules.inspiration.title,
+    taskSectionTitle: modules.tasks.title,
+    reviewSectionTitle: modules.review.title,
+    tomorrowTaskSectionTitle: modules.tomorrow.title,
+    reusableKnowledgeSectionTitle: modules.knowledge.title,
     taskLineTemplate: text(value.taskLineTemplate, defaults.taskLineTemplate),
     completionReviewTemplate: text(value.completionReviewTemplate, defaults.completionReviewTemplate),
-  };
+  });
 }
 
 export function createDefaultDailyTodoSettings(): DailyTodoSettings {

@@ -6757,3 +6757,95 @@ html {
   border-color: rgba(148, 163, 184, 0.16);
   background: rgba(15, 23, 42, 0.44);
 }
+
+.obsidian-template-center {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.template-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.template-preset-card {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.template-preset-card strong,
+.template-preset-card small {
+  display: block;
+}
+
+.template-preset-card small {
+  margin-top: 6px;
+  opacity: 0.72;
+  line-height: 1.45;
+}
+
+.template-preset-card-active {
+  border-color: color-mix(in srgb, var(--accent-color, #7c9cff) 70%, transparent);
+  background: color-mix(in srgb, var(--accent-color, #7c9cff) 18%, transparent);
+}
+
+.template-module-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-module-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(150px, 1.2fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.compact-toggle-row {
+  min-height: auto;
+  padding: 0;
+}
+
+.template-import-textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.settings-status-text {
+  margin: 8px 0 0;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.template-recognition-preview,
+.template-advanced-fields {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-recognition-preview {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.template-recognition-preview h4,
+.template-recognition-preview p,
+.template-recognition-preview ul {
+  margin: 0;
+}
+
+.template-recognition-preview ul {
+  padding-left: 18px;
+}

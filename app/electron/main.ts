@@ -54,6 +54,11 @@ import { normalizeSections } from '../shared/aiReview/sectionConfig';
 import { buildRecognizeMessages, parseRecognizedSections } from '../shared/aiReview/recognizeTemplate';
 import { buildRecognizeReportMessages, parseRecognizedReportPrompt } from '../shared/aiReview/recognizeReportTemplate';
 import { parseTemplateFile } from '../shared/aiReview/templateFile';
+import {
+  buildRecognizeObsidianTemplateMessages,
+  parseRecognizedObsidianTemplateDraft,
+  validateObsidianTemplateRecognitionInput,
+} from '../shared/obsidianTemplateRecognition';
 import type { ChatMessage } from '../shared/llm/openaiClient';
 import type { StatTask } from '../shared/aiReview/stats';
 import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
@@ -792,15 +797,26 @@ function syncOneDailyNote(tasks: Task[], selected: string, dailyWork = '', inspi
   const filePath = getDailyFilePath(selected);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const existing = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : buildDailyTemplate(selected, dailyWork, inspiration, templates);
-  const migratedWork = migrateLegacyWorkSection(existing, dailyWork);
-  const migratedInspiration = migrateLegacyInspirationSection(migratedWork, inspiration);
-  const existingWork = readMarkedBlockBody(migratedInspiration, WORK_START_MARKER, WORK_END_MARKER);
-  const existingInspiration = readMarkedBlockBody(migratedInspiration, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER);
-  const nextWork = useProvidedDailySections ? dailyWork : existingWork;
-  const nextInspiration = useProvidedDailySections ? (inspiration.trim() || existingInspiration) : existingInspiration;
-  const withWork = upsertMarkedBlock(migratedInspiration, WORK_START_MARKER, WORK_END_MARKER, buildWorkBlock(nextWork, templates));
-  const withInspiration = upsertMarkedBlock(withWork, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER, buildInspirationBlock(nextInspiration, templates));
-  const nextContent = upsertMarkedBlock(withInspiration, TASK_START_MARKER, TASK_END_MARKER, buildTaskBlock(selected, tasks, templates));
+  let nextContent = existing;
+
+  if (templates.modules.work.enabled) {
+    nextContent = migrateLegacyWorkSection(nextContent, dailyWork);
+    const existingWork = readMarkedBlockBody(nextContent, WORK_START_MARKER, WORK_END_MARKER);
+    const nextWork = useProvidedDailySections ? dailyWork : existingWork;
+    nextContent = upsertMarkedBlock(nextContent, WORK_START_MARKER, WORK_END_MARKER, buildWorkBlock(nextWork, templates));
+  }
+
+  if (templates.modules.inspiration.enabled) {
+    nextContent = migrateLegacyInspirationSection(nextContent, inspiration);
+    const existingInspiration = readMarkedBlockBody(nextContent, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER);
+    const nextInspiration = useProvidedDailySections ? (inspiration.trim() || existingInspiration) : existingInspiration;
+    nextContent = upsertMarkedBlock(nextContent, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER, buildInspirationBlock(nextInspiration, templates));
+  }
+
+  if (templates.modules.tasks.enabled) {
+    nextContent = upsertMarkedBlock(nextContent, TASK_START_MARKER, TASK_END_MARKER, buildTaskBlock(selected, tasks, templates));
+  }
+
   fs.writeFileSync(filePath, nextContent, 'utf-8');
   return { filePath, nextContent };
 }
@@ -1498,6 +1514,42 @@ function createWindow() {
       const parsed = await parseTemplateFile(buffer, fileName, extractDocxText);
       if (!parsed.ok) return { ok: false, error: parsed.error };
       return { ok: true, text: parsed.text, fileName };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  ipcMain.handle('obsidianTemplate:recognize', async (_e, rawTemplate: string) => {
+    const settings = getAiReviewSettings();
+    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) {
+      return { ok: false, error: 'AI 复盘未启用或缺少 Key', draft: null };
+    }
+
+    const input = validateObsidianTemplateRecognitionInput(rawTemplate);
+    if (!input.ok) return { ok: false, error: input.error, draft: null };
+
+    const llm = await getLlmCaller()(buildRecognizeObsidianTemplateMessages(input.rawTemplate));
+    if (!llm.ok) return { ok: false, error: llm.error, draft: null };
+
+    const draft = parseRecognizedObsidianTemplateDraft(llm.content);
+    return { ok: true, draft };
+  });
+
+  ipcMain.handle('obsidianTemplate:pickTemplateFile', async () => {
+    const result = await dialog.showOpenDialog(win, {
+      title: zh('选择 Obsidian 模板文件（.md）'),
+      defaultPath: getVaultPath() || app.getPath('documents'),
+      properties: ['openFile'],
+      filters: [{ name: zh('Markdown 模板'), extensions: ['md'] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, canceled: true };
+
+    const filePath = result.filePaths[0];
+    const fileName = path.basename(filePath);
+    try {
+      const text = fs.readFileSync(filePath, 'utf-8').trim();
+      if (!text) return { ok: false, error: '文件内容为空' };
+      return { ok: true, text, fileName };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

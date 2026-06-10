@@ -46,6 +46,13 @@ interface Window {
     getWindowCompactMode: () => Promise<boolean>;
     getAutoStart: () => Promise<boolean>;
     setAutoStart: (enabled: boolean) => Promise<boolean>;
+    obsidianTemplate: {
+      recognize: (rawTemplate: string) => Promise<
+        | { ok: true; draft: import('../shared/obsidianTemplateRecognition').RecognizedObsidianTemplateDraft }
+        | { ok: false; error: string; draft: null }
+      >;
+      pickTemplateFile: () => Promise<{ ok: boolean; text?: string; fileName?: string; error?: string; canceled?: boolean }>;
+    };
     aiReview: {
       getSettings: () => Promise<import('../shared/aiReview/aiReviewSettings').AiReviewSettings>;
       setSettings: (settings: import('../shared/aiReview/aiReviewSettings').AiReviewSettings) => Promise<import('../shared/aiReview/aiReviewSettings').AiReviewSettings>;

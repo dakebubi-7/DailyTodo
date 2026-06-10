@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getWindowCompactMode: () => ipcRenderer.invoke('window:getCompactMode'),
   getAutoStart: () => ipcRenderer.invoke('window:getAutoStart'),
   setAutoStart: (enabled: boolean) => ipcRenderer.invoke('window:setAutoStart', enabled),
+  obsidianTemplate: {
+    recognize: (rawTemplate: string) => ipcRenderer.invoke('obsidianTemplate:recognize', rawTemplate),
+    pickTemplateFile: () => ipcRenderer.invoke('obsidianTemplate:pickTemplateFile'),
+  },
   aiReview: {
     getSettings: () => ipcRenderer.invoke('aiReview:getSettings'),
     setSettings: (v: unknown) => ipcRenderer.invoke('aiReview:setSettings', v),

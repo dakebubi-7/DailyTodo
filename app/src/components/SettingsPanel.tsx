@@ -7,6 +7,7 @@ import {
   createDefaultObsidianTemplateSettings,
 } from '../../shared/appSettings';
 import { SyncPreview } from '../../shared/obsidianTemplates';
+import { ObsidianTemplateCenter } from './ObsidianTemplateCenter';
 import { PersonalizationSettings } from '../types/personalization';
 import { Task } from '../types/task';
 import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
@@ -1136,10 +1137,6 @@ export function SettingsPanel({
     onAppSettingsChange({ ...appSettings, [key]: value });
   };
 
-  const updateTemplate = <K extends keyof ObsidianTemplateSettings>(key: K, value: ObsidianTemplateSettings[K]) => {
-    onObsidianTemplatesChange({ ...obsidianTemplates, [key]: value });
-  };
-
   const title = section === 'root'
     ? text.title
     : sectionEntries.find((entry) => entry.key === section)?.title || '设置';
@@ -1536,13 +1533,6 @@ export function SettingsPanel({
               <p>{obsidianPath || text.noVault}</p>
               <button type="button" className="settings-reset-button" onClick={onChooseObsidian}>{text.chooseVault}</button>
             </div>
-            <Field label="Daily note target path" value={obsidianTemplates.dailyNotePath} onChange={(value) => updateTemplate('dailyNotePath', value)} />
-            <Field
-              label="Legacy task export path"
-              hint="RC sync no longer writes this file by default. Existing task export files are left untouched."
-              value={obsidianTemplates.taskExportPath}
-              onChange={(value) => updateTemplate('taskExportPath', value)}
-            />
           </section>
 
           <section className="settings-section">
@@ -1561,23 +1551,13 @@ export function SettingsPanel({
             />
           </section>
 
-          <section className="settings-section">
-            <h3>{text.templateCenter}</h3>
-            <div className="settings-grid">
-              <Field label="Work section title" value={obsidianTemplates.workSectionTitle} onChange={(value) => updateTemplate('workSectionTitle', value)} />
-              <Field label="Inspiration section title" value={obsidianTemplates.inspirationSectionTitle} onChange={(value) => updateTemplate('inspirationSectionTitle', value)} />
-              <Field label="Task section title" value={obsidianTemplates.taskSectionTitle} onChange={(value) => updateTemplate('taskSectionTitle', value)} />
-              <Field label="Review section title" value={obsidianTemplates.reviewSectionTitle} onChange={(value) => updateTemplate('reviewSectionTitle', value)} />
-              <Field label="Tomorrow task section title" value={obsidianTemplates.tomorrowTaskSectionTitle} onChange={(value) => updateTemplate('tomorrowTaskSectionTitle', value)} />
-              <Field label="Reusable knowledge section title" value={obsidianTemplates.reusableKnowledgeSectionTitle} onChange={(value) => updateTemplate('reusableKnowledgeSectionTitle', value)} />
-            </div>
-            <Field label="Task line template" value={obsidianTemplates.taskLineTemplate} onChange={(value) => updateTemplate('taskLineTemplate', value)} />
-            <Field label="Completion review template" value={obsidianTemplates.completionReviewTemplate} onChange={(value) => updateTemplate('completionReviewTemplate', value)} multiline />
-            <div className="settings-action-row">
-              <button type="button" className="settings-reset-button" onClick={onPreviewSync}>{text.previewSync}</button>
-              <button type="button" className="settings-reset-button" onClick={onResetTemplates}>{text.resetTemplates}</button>
-            </div>
-          </section>
+          <ObsidianTemplateCenter
+            language={appSettings.language}
+            templates={obsidianTemplates}
+            onChange={onObsidianTemplatesChange}
+            onPreviewSync={onPreviewSync}
+            onResetTemplates={onResetTemplates}
+          />
 
           {syncPreview && (
             <section className="settings-section">
