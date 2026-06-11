@@ -84,5 +84,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('aiReview:monthlyTick', listener);
       return () => ipcRenderer.removeListener('aiReview:monthlyTick', listener);
     },
+    onExternalWeeklyTick: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('aiReview:externalWeeklyTick', listener);
+      return () => ipcRenderer.removeListener('aiReview:externalWeeklyTick', listener);
+    },
+    onExternalMonthlyTick: (callback: () => void) => {
+      const listener = () => callback();
+      ipcRenderer.on('aiReview:externalMonthlyTick', listener);
+      return () => ipcRenderer.removeListener('aiReview:externalMonthlyTick', listener);
+    },
   },
 });

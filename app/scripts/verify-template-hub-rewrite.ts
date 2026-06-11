@@ -333,3 +333,35 @@ assert(!sp2.includes("title: 'Window'"), "SettingsPanel: still has hardcoded 'Wi
 assert(!sp2.includes("title: 'AI Review'"), "SettingsPanel: still has hardcoded 'AI Review'");
 assert(!sp2.includes("title: 'Obsidian Sync'"), "SettingsPanel: still has hardcoded 'Obsidian Sync'");
 console.log('T12: i18n nav keys localized ✓');
+
+// T13: Main process changes — new IPC handlers + runner idempotency
+const mainTs = readFileSync(join(root, 'electron/main.ts'), 'utf8');
+// Must have IPC handler for setObsidianTemplateSettings (5 paths + 5 templates)
+assert(mainTs.includes('setObsidianTemplateSettings') || mainTs.includes('obsidianTemplateSettings'), 'main.ts: setObsidianTemplateSettings IPC missing');
+// Must have generate-now handlers for all 4 report types
+assert(mainTs.includes('generatePersonalWeekly') || mainTs.includes('personalWeekly') || mainTs.includes('generateWeekly'), 'main.ts: generatePersonalWeekly missing');
+assert(mainTs.includes('generateExternalWeekly') || mainTs.includes('externalWeekly'), 'main.ts: generateExternalWeekly missing');
+// Must have external timer scheduling functions (not just the setting fields)
+assert(mainTs.includes('scheduleExternalWeeklyTimer'), 'main.ts: scheduleExternalWeeklyTimer function missing');
+assert(mainTs.includes('scheduleExternalMonthlyTimer'), 'main.ts: scheduleExternalMonthlyTimer function missing');
+// External timers must check the right settings fields
+assert(mainTs.includes('externalWeeklyTimerEnabled'), 'main.ts: externalWeeklyTimerEnabled check missing');
+assert(mainTs.includes('externalMonthlyTimerEnabled'), 'main.ts: externalMonthlyTimerEnabled check missing');
+// Must send tick events for external timers
+assert(mainTs.includes("'aiReview:externalWeeklyTick'") || mainTs.includes('"aiReview:externalWeeklyTick"'), 'main.ts: aiReview:externalWeeklyTick event missing');
+assert(mainTs.includes("'aiReview:externalMonthlyTick'") || mainTs.includes('"aiReview:externalMonthlyTick"'), 'main.ts: aiReview:externalMonthlyTick event missing');
+
+// Runner idempotency: if marker has content and force=false, block should be skipped
+const runnerTs = readFileSync(join(root, 'electron/aiReview/runner.ts'), 'utf8');
+assert(runnerTs.includes('force'), 'runner.ts: force parameter missing');
+assert(runnerTs.includes('Skip') || runnerTs.includes('skip'), 'runner.ts: Skip action missing');
+// The runner should NOT write AI content if marker body is non-empty and force=false
+// (This is handled by decideBlock — verify the call is there)
+assert(runnerTs.includes('decideBlock'), 'runner.ts: decideBlock call missing');
+
+// preload.ts must expose onExternalWeeklyTick + onExternalMonthlyTick
+const preloadTs = readFileSync(join(root, 'electron/preload.ts'), 'utf8');
+assert(preloadTs.includes('onExternalWeeklyTick'), 'preload.ts: onExternalWeeklyTick missing');
+assert(preloadTs.includes('onExternalMonthlyTick'), 'preload.ts: onExternalMonthlyTick missing');
+
+console.log('T13: Main process IPC + runner idempotency ✓');

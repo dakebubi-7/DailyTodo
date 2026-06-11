@@ -596,6 +596,8 @@ async function runReviewForDate(date: string, tasks: Task[]) {
 let aiTimer: ReturnType<typeof setTimeout> | null = null;
 let weeklyTimer: ReturnType<typeof setTimeout> | null = null;
 let monthlyTimer: ReturnType<typeof setTimeout> | null = null;
+let externalWeeklyTimer: ReturnType<typeof setTimeout> | null = null;
+let externalMonthlyTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** 按设置的时间排程一次定时器；到点向渲染层发 aiReview:tick（由渲染层带 tasks 触发补偿），然后重新排程。 */
 function scheduleAiTimer(win: BrowserWindow) {
@@ -639,6 +641,36 @@ function scheduleMonthlyTimer(win: BrowserWindow) {
   monthlyTimer = setTimeout(() => {
     if (!win.isDestroyed()) win.webContents.send('aiReview:monthlyTick');
     scheduleMonthlyTimer(win);
+  }, delay);
+}
+
+/** 对外周报定时：到点发 aiReview:externalWeeklyTick（渲染层触发对外周报生成），然后重新排程。 */
+function scheduleExternalWeeklyTimer(win: BrowserWindow) {
+  if (externalWeeklyTimer) {
+    clearTimeout(externalWeeklyTimer);
+    externalWeeklyTimer = null;
+  }
+  const settings = getAiReviewSettings();
+  if (!settings.externalWeeklyTimerEnabled) return;
+  const delay = getNextWeeklyDelay(new Date(), settings.externalWeeklyTimerWeekday, settings.externalWeeklyTimerTime);
+  externalWeeklyTimer = setTimeout(() => {
+    if (!win.isDestroyed()) win.webContents.send('aiReview:externalWeeklyTick');
+    scheduleExternalWeeklyTimer(win);
+  }, delay);
+}
+
+/** 对外月报定时：到点发 aiReview:externalMonthlyTick（渲染层触发对外月报生成），然后重新排程。 */
+function scheduleExternalMonthlyTimer(win: BrowserWindow) {
+  if (externalMonthlyTimer) {
+    clearTimeout(externalMonthlyTimer);
+    externalMonthlyTimer = null;
+  }
+  const settings = getAiReviewSettings();
+  if (!settings.externalMonthlyTimerEnabled) return;
+  const delay = getNextMonthlyDelay(new Date(), settings.externalMonthlyTimerDay, settings.externalMonthlyTimerTime);
+  externalMonthlyTimer = setTimeout(() => {
+    if (!win.isDestroyed()) win.webContents.send('aiReview:externalMonthlyTick');
+    scheduleExternalMonthlyTimer(win);
   }, delay);
 }
 
@@ -1253,6 +1285,8 @@ function createWindow() {
   scheduleAiTimer(win);
   scheduleWeeklyTimer(win);
   scheduleMonthlyTimer(win);
+  scheduleExternalWeeklyTimer(win);
+  scheduleExternalMonthlyTimer(win);
   // 工具窗口样式：不上任务栏 / 不进 Alt+Tab（保持挂件观感）。
   applyToolWindowStyle(win);
   applyWindowMode(win, initialMode);
@@ -1416,6 +1450,8 @@ function createWindow() {
       scheduleAiTimer(mainWindow);
       scheduleWeeklyTimer(mainWindow);
       scheduleMonthlyTimer(mainWindow);
+      scheduleExternalWeeklyTimer(mainWindow);
+      scheduleExternalMonthlyTimer(mainWindow);
     }
     return next;
   });
