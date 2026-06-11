@@ -365,3 +365,75 @@ assert(preloadTs.includes('onExternalWeeklyTick'), 'preload.ts: onExternalWeekly
 assert(preloadTs.includes('onExternalMonthlyTick'), 'preload.ts: onExternalMonthlyTick missing');
 
 console.log('T13: Main process IPC + runner idempotency ✓');
+
+// T14: End-to-end smoke test
+// 1. All new shared modules exist
+assert(existsSync(join(root, 'shared/pathTemplate.ts')), 'pathTemplate.ts missing');
+assert(existsSync(join(root, 'shared/templateBlockDefaults.ts')), 'templateBlockDefaults.ts missing');
+assert(existsSync(join(root, 'shared/templateRenderer.ts')), 'templateRenderer.ts missing');
+assert(existsSync(join(root, 'shared/recognizeTemplateBlocks.ts')), 'recognizeTemplateBlocks.ts missing');
+assert(existsSync(join(root, 'shared/reportGenerator.ts')), 'reportGenerator.ts missing');
+
+// 2. All new UI components exist
+assert(existsSync(join(root, 'src/components/TemplateEditorModal.tsx')), 'TemplateEditorModal.tsx missing');
+assert(existsSync(join(root, 'src/components/TemplateRecognitionModal.tsx')), 'TemplateRecognitionModal.tsx missing');
+
+// 3. Settings model integration
+const asm2 = await import(pathToFileURL(join(root, 'shared/appSettings.ts')).href);
+const t14Defaults = asm2.createDefaultObsidianTemplateSettings();
+assert(t14Defaults.dailyPath === 'logs/daily/{{date}}.md', `dailyPath default wrong: ${t14Defaults.dailyPath}`);
+assert(t14Defaults.externalMonthlyPath.includes('{{month}}'), `externalMonthlyPath should use {{month}}, got: ${t14Defaults.externalMonthlyPath}`);
+assert(t14Defaults.externalMonthlyPath.includes('external'), `externalMonthlyPath should include 'external': ${t14Defaults.externalMonthlyPath}`);
+assert(t14Defaults.dailyTemplate.fixedBlocks.length === 3, 'dailyTemplate should have 3 fixed blocks');
+assert(t14Defaults.dailyTemplate.customBlocks.length > 0, 'dailyTemplate should have custom blocks');
+assert(t14Defaults.weeklyTemplate.customBlocks.length > 0, 'weeklyTemplate should have custom blocks');
+assert(t14Defaults.externalWeeklyTemplate.customBlocks.length > 0, 'externalWeeklyTemplate should have custom blocks');
+
+// 4. Path expansion works end-to-end
+const pt2 = await import(pathToFileURL(join(root, 'shared/pathTemplate.ts')).href);
+const t14Expanded = pt2.expandPathTemplate(t14Defaults.externalMonthlyPath, new Date(2026, 5, 11));
+assert(t14Expanded.includes('2026'), `expanded external monthly path should include year: ${t14Expanded}`);
+assert(t14Expanded.includes('06'), `expanded external monthly path should include month 06: ${t14Expanded}`);
+assert(!t14Expanded.includes('W'), `expanded external monthly path should NOT have week marker: ${t14Expanded}`);
+
+// 5. Template renderer produces empty markers
+const tr2 = await import(pathToFileURL(join(root, 'shared/templateRenderer.ts')).href);
+const t14Rendered = tr2.renderDailyTemplate({
+  template: t14Defaults.dailyTemplate,
+  work: 'some work',
+  inspiration: '',
+  tasks: '- [ ] task',
+  date: '2026-06-11',
+});
+assert(t14Rendered.includes('## 今日工作'), 'rendered daily should include work heading');
+assert(t14Rendered.includes('## 每日任务'), 'rendered daily should include tasks heading');
+assert(t14Rendered.includes('<!-- DAILYTODO:'), 'rendered daily should include AI markers');
+const t14AiContent = t14Rendered.match(/🤖|AI 草稿/);
+assert(!t14AiContent, `rendered daily should NOT include AI content, found: ${t14AiContent?.[0]}`);
+
+// 6. Anonymization end-to-end
+const bd3 = await import(pathToFileURL(join(root, 'shared/templateBlockDefaults.ts')).href);
+const external = '联系张三,项目 Apollo-X,邮箱 test@test.com';
+const anon = bd3.lightAnonymize(external);
+assert(!anon.includes('张三'), 'anonymized text should not contain 张三');
+assert(!anon.includes('Apollo-X'), 'anonymized text should not contain Apollo-X');
+assert(!anon.includes('test@test.com'), 'anonymized text should not contain email');
+
+// 7. Recognition pipeline end-to-end
+const rg2 = await import(pathToFileURL(join(root, 'shared/recognizeTemplateBlocks.ts')).href);
+const weeklyMd = `## 本周工作总结\n总结内容\n## 下周计划\n- 计划A\n- 计划B`;
+const recResult = rg2.parseRecognizedBlocks(weeklyMd, []);
+assert(recResult.blocks.length === 2, `recognition should find 2 blocks, got ${recResult.blocks.length}`);
+assert(recResult.blocks[0].name === '本周工作总结', `block 0 should be 本周工作总结, got ${recResult.blocks[0].name}`);
+assert(recResult.blocks[1].renderType === 'list', `下周计划 should be list, got ${recResult.blocks[1].renderType}`);
+
+// 8. isWorkBlock correctly identifies work blocks
+const rg3 = await import(pathToFileURL(join(root, 'shared/reportGenerator.ts')).href);
+assert(rg3.isWorkBlock({ name: '本周工作总结', id: '1', aiGenerate: true, renderType: 'text', prompt: '' }), '本周工作总结 should be work block');
+assert(!rg3.isWorkBlock({ name: '下周计划', id: '2', aiGenerate: true, renderType: 'list', prompt: '' }), '下周计划 should NOT be work block');
+
+console.log('T14: End-to-end smoke test ✓');
+console.log('');
+console.log('════════════════════════════════════════');
+console.log('All 14 tasks verified. Template hub rewrite complete.');
+console.log('════════════════════════════════════════');
