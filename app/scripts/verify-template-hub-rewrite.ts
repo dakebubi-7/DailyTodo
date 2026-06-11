@@ -77,3 +77,43 @@ const passthrough = bd2.lightAnonymize(alreadyAnonymized);
 assert(passthrough === alreadyAnonymized, `already-anonymized should be unchanged: got=${passthrough}`);
 
 console.log('T3b: Light anonymization idempotency ✓');
+
+// T4: Double-generation bug fix
+const templateRenderer = readFileSync(join(root, 'shared/templateRenderer.ts'), 'utf8');
+assert(templateRenderer.includes('export function renderDailyTemplate'), 'renderDailyTemplate not exported');
+assert(templateRenderer.includes('export function renderReportTemplate'), 'renderReportTemplate not exported');
+
+// Static check: old buildDailyNoteFromTemplate no longer writes AI content
+const obsTpl = readFileSync(join(root, 'shared/obsidianTemplates.ts'), 'utf8');
+const fnMatch = obsTpl.match(/export function buildDailyNoteFromTemplate[\s\S]*?\n\}/);
+assert(fnMatch, 'buildDailyNoteFromTemplate function not found');
+assert(!/AI 草稿/.test(fnMatch[0]), 'buildDailyNoteFromTemplate still contains "AI 草稿" text');
+assert(!/🤖/.test(fnMatch[0]), 'buildDailyNoteFromTemplate still contains 🤖 emoji');
+
+// Dynamic check: renderDailyTemplate writes empty marker, NO AI content
+const tr = await import(pathToFileURL(join(root, 'shared/templateRenderer.ts')).href);
+const dailyTpl = {
+  fixedBlocks: [
+    { id: 'work', displayName: '今日工作' },
+    { id: 'inspire', displayName: '灵感随笔' },
+    { id: 'tasks', displayName: '每日任务' },
+  ],
+  customBlocks: [
+    { id: 'b1', name: '复盘', aiGenerate: true, renderType: 'text', prompt: '' },
+  ],
+};
+const rendered = tr.renderDailyTemplate({
+  template: dailyTpl,
+  work: '今天写了点东西',
+  inspiration: '想到一个 idea',
+  tasks: '- [x] 任务A',
+  date: '2026-06-11',
+});
+assert(rendered.includes('<!-- DAILYTODO:REVIEW:START -->'), 'review marker START missing');
+assert(rendered.includes('<!-- DAILYTODO:REVIEW:END -->'), 'review marker END missing');
+const markerBody = rendered.match(/<!-- DAILYTODO:REVIEW:START -->([\s\S]*?)<!-- DAILYTODO:REVIEW:END -->/);
+assert(markerBody, 'marker pair incomplete');
+assert(!markerBody![1].includes('🤖'), `marker body has AI draft, bug not fixed. Body: "${markerBody![1]}"`);
+assert(!markerBody![1].match(/\S/), `marker body should be empty/whitespace, got: "${markerBody![1]}"`);
+
+console.log('T4: Double-generation bug fix ✓');

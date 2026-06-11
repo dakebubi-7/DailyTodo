@@ -73,10 +73,8 @@ function getReviewDate(review: NonNullable<Task['completionReview']>) {
   return review.reviewedAt.slice(0, 10);
 }
 
-export function getCompletionReviews(task: Task) {
-  if (task.completionReviews?.length) return task.completionReviews;
-  return task.completionReview ? [task.completionReview] : [];
-}
+export { getCompletionReviews } from './completionReviews';
+import { getCompletionReviews } from './completionReviews';
 
 function renderTemplate(template: string, replacements: Record<string, string | number>) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => String(replacements[key] ?? ''));
@@ -235,6 +233,10 @@ export function buildDailyNoteContent(params: {
  * review/tomorrow/knowledge 占位符展开为对应 AI 托管空块（标题在块外）。
  * 模板缺失某个核心占位符时，仍把该块追加到文末，保证同步能定位到 marker。
  * 模板为空时回退到基于模块的 buildDailyNoteContent。
+ *
+ * 注意：本函数**只**写出空的 AI 标记（DAILYTODO:REVIEW:START/END 等）。
+ * AI 内容由 runner.ts / scanReviewTargets 等在后续步骤填充到标记内，
+ * 避免此处写一次、Runner 再写一次的双重生成 bug。
  */
 export function buildDailyNoteFromTemplate(params: {
   date: string;
@@ -255,12 +257,8 @@ export function buildDailyNoteFromTemplate(params: {
     tasks: { token: /\{\{\s*tasks\s*\}\}/g, block: buildTaskBlock(date, tasks, templates), present: false },
   };
 
-  const reviewBlocks: Record<'review' | 'tomorrow' | 'knowledge', { token: RegExp; title: string; marker: { start: string; end: string } }> = {
-    review: { token: /\{\{\s*review\s*\}\}/g, title: templates.reviewSectionTitle, marker: REVIEW_MARKERS.REVIEW },
-    tomorrow: { token: /\{\{\s*tomorrow\s*\}\}/g, title: templates.tomorrowTaskSectionTitle, marker: REVIEW_MARKERS.TOMORROW },
-    knowledge: { token: /\{\{\s*knowledge\s*\}\}/g, title: templates.reusableKnowledgeSectionTitle, marker: REVIEW_MARKERS.KNOWLEDGE },
-  };
-
+  // review/tomorrow/knowledge 的占位符只渲染为「空 marker」+ 块外标题。
+  // AI 内容**永远**不写在这里，由 runner.ts / scanReviewTargets 等 AI fill 层负责填充。
   let rendered = template.replace(/\{\{\s*date\s*\}\}/g, date);
 
   for (const key of ['work', 'inspiration', 'tasks'] as const) {
@@ -271,11 +269,19 @@ export function buildDailyNoteFromTemplate(params: {
     }
   }
 
-  for (const key of ['review', 'tomorrow', 'knowledge'] as const) {
-    const entry = reviewBlocks[key];
-    const reviewBlock = `## ${entry.title}\n${entry.marker.start}\n${entry.marker.end}`;
-    rendered = rendered.replace(entry.token, () => reviewBlock);
-  }
+  // {{review}}/{{tomorrow}}/{{knowledge}} 占位符 → 替换为对应空标记段（标题在块外，块内仅空 marker）。
+  rendered = rendered.replace(/\{\{\s*review\s*\}\}/g, () => {
+    const m = REVIEW_MARKERS.REVIEW;
+    return `## ${templates.reviewSectionTitle}\n${m.start}\n${m.end}`;
+  });
+  rendered = rendered.replace(/\{\{\s*tomorrow\s*\}\}/g, () => {
+    const m = REVIEW_MARKERS.TOMORROW;
+    return `## ${templates.tomorrowTaskSectionTitle}\n${m.start}\n${m.end}`;
+  });
+  rendered = rendered.replace(/\{\{\s*knowledge\s*\}\}/g, () => {
+    const m = REVIEW_MARKERS.KNOWLEDGE;
+    return `## ${templates.reusableKnowledgeSectionTitle}\n${m.start}\n${m.end}`;
+  });
 
   // 缺失的核心块追加到文末，保证后续增量同步能定位 marker。
   const missing = (['work', 'inspiration', 'tasks'] as const)
