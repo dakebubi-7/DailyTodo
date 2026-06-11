@@ -65,7 +65,7 @@ export function createDefaultObsidianTemplateSettings(): ObsidianTemplateSetting
     weeklyPath: 'logs/weekly/personal/{{year}}-W{{week}}.md',
     monthlyPath: 'logs/monthly/personal/{{year}}-{{month}}.md',
     externalWeeklyPath: 'logs/weekly/external/{{year}}-W{{week}}.md',
-    externalMonthlyPath: 'logs/monthly/external/{{year}}-W{{week}}.md',
+    externalMonthlyPath: 'logs/monthly/external/{{year}}-{{month}}.md',
     dailyTemplate: createDefaultDailyTemplate(),
     weeklyTemplate: createDefaultReportTemplate('personalWeekly'),
     monthlyTemplate: createDefaultReportTemplate('personalMonthly'),

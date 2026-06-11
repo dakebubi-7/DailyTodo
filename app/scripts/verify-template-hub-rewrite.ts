@@ -279,3 +279,28 @@ assert(recogModal.includes('替换自定义区块') || recogModal.includes('repl
 assert(recogModal.includes('追加') || recogModal.includes('append'), 'TemplateRecognitionModal should have append option');
 assert(recogModal.includes('.md') || recogModal.includes('accept'), 'TemplateRecognitionModal should accept .md/.txt files');
 console.log('T10: TemplateRecognitionModal component ✓');
+
+// T11: SettingsPanel restructured
+const sp = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
+// Nav: must have new 'settings' key (merged entry replacing obsidian + ai-review)
+assert(sp.includes("key: 'settings'") || sp.includes("'settings'"), "settings nav key missing");
+// Nav: must NOT have separate 'ai-review' nav entry at top level
+const aiReviewNavMatch = sp.match(/'ai-review'.*primary:\s*true/);
+assert(!aiReviewNavMatch, "AI Review should no longer be a primary nav entry");
+// 4 zones in the settings section
+assert(sp.includes('Obsidian 同步') || sp.includes('obsidian-sync'), '4-zone: Obsidian 同步 zone missing');
+assert(sp.includes('模板设置') || sp.includes('template-settings'), '4-zone: 模板设置 zone missing');
+assert(sp.includes('AI 设置') || sp.includes('ai-settings'), '4-zone: AI 设置 zone missing');
+assert(sp.includes('周/月报') || sp.includes('timer-settings'), '4-zone: 周/月报自动生成 zone missing');
+// 5 paths in the Obsidian sync zone
+assert(sp.includes('dailyPath') || sp.includes('日报路径'), '5-paths: dailyPath missing');
+assert(sp.includes('externalWeeklyPath') || sp.includes('对外周报'), '5-paths: externalWeeklyPath missing');
+// 5 template edit buttons
+assert((sp.match(/\[编辑|editTemplate|onEditTemplate/g) || []).length >= 3, 'at least 3 template edit buttons');
+// Sticky layout
+assert(sp.includes('sticky') || sp.includes('position: sticky') || sp.includes('settings-sticky'), 'sticky toolbar/nav missing');
+// Immediate generation buttons
+assert(sp.includes('立即生成') || sp.includes('generateNow'), 'generate now buttons missing');
+// externalMonthlyPath default must use {{month}} not {{week}}
+assert(sp.includes('{{month}}') || sp.includes('externalMonthlyPath'), 'externalMonthlyPath should use {{month}} template');
+console.log('T11: SettingsPanel 4-zone restructured ✓');

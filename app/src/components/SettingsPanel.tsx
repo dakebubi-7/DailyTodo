@@ -6,7 +6,7 @@ import {
   ObsidianTemplateSettings,
   createDefaultObsidianTemplateSettings,
 } from '../../shared/appSettings';
-import { SyncPreview } from '../../shared/obsidianTemplates';
+import type { SyncPreview } from '../../shared/obsidianTemplates';
 import { ObsidianTemplateCenter } from './ObsidianTemplateCenter';
 import { PersonalizationSettings, OPACITY_AREAS, OpacityKey } from '../types/personalization';
 import { Task } from '../types/task';
@@ -33,7 +33,7 @@ import {
 } from '../../shared/aiReview/sectionConfig';
 import { isoWeekKey, isoWeekToMonday } from '../../shared/aiReview/weekly';
 
-type SettingsSection = 'root' | 'personalization' | 'obsidian' | 'rollover' | 'ai-review' | 'general' | 'developer' | 'window';
+type SettingsSection = 'root' | 'personalization' | 'settings' | 'rollover' | 'general' | 'developer' | 'window';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -56,18 +56,18 @@ interface SettingsPanelProps {
   onResetTemplates: () => void;
   onClose: () => void;
   onOpenCompanionSettings: () => void;
+  onEditTemplate?: (kind: 'daily' | 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly') => void;
 }
 
-type NavSection = 'personalization' | 'window' | 'obsidian' | 'rollover' | 'ai-review' | 'general' | 'developer';
+type NavSection = 'personalization' | 'window' | 'settings' | 'rollover' | 'general' | 'developer';
 
 const sectionEntries: Array<{ key: NavSection; title: string; description: string; primary?: boolean }> = [
-  { key: 'personalization', title: 'Personalization', description: '外观、透明度、密度和动效。', primary: true },
-  { key: 'window', title: 'Window', description: '窗口行为、置顶、自启动。', primary: true },
-  { key: 'obsidian', title: 'Obsidian Sync', description: '路径、删除同步、模板中心和预览。', primary: true },
-  { key: 'rollover', title: 'Daily Rollover', description: '业务日期和任务结转规则。', primary: true },
-  { key: 'ai-review', title: 'AI Review', description: 'API 配置、定时生成和复盘段落。', primary: true },
-  { key: 'general', title: 'General', description: '语言等低频偏好。' },
-  { key: 'developer', title: 'Developer', description: '高级模板、调试入口和代码结构说明。' },
+  { key: 'personalization', title: '外观', description: '外观、透明度、密度和动效。', primary: true },
+  { key: 'window', title: '窗口', description: '窗口行为、置顶、自启动。', primary: true },
+  { key: 'settings', title: '设置', description: 'Obsidian 同步、模板、AI 设置和自动生成。', primary: true },
+  { key: 'rollover', title: '每日结转', description: '业务日期和任务结转规则。', primary: true },
+  { key: 'general', title: '通用', description: '语言等低频偏好。' },
+  { key: 'developer', title: '开发者', description: '高级模板、调试入口。' },
 ];
 function RangeControl({
   label,
@@ -1238,6 +1238,7 @@ export function SettingsPanel({
   onResetTemplates,
   onClose,
   onOpenCompanionSettings,
+  onEditTemplate,
 }: SettingsPanelProps) {
   const [section, setSection] = useState<SettingsSection>('root');
   const defaultTemplates = useMemo(() => createDefaultObsidianTemplateSettings(), []);
@@ -1282,7 +1283,7 @@ export function SettingsPanel({
       className="settings-panel"
       style={{ WebkitAppRegion: 'no-drag' }}
     >
-      <div className="settings-panel-header">
+      <div className="settings-sticky-toolbar settings-panel-header">
         <div>
           {section !== 'root' && (
             <button type="button" className="settings-back-button" onClick={() => setSection('root')}>
@@ -1313,8 +1314,8 @@ export function SettingsPanel({
                     onClick={() => setSection(entry.key)}
                   >
                     <span>
-                      <strong>{text.sections[entry.key][0]}</strong>
-                      <small>{text.sections[entry.key][1]}</small>
+                      <strong>{(text.sections as Record<string, [string, string]>)[entry.key]?.[0] ?? entry.title}</strong>
+                      <small>{(text.sections as Record<string, [string, string]>)[entry.key]?.[1] ?? entry.description}</small>
                     </span>
                     <b>›</b>
                   </button>
@@ -1465,19 +1466,39 @@ export function SettingsPanel({
         </>
       )}
 
-      {section === 'obsidian' && (
-        <>
-          <section className="settings-section">
-            <h3>{text.paths}</h3>
-            <div className="settings-preview-list">
-              <p><strong>{text.vaultPath}</strong></p>
-              <p>{obsidianPath || text.noVault}</p>
-              <button type="button" className="settings-reset-button" onClick={onChooseObsidian}>{text.chooseVault}</button>
+      {section === 'settings' && (
+        <div className="settings-section-content">
+          {/* Zone 1: Obsidian 同步 */}
+          <section className="settings-zone">
+            <h3>Obsidian 同步</h3>
+            <div className="settings-field">
+              <span>
+                <strong>{text.vaultPath}</strong>
+              </span>
+              <div className="settings-field-row">
+                <span>{obsidianPath || text.noVault}</span>
+                <button type="button" className="settings-reset-button" onClick={onChooseObsidian}>{text.chooseVault}</button>
+              </div>
             </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{text.deleteSync}</h3>
+            {/* 5 path fields */}
+            {[
+              { label: '日报路径', field: 'dailyPath', defaultVal: 'logs/daily/{{date}}.md' },
+              { label: '个人周报路径', field: 'weeklyPath', defaultVal: 'logs/weekly/personal/{{year}}-W{{week}}.md' },
+              { label: '个人月报路径', field: 'monthlyPath', defaultVal: 'logs/monthly/personal/{{year}}-{{month}}.md' },
+              { label: '对外周报路径', field: 'externalWeeklyPath', defaultVal: 'logs/weekly/external/{{year}}-W{{week}}.md' },
+              { label: '对外月报路径', field: 'externalMonthlyPath', defaultVal: 'logs/monthly/external/{{year}}-{{month}}.md' },
+            ].map(({ label, field, defaultVal }) => (
+              <label className="settings-field" key={field}>
+                <span><strong>{label}</strong></span>
+                <input
+                  className="settings-input"
+                  value={(obsidianTemplates as Record<string, unknown>)[field] as string ?? defaultVal}
+                  onChange={(e) => onObsidianTemplatesChange({ ...obsidianTemplates, [field]: e.target.value })}
+                  placeholder={defaultVal}
+                />
+              </label>
+            ))}
+            {/* Behavior toggles */}
             <ToggleRow
               title={text.syncDeleted}
               description={text.syncDeletedHint}
@@ -1492,30 +1513,93 @@ export function SettingsPanel({
             />
           </section>
 
-          <ObsidianTemplateCenter
-            language={appSettings.language}
-            text={text.templateSources}
-            templates={obsidianTemplates}
-            onChange={onObsidianTemplatesChange}
-            onPreviewSync={onPreviewSync}
-            onResetTemplates={onResetTemplates}
-          />
-
-          {syncPreview && (
-            <section className="settings-section">
-              <h3>{text.syncPreview}</h3>
-              <div className="settings-preview-list">
-                <p>文件：{syncPreview.files.map((file) => `${file.action} ${file.filePath}`).join('；')}</p>
-                <p>管理区块：{syncPreview.managedBlocks.map((block) => `${block.action} ${block.marker}`).join('；')}</p>
-                <p>任务 {syncPreview.taskCount} 条，完成记录 {syncPreview.completionRecordCount} 条。</p>
-                <p>{syncPreview.deletedReviewWillDisappear ? text.deletedReview : text.noDeletedReview}</p>
+          {/* Zone 2: 模板设置 */}
+          <section className="settings-zone">
+            <h3>模板设置</h3>
+            {[
+              { label: '日报模板', kind: 'daily' as const },
+              { label: '个人周报模板', kind: 'personalWeekly' as const },
+              { label: '个人月报模板', kind: 'personalMonthly' as const },
+              { label: '对外周报模板', kind: 'externalWeekly' as const },
+              { label: '对外月报模板', kind: 'externalMonthly' as const },
+            ].map(({ label, kind }) => (
+              <div className="settings-field" key={kind}>
+                <span><strong>{label}</strong></span>
+                <button
+                  type="button"
+                  className="settings-reset-button"
+                  onClick={() => onEditTemplate?.(kind)}
+                >
+                  [编辑 →]
+                </button>
               </div>
-            </section>
-          )}
-        </>
-      )}
+            ))}
+          </section>
 
-      {section === 'rollover' && (
+          {/* Zone 3: AI 设置 */}
+          <section className="settings-zone">
+            <h3>AI 设置</h3>
+            <AiReviewSection text={text.aiReview} templateSources={text.templateSources} tasks={tasks} />
+          </section>
+
+          {/* Zone 4: 周/月报自动生成 */}
+          <section className="settings-zone">
+            <h3>周/月报自动生成</h3>
+            <div className="settings-generate-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="settings-reset-button"
+                onClick={() => window.electronAPI?.aiReview.generateWeekly(
+                  (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
+                  tasks
+                )}
+              >
+                立即生成本人周报
+              </button>
+              <button
+                type="button"
+                className="settings-reset-button"
+                onClick={() => {
+                  const d = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
+                  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+                  window.electronAPI?.aiReview.generateMonthly(dateStr, tasks);
+                }}
+              >
+                立即生成本人月报
+              </button>
+              <button
+                type="button"
+                className="settings-reset-button"
+                onClick={() => {
+                  const d = new Date(); d.setDate(d.getDate() - 7);
+                  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  window.electronAPI?.aiReview.generateExternal('weekly', dateStr);
+                }}
+              >
+                立即生成对外周报
+              </button>
+              <button
+                type="button"
+                className="settings-reset-button"
+                onClick={() => {
+                  const d = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
+                  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+                  window.electronAPI?.aiReview.generateExternal('monthly', dateStr);
+                }}
+              >
+                立即生成对外月报
+              </button>
+              <button
+                type="button"
+                className="settings-reset-button"
+                onClick={() => window.electronAPI?.aiReview.generateDaily?.(selectedDate)}
+              >
+                立即重新生成今日日报
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
         <>
           <section className="settings-section">
             <h3>{text.rollover}</h3>
@@ -1552,10 +1636,6 @@ export function SettingsPanel({
             </button>
           </section>
         </>
-      )}
-
-      {section === 'ai-review' && (
-        <AiReviewSection text={text.aiReview} templateSources={text.templateSources} tasks={tasks} />
       )}
 
       {section === 'general' && (
