@@ -61,14 +61,7 @@ interface SettingsPanelProps {
 
 type NavSection = 'personalization' | 'window' | 'settings' | 'rollover' | 'general' | 'developer';
 
-const sectionEntries: Array<{ key: NavSection; title: string; description: string; primary?: boolean }> = [
-  { key: 'personalization', title: '外观', description: '外观、透明度、密度和动效。', primary: true },
-  { key: 'window', title: '窗口', description: '窗口行为、置顶、自启动。', primary: true },
-  { key: 'settings', title: '设置', description: 'Obsidian 同步、模板、AI 设置和自动生成。', primary: true },
-  { key: 'rollover', title: '每日结转', description: '业务日期和任务结转规则。', primary: true },
-  { key: 'general', title: '通用', description: '语言等低频偏好。' },
-  { key: 'developer', title: '开发者', description: '高级模板、调试入口。' },
-];
+type SectionEntry = { key: NavSection; title: string; description: string; primary?: boolean };
 function RangeControl({
   label,
   hint,
@@ -1243,6 +1236,14 @@ export function SettingsPanel({
   const [section, setSection] = useState<SettingsSection>('root');
   const defaultTemplates = useMemo(() => createDefaultObsidianTemplateSettings(), []);
   const text = getShellText(appSettings.language).settings;
+  const sectionEntries: SectionEntry[] = [
+    { key: 'personalization', title: text.sections.personalization[0], description: text.sections.personalization[1], primary: true },
+    { key: 'window', title: text.sections.window[0], description: text.sections.window[1], primary: true },
+    { key: 'settings', title: text.sections['settings'][0], description: text.sections['settings'][1], primary: true },
+    { key: 'rollover', title: text.sections.rollover[0], description: text.sections.rollover[1], primary: true },
+    { key: 'general', title: text.sections.general[0], description: text.sections.general[1] },
+    { key: 'developer', title: text.sections.developer[0], description: text.sections.developer[1] },
+  ];
   const navSections: Array<{ title: string; entries: typeof sectionEntries }> = [
     {
       title: appSettings.language === 'zh-CN' ? '常用设置' : 'Common',
@@ -1470,7 +1471,7 @@ export function SettingsPanel({
         <div className="settings-section-content">
           {/* Zone 1: Obsidian 同步 */}
           <section className="settings-zone">
-            <h3>Obsidian 同步</h3>
+            <h3>{text.settingsZones.obsidianSync}</h3>
             <div className="settings-field">
               <span>
                 <strong>{text.vaultPath}</strong>
@@ -1515,7 +1516,7 @@ export function SettingsPanel({
 
           {/* Zone 2: 模板设置 */}
           <section className="settings-zone">
-            <h3>模板设置</h3>
+            <h3>{text.settingsZones.templateSettings}</h3>
             {[
               { label: '日报模板', kind: 'daily' as const },
               { label: '个人周报模板', kind: 'personalWeekly' as const },
@@ -1538,13 +1539,13 @@ export function SettingsPanel({
 
           {/* Zone 3: AI 设置 */}
           <section className="settings-zone">
-            <h3>AI 设置</h3>
+            <h3>{text.settingsZones.aiSettings}</h3>
             <AiReviewSection text={text.aiReview} templateSources={text.templateSources} tasks={tasks} />
           </section>
 
           {/* Zone 4: 周/月报自动生成 */}
           <section className="settings-zone">
-            <h3>周/月报自动生成</h3>
+            <h3>{text.settingsZones.timerSettings}</h3>
             <div className="settings-generate-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               <button
                 type="button"

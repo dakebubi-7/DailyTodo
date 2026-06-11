@@ -304,3 +304,32 @@ assert(sp.includes('立即生成') || sp.includes('generateNow'), 'generate now 
 // externalMonthlyPath default must use {{month}} not {{week}}
 assert(sp.includes('{{month}}') || sp.includes('externalMonthlyPath'), 'externalMonthlyPath should use {{month}} template');
 console.log('T11: SettingsPanel 4-zone restructured ✓');
+
+// T12: i18n — nav keys present in both zh and en
+const i18n = readFileSync(join(root, 'src/i18n.ts'), 'utf8');
+// zh section must have Chinese titles for all 6 nav entries
+assert(i18n.includes("'settings'") || i18n.includes('"settings"'), "i18n: settings key missing");
+assert(i18n.includes('外观'), "i18n zh: 外观 missing");
+assert(i18n.includes('窗口'), "i18n zh: 窗口 missing");
+assert(i18n.includes('每日结转'), "i18n zh: 每日结转 missing");
+assert(i18n.includes('通用'), "i18n zh: 通用 missing");
+assert(i18n.includes('开发者'), "i18n zh: 开发者 missing");
+// en section must have English translations
+assert(i18n.includes('Appearance') || i18n.includes('appearance'), "i18n en: Appearance missing");
+assert(i18n.includes('Window') || i18n.includes('window'), "i18n en: Window missing");
+assert(i18n.includes('Settings') || i18n.includes('settings'), "i18n en: Settings missing");
+assert(i18n.includes('Daily Rollover') || i18n.includes('Rollover'), "i18n en: Daily Rollover missing");
+assert(i18n.includes('General'), "i18n en: General missing");
+assert(i18n.includes('Developer'), "i18n en: Developer missing");
+// New template-related keys should be in i18n
+assert(i18n.includes('模板设置') || i18n.includes('templateSettings'), "i18n: 模板设置 key missing");
+assert(i18n.includes('AI 设置') || i18n.includes('aiSettings'), "i18n: AI 设置 key missing");
+
+// SettingsPanel must use i18n — not all-hardcoded English nav titles
+const sp2 = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
+// The nav entry titles should come from i18n text, not be hardcoded English strings
+assert(!sp2.includes("title: 'Personalization'"), "SettingsPanel: still has hardcoded 'Personalization'");
+assert(!sp2.includes("title: 'Window'"), "SettingsPanel: still has hardcoded 'Window'");
+assert(!sp2.includes("title: 'AI Review'"), "SettingsPanel: still has hardcoded 'AI Review'");
+assert(!sp2.includes("title: 'Obsidian Sync'"), "SettingsPanel: still has hardcoded 'Obsidian Sync'");
+console.log('T12: i18n nav keys localized ✓');
