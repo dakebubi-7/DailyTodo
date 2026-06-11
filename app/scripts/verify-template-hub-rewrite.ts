@@ -253,3 +253,18 @@ assert(typeof prompt === 'string' && prompt.length > 10, 'buildBlockPrompt shoul
 assert(prompt.includes('2026-W24'), 'buildBlockPrompt should include period');
 
 console.log('T8: Report generation helpers ✓');
+
+// T9: TemplateEditorModal component exists with correct exports
+const templateModal = readFileSync(join(root, 'src/components/TemplateEditorModal.tsx'), 'utf8');
+assert(templateModal.includes('export function TemplateEditorModal') || templateModal.includes('export default function TemplateEditorModal'), 'TemplateEditorModal not exported');
+assert(templateModal.includes("kind:"), 'TemplateEditorModal should accept kind prop');
+assert(templateModal.includes('onSave'), 'TemplateEditorModal should accept onSave prop');
+assert(templateModal.includes('onCancel'), 'TemplateEditorModal should accept onCancel prop');
+assert(templateModal.includes('DailyTemplate') || templateModal.includes('ReportTemplate'), 'TemplateEditorModal should reference template types');
+assert(templateModal.includes('fixedBlocks'), 'TemplateEditorModal should handle fixedBlocks');
+assert(templateModal.includes('customBlocks'), 'TemplateEditorModal should handle customBlocks');
+assert(templateModal.includes('aiGenerate'), 'TemplateEditorModal should have aiGenerate toggle');
+assert(templateModal.includes('renderType'), 'TemplateEditorModal should have renderType selector');
+assert(templateModal.includes('恢复默认') || templateModal.includes('resetToDefault'), 'TemplateEditorModal should have reset button');
+assert(templateModal.includes('draggable'), 'TemplateEditorModal should use HTML5 drag-and-drop');
+console.log('T9: TemplateEditorModal component ✓');
