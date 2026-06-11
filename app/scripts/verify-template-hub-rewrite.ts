@@ -268,3 +268,14 @@ assert(templateModal.includes('renderType'), 'TemplateEditorModal should have re
 assert(templateModal.includes('恢复默认') || templateModal.includes('resetToDefault'), 'TemplateEditorModal should have reset button');
 assert(templateModal.includes('draggable'), 'TemplateEditorModal should use HTML5 drag-and-drop');
 console.log('T9: TemplateEditorModal component ✓');
+
+// T10: TemplateRecognitionModal component
+const recogModal = readFileSync(join(root, 'src/components/TemplateRecognitionModal.tsx'), 'utf8');
+assert(recogModal.includes('export function TemplateRecognitionModal') || recogModal.includes('export default function TemplateRecognitionModal'), 'TemplateRecognitionModal not exported');
+assert(recogModal.includes('onApply'), 'TemplateRecognitionModal should have onApply prop');
+assert(recogModal.includes('onCancel'), 'TemplateRecognitionModal should have onCancel prop');
+assert(recogModal.includes('parseRecognizedBlocks'), 'TemplateRecognitionModal should call parseRecognizedBlocks');
+assert(recogModal.includes('替换自定义区块') || recogModal.includes('replace'), 'TemplateRecognitionModal should have replace option');
+assert(recogModal.includes('追加') || recogModal.includes('append'), 'TemplateRecognitionModal should have append option');
+assert(recogModal.includes('.md') || recogModal.includes('accept'), 'TemplateRecognitionModal should accept .md/.txt files');
+console.log('T10: TemplateRecognitionModal component ✓');
