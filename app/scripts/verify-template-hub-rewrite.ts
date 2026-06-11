@@ -219,3 +219,37 @@ assert(badResult.confidence === 'low', `should be low confidence, got ${badResul
 assert(badResult.blocks[0].name === 'fallback', 'should return fallback on bad input');
 
 console.log('T7: AI recognition N blocks + renderType ✓');
+
+// T8: Report generation helpers — slicing + renderType prompt injection
+const repGen = readFileSync(join(root, 'shared/reportGenerator.ts'), 'utf8');
+assert(repGen.includes('export function isWorkBlock'), 'isWorkBlock not exported');
+assert(repGen.includes('export function buildBlockPrompt'), 'buildBlockPrompt not exported');
+assert(repGen.includes('export function applyRenderTypeInstruction'), 'applyRenderTypeInstruction not exported');
+
+const rg = await import(pathToFileURL(join(root, 'shared/reportGenerator.ts')).href);
+
+// isWorkBlock — identifies which blocks use the "work" slice
+assert(rg.isWorkBlock({ name: '本周工作总结', aiGenerate: true, renderType: 'text', prompt: '', id: '1' }) === true, '工作总结 should be work block');
+assert(rg.isWorkBlock({ name: '本周完成任务', aiGenerate: true, renderType: 'table', prompt: '', id: '2' }) === false, '完成任务 should NOT be work block');
+assert(rg.isWorkBlock({ name: 'Weekly Summary', aiGenerate: true, renderType: 'text', prompt: '', id: '3' }) === true, 'summary should be work block');
+
+// applyRenderTypeInstruction — appends format instruction to user prompt
+const textPrompt = rg.applyRenderTypeInstruction('请总结', 'text');
+assert(textPrompt === '请总结', 'text renderType should not add instruction');
+const listPrompt = rg.applyRenderTypeInstruction('请列出', 'list');
+assert(listPrompt.includes('- '), 'list renderType should include bullet format hint');
+const tablePrompt = rg.applyRenderTypeInstruction('请统计', 'table');
+assert(tablePrompt.includes('|'), 'table renderType should include table format hint');
+const calloutPrompt = rg.applyRenderTypeInstruction('请高亮', 'callout');
+assert(calloutPrompt.includes('[!'), 'callout renderType should include callout format hint');
+
+// buildBlockPrompt — assembles final prompt for one block
+const prompt = rg.buildBlockPrompt({
+  block: { name: '下周计划', aiGenerate: true, renderType: 'list', prompt: '', id: '4' },
+  sourceContent: '本周完成了 A、B、C',
+  period: '2026-W24',
+});
+assert(typeof prompt === 'string' && prompt.length > 10, 'buildBlockPrompt should return non-empty string');
+assert(prompt.includes('2026-W24'), 'buildBlockPrompt should include period');
+
+console.log('T8: Report generation helpers ✓');
