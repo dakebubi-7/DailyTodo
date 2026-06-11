@@ -117,3 +117,49 @@ assert(!markerBody![1].includes('🤖'), `marker body has AI draft, bug not fixe
 assert(!markerBody![1].match(/\S/), `marker body should be empty/whitespace, got: "${markerBody![1]}"`);
 
 console.log('T4: Double-generation bug fix ✓');
+
+// T5: ObsidianTemplateSettings — 5 paths + 5 templates
+const appSettings = readFileSync(join(root, 'shared/appSettings.ts'), 'utf8');
+assert(appSettings.includes('dailyPath:'), 'dailyPath field missing');
+assert(appSettings.includes('weeklyPath:'), 'weeklyPath field missing');
+assert(appSettings.includes('monthlyPath:'), 'monthlyPath field missing');
+assert(appSettings.includes('externalWeeklyPath:'), 'externalWeeklyPath field missing');
+assert(appSettings.includes('externalMonthlyPath:'), 'externalMonthlyPath field missing');
+assert(appSettings.includes('dailyTemplate:'), 'dailyTemplate field missing');
+assert(appSettings.includes('weeklyTemplate:'), 'weeklyTemplate field missing');
+assert(appSettings.includes('monthlyTemplate:'), 'monthlyTemplate field missing');
+assert(appSettings.includes('externalWeeklyTemplate:'), 'externalWeeklyTemplate field missing');
+assert(appSettings.includes('externalMonthlyTemplate:'), 'externalMonthlyTemplate field missing');
+// Old fields must be removed
+assert(!appSettings.includes('taskExportPath:'), 'taskExportPath still present (should be removed)');
+assert(!appSettings.includes('dailyMarkdownTemplate:'), 'dailyMarkdownTemplate still present (should be removed)');
+assert(!appSettings.includes('taskLineTemplate:'), 'taskLineTemplate still present (should be removed)');
+assert(!appSettings.includes('completionReviewTemplate:'), 'completionReviewTemplate still present (should be removed)');
+
+// Migration test: old normalize still works
+const asm = await import(pathToFileURL(join(root, 'shared/appSettings.ts')).href);
+const oldFormat = {
+  obsidianPath: '/vault',
+  dailyNotePath: 'logs/old/{{date}}.md',
+  taskExportPath: 'logs/old/tasks/{{date}}.md',
+  dailyMarkdownTemplate: '# Daily\n## {{work}}\nstuff\n## {{inspire}}\nmore\n## {{tasks}}\nlist\n## {{review}}\ngoal',
+  weeklyDir: 'logs/old/weekly',
+  monthlyDir: 'logs/old/monthly',
+  externalWeeklyDir: 'logs/old/external-weekly',
+  externalMonthlyDir: 'logs/old/external-monthly',
+  syncDeletedReviewsToObsidian: true,
+  confirmBeforeDeletingReview: false,
+};
+const normalized = asm.normalizeObsidianTemplateSettings(oldFormat);
+assert(normalized.dailyPath === 'logs/old/{{date}}.md', `dailyPath migration failed: got ${normalized.dailyPath}`);
+assert(/^logs\/old\/weekly\/.+\.md$/.test(normalized.weeklyPath), `weeklyPath migration failed: got ${normalized.weeklyPath}`);
+assert(/^logs\/old\/monthly\/.+\.md$/.test(normalized.monthlyPath), `monthlyPath migration failed: got ${normalized.monthlyPath}`);
+assert(/^logs\/old\/external-weekly\/.+\.md$/.test(normalized.externalWeeklyPath), `externalWeeklyPath migration failed: got ${normalized.externalWeeklyPath}`);
+assert(/^logs\/old\/external-monthly\/.+\.md$/.test(normalized.externalMonthlyPath), `externalMonthlyPath migration failed: got ${normalized.externalMonthlyPath}`);
+// dailyTemplate migrated from old markdown template
+assert(normalized.dailyTemplate.fixedBlocks.length === 3, 'dailyTemplate.fixedBlocks should have 3');
+assert(normalized.dailyTemplate.customBlocks.length >= 1, `dailyTemplate.customBlocks should have at least the {{review}} block, got ${normalized.dailyTemplate.customBlocks.length}`);
+assert(normalized.confirmBeforeDeletingReview === false, 'confirmBeforeDeletingReview migration failed');
+assert(normalized.syncDeletedReviewsToObsidian === true, 'syncDeletedReviewsToObsidian migration failed');
+
+console.log('T5: 5 paths + 5 templates settings model ✓');

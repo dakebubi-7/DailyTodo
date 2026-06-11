@@ -1,36 +1,10 @@
 import {
-  DEFAULT_COMPLETION_REVIEW_TEMPLATE,
-  DEFAULT_TASK_LINE_TEMPLATE,
-  createDefaultModules,
-  normalizeTemplateModules,
-  normalizeTemplatePresetId,
-  syncTemplateTitlesFromModules,
-} from './obsidianTemplateCenter';
-import type { ObsidianTemplateModules, ObsidianTemplatePresetId } from './obsidianTemplateCenter';
-
-export type {
-  ObsidianTemplateModuleId,
-  ObsidianTemplateModuleSettings,
-  ObsidianTemplateModules,
-  ObsidianTemplatePreset,
-  ObsidianTemplatePresetId,
-} from './obsidianTemplateCenter';
-export {
-  DEFAULT_COMPLETION_REVIEW_TEMPLATE,
-  DEFAULT_TASK_LINE_TEMPLATE,
-  OBSIDIAN_TEMPLATE_MODULE_IDS,
-  OBSIDIAN_TEMPLATE_MODULE_LABELS,
-  OBSIDIAN_TEMPLATE_PRESETS,
-  applyObsidianTemplatePreset,
-  createDefaultModules,
-  getObsidianTemplatePreset,
-  moduleTitleKey,
-  normalizeTemplateModules,
-  normalizeTemplatePresetId,
-  syncTemplateTitlesFromModules,
-  updateAdvancedTemplateField,
-  updateTemplateModule,
-} from './obsidianTemplateCenter';
+  createDefaultDailyTemplate,
+  createDefaultReportTemplate,
+  normalizeDailyTemplate,
+  normalizeReportTemplate,
+} from './aiReview/sectionConfig';
+import type { DailyTemplate, ReportTemplate } from './aiReview/sectionConfig';
 
 export type AppLanguage = 'zh-CN' | 'en-US';
 
@@ -43,28 +17,26 @@ export interface AppBehaviorSettings {
   lockWindowPosition: boolean;
 }
 
-export interface DailySourceRule {
-  id: string;
-  label: string;
-  path: string;
-  enabled: boolean;
-}
-
 export interface ObsidianTemplateSettings {
-  dailyNotePath: string;
-  taskExportPath: string;
-  dailyMarkdownTemplate: string;
-  dailySourceRules: DailySourceRule[];
-  presetId: ObsidianTemplatePresetId;
-  modules: ObsidianTemplateModules;
-  workSectionTitle: string;
-  inspirationSectionTitle: string;
-  taskSectionTitle: string;
-  reviewSectionTitle: string;
-  tomorrowTaskSectionTitle: string;
-  reusableKnowledgeSectionTitle: string;
-  taskLineTemplate: string;
-  completionReviewTemplate: string;
+  obsidianPath: string;
+
+  // 5 paths (one per template kind)
+  dailyPath: string;
+  weeklyPath: string;
+  monthlyPath: string;
+  externalWeeklyPath: string;
+  externalMonthlyPath: string;
+
+  // 5 structured templates
+  dailyTemplate: DailyTemplate;
+  weeklyTemplate: ReportTemplate;
+  monthlyTemplate: ReportTemplate;
+  externalWeeklyTemplate: ReportTemplate;
+  externalMonthlyTemplate: ReportTemplate;
+
+  // Behavior flags
+  syncDeletedReviewsToObsidian: boolean;
+  confirmBeforeDeletingReview: boolean;
 }
 
 export interface DailyTodoSettings {
@@ -86,56 +58,22 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
   };
 }
 
-export const DEFAULT_DAILY_MARKDOWN_TEMPLATE = `---
-类型: 日报
-日期: {{date}}
-标签:
-  - 日报
----
-
-# DailyTodo · {{date}}
-
-## 今日工作
-{{work}}
-
-## 灵感随笔
-{{inspiration}}
-
-## 每日任务
-{{tasks}}
-
-## 复盘
-{{review}}
-
-## 明日待办
-{{tomorrow}}
-
-## 可复用知识
-{{knowledge}}
-`;
-
-export function createDefaultDailySourceRules(dailyNotePath = 'logs/daily/DailyTodo/{{date}}.md'): DailySourceRule[] {
-  return [{ id: 'daily-note-path', label: '每日记录文件位置', path: dailyNotePath, enabled: true }];
-}
-
 export function createDefaultObsidianTemplateSettings(): ObsidianTemplateSettings {
-  const dailyNotePath = 'logs/daily/DailyTodo/{{date}}.md';
-  return syncTemplateTitlesFromModules({
-    dailyNotePath,
-    taskExportPath: 'logs/daily/DailyTodo/tasks/{{date}}.md',
-    dailyMarkdownTemplate: DEFAULT_DAILY_MARKDOWN_TEMPLATE,
-    dailySourceRules: createDefaultDailySourceRules(dailyNotePath),
-    presetId: 'simple',
-    modules: createDefaultModules(),
-    workSectionTitle: '今日工作',
-    inspirationSectionTitle: '灵感闪念',
-    taskSectionTitle: '每日任务',
-    reviewSectionTitle: '复盘',
-    tomorrowTaskSectionTitle: '明日待办',
-    reusableKnowledgeSectionTitle: '可复用知识',
-    taskLineTemplate: DEFAULT_TASK_LINE_TEMPLATE,
-    completionReviewTemplate: DEFAULT_COMPLETION_REVIEW_TEMPLATE,
-  });
+  return {
+    obsidianPath: '',
+    dailyPath: 'logs/daily/{{date}}.md',
+    weeklyPath: 'logs/weekly/personal/{{year}}-W{{week}}.md',
+    monthlyPath: 'logs/monthly/personal/{{year}}-{{month}}.md',
+    externalWeeklyPath: 'logs/weekly/external/{{year}}-W{{week}}.md',
+    externalMonthlyPath: 'logs/monthly/external/{{year}}-W{{week}}.md',
+    dailyTemplate: createDefaultDailyTemplate(),
+    weeklyTemplate: createDefaultReportTemplate('personalWeekly'),
+    monthlyTemplate: createDefaultReportTemplate('personalMonthly'),
+    externalWeeklyTemplate: createDefaultReportTemplate('externalWeekly'),
+    externalMonthlyTemplate: createDefaultReportTemplate('externalMonthly'),
+    syncDeletedReviewsToObsidian: true,
+    confirmBeforeDeletingReview: true,
+  };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -148,14 +86,6 @@ function isLanguage(value: unknown): value is AppLanguage {
 
 function isTime(value: unknown): value is string {
   return typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
-}
-
-function text(value: unknown, fallback: string) {
-  return typeof value === 'string' && value.trim() ? value : fallback;
-}
-
-function optionalText(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
 export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
@@ -179,51 +109,126 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
   };
 }
 
-function normalizeDailySourceRules(value: unknown, dailyNotePath: string): DailySourceRule[] {
-  if (!Array.isArray(value)) return createDefaultDailySourceRules(dailyNotePath);
-  const rules = value
-    .filter(isObject)
-    .map((rule, index) => ({
-      id: text(rule.id, `daily-source-${index + 1}`),
-      label: text(rule.label, `素材规则 ${index + 1}`),
-      path: text(rule.path, dailyNotePath),
-      enabled: typeof rule.enabled === 'boolean' ? rule.enabled : true,
-    }))
-    .filter((rule) => rule.path.trim());
-  return rules.length ? rules : createDefaultDailySourceRules(dailyNotePath);
+function migrateReportDir(
+  old: unknown,
+  kind: 'weekly' | 'monthly',
+  audience: 'personal' | 'external'
+): string {
+  const tmpl = '{{year}}-W{{week}}.md';
+  const fallback = `logs/${kind}/${audience}/${tmpl}`;
+  if (typeof old !== 'string' || !old) {
+    return fallback;
+  }
+  // Old path might be a directory (no .md) or a full file path
+  if (old.endsWith('.md')) {
+    return old;
+  }
+  // Directory, append default filename
+  return `${old.replace(/\/$/, '')}/${tmpl}`;
+}
+
+function migrateDailyMarkdownTemplate(old: string): DailyTemplate {
+  const defaults = createDefaultDailyTemplate();
+  if (!old || typeof old !== 'string' || !old.includes('{{')) {
+    return defaults;
+  }
+  // Parse token presence to determine block order
+  const has = (t: string) => old.includes(`{{${t}}}`);
+  const fixedOrder: Array<'work' | 'inspire' | 'tasks'> = [];
+  if (has('work')) fixedOrder.push('work');
+  if (has('inspire')) fixedOrder.push('inspire');
+  if (has('tasks')) fixedOrder.push('tasks');
+  // Fill in any missing in default order
+  for (const id of ['work', 'inspire', 'tasks'] as const) {
+    if (!fixedOrder.includes(id)) fixedOrder.push(id);
+  }
+  const fixedBlocks = fixedOrder.map((id) => defaults.fixedBlocks.find((f) => f.id === id)!);
+
+  // Parse custom blocks
+  const customOrder: Array<{ marker: 'REVIEW' | 'TOMORROW' | 'KNOWLEDGE'; name: string; renderType: DailyTemplate['customBlocks'][number]['renderType'] }> = [];
+  if (has('review')) customOrder.push({ marker: 'REVIEW', name: '复盘', renderType: 'text' });
+  if (has('tomorrow')) customOrder.push({ marker: 'TOMORROW', name: '明日待办', renderType: 'list' });
+  if (has('knowledge')) customOrder.push({ marker: 'KNOWLEDGE', name: '可复用知识', renderType: 'text' });
+
+  const customBlocks = customOrder.length > 0
+    ? customOrder.map((c) => ({
+        id: crypto.randomUUID(),
+        name: c.name,
+        aiGenerate: true,
+        renderType: c.renderType,
+        prompt: '',
+      }))
+    : defaults.customBlocks;
+
+  return { fixedBlocks, customBlocks };
 }
 
 export function normalizeObsidianTemplateSettings(value: unknown): ObsidianTemplateSettings {
   const defaults = createDefaultObsidianTemplateSettings();
-  if (!isObject(value)) return defaults;
+  if (!value || typeof value !== 'object') return defaults;
+  const v = value as Record<string, unknown>;
 
-  const legacyTitles = {
-    work: optionalText(value.workSectionTitle),
-    inspiration: optionalText(value.inspirationSectionTitle),
-    tasks: optionalText(value.taskSectionTitle),
-    review: optionalText(value.reviewSectionTitle),
-    tomorrow: optionalText(value.tomorrowTaskSectionTitle),
-    knowledge: optionalText(value.reusableKnowledgeSectionTitle),
+  // Path migration
+  const dailyPath = typeof v.dailyPath === 'string'
+    ? v.dailyPath
+    : typeof v.dailyNotePath === 'string'
+    ? v.dailyNotePath
+    : defaults.dailyPath;
+
+  const weeklyPath = typeof v.weeklyPath === 'string'
+    ? v.weeklyPath
+    : migrateReportDir(v.weeklyDir, 'weekly', 'personal');
+
+  const monthlyPath = typeof v.monthlyPath === 'string'
+    ? v.monthlyPath
+    : migrateReportDir(v.monthlyDir, 'monthly', 'personal');
+
+  const externalWeeklyPath = typeof v.externalWeeklyPath === 'string'
+    ? v.externalWeeklyPath
+    : migrateReportDir(v.externalWeeklyDir, 'weekly', 'external');
+
+  const externalMonthlyPath = typeof v.externalMonthlyPath === 'string'
+    ? v.externalMonthlyPath
+    : migrateReportDir(v.externalMonthlyDir, 'monthly', 'external');
+
+  // Template migration
+  const dailyTemplate = v.dailyTemplate
+    ? normalizeDailyTemplate(v.dailyTemplate)
+    : typeof v.dailyMarkdownTemplate === 'string'
+    ? migrateDailyMarkdownTemplate(v.dailyMarkdownTemplate)
+    : defaults.dailyTemplate;
+
+  const weeklyTemplate = v.weeklyTemplate
+    ? normalizeReportTemplate(v.weeklyTemplate, 'personalWeekly')
+    : defaults.weeklyTemplate;
+
+  const monthlyTemplate = v.monthlyTemplate
+    ? normalizeReportTemplate(v.monthlyTemplate, 'personalMonthly')
+    : defaults.monthlyTemplate;
+
+  const externalWeeklyTemplate = v.externalWeeklyTemplate
+    ? normalizeReportTemplate(v.externalWeeklyTemplate, 'externalWeekly')
+    : defaults.externalWeeklyTemplate;
+
+  const externalMonthlyTemplate = v.externalMonthlyTemplate
+    ? normalizeReportTemplate(v.externalMonthlyTemplate, 'externalMonthly')
+    : defaults.externalMonthlyTemplate;
+
+  return {
+    obsidianPath: typeof v.obsidianPath === 'string' ? v.obsidianPath : '',
+    dailyPath,
+    weeklyPath,
+    monthlyPath,
+    externalWeeklyPath,
+    externalMonthlyPath,
+    dailyTemplate,
+    weeklyTemplate,
+    monthlyTemplate,
+    externalWeeklyTemplate,
+    externalMonthlyTemplate,
+    syncDeletedReviewsToObsidian: typeof v.syncDeletedReviewsToObsidian === 'boolean' ? v.syncDeletedReviewsToObsidian : true,
+    confirmBeforeDeletingReview: typeof v.confirmBeforeDeletingReview === 'boolean' ? v.confirmBeforeDeletingReview : true,
   };
-  const modules = normalizeTemplateModules(value.modules, legacyTitles);
-  const dailyNotePath = text(value.dailyNotePath, defaults.dailyNotePath);
-
-  return syncTemplateTitlesFromModules({
-    dailyNotePath,
-    taskExportPath: text(value.taskExportPath, defaults.taskExportPath),
-    dailyMarkdownTemplate: text(value.dailyMarkdownTemplate, defaults.dailyMarkdownTemplate),
-    dailySourceRules: normalizeDailySourceRules(value.dailySourceRules, dailyNotePath),
-    presetId: normalizeTemplatePresetId(value.presetId),
-    modules,
-    workSectionTitle: modules.work.title,
-    inspirationSectionTitle: modules.inspiration.title,
-    taskSectionTitle: modules.tasks.title,
-    reviewSectionTitle: modules.review.title,
-    tomorrowTaskSectionTitle: modules.tomorrow.title,
-    reusableKnowledgeSectionTitle: modules.knowledge.title,
-    taskLineTemplate: text(value.taskLineTemplate, defaults.taskLineTemplate),
-    completionReviewTemplate: text(value.completionReviewTemplate, defaults.completionReviewTemplate),
-  });
 }
 
 export function createDefaultDailyTodoSettings(): DailyTodoSettings {
