@@ -64,3 +64,16 @@ const noop = bd.lightAnonymize('这是普通文字,没有什么敏感信息。')
 assert(noop === '这是普通文字,没有什么敏感信息。', 'normal text should pass through unchanged');
 
 console.log('T3: Light anonymization ✓');
+
+// T3b: Idempotency — running lightAnonymize twice should not change text
+const bd2 = await import(pathToFileURL(join(root, 'shared/templateBlockDefaults.ts')).href);
+const sensitive = '张三 13800138000 zhang@example.com 项目1';
+const once = bd2.lightAnonymize(sensitive);
+const twice = bd2.lightAnonymize(once);
+assert(once === twice, `idempotency broken: first=${once} second=${twice}`);
+// Already-anonymized text should pass through unchanged
+const alreadyAnonymized = '[人员] [联系方式] [项目A]';
+const passthrough = bd2.lightAnonymize(alreadyAnonymized);
+assert(passthrough === alreadyAnonymized, `already-anonymized should be unchanged: got=${passthrough}`);
+
+console.log('T3b: Light anonymization idempotency ✓');
