@@ -163,3 +163,30 @@ assert(normalized.confirmBeforeDeletingReview === false, 'confirmBeforeDeletingR
 assert(normalized.syncDeletedReviewsToObsidian === true, 'syncDeletedReviewsToObsidian migration failed');
 
 console.log('T5: 5 paths + 5 templates settings model ✓');
+
+// T6: AiReviewSettings — 4 timers + anonymize flag
+const aiSettings = readFileSync(join(root, 'shared/aiReview/aiReviewSettings.ts'), 'utf8');
+assert(aiSettings.includes('weeklyTimerEnabled:'), 'weeklyTimerEnabled missing');
+assert(aiSettings.includes('monthlyTimerEnabled:'), 'monthlyTimerEnabled missing');
+assert(aiSettings.includes('externalWeeklyTimerEnabled:'), 'externalWeeklyTimerEnabled missing (should be new)');
+assert(aiSettings.includes('externalMonthlyTimerEnabled:'), 'externalMonthlyTimerEnabled missing (should be new)');
+assert(aiSettings.includes('anonymizeExternalReports:'), 'anonymizeExternalReports missing (should be new)');
+// Old fields must be removed
+assert(!aiSettings.includes('weeklyDir:'), 'weeklyDir still present (should be removed)');
+assert(!aiSettings.includes('monthlyDir:'), 'monthlyDir still present (should be removed)');
+assert(!aiSettings.includes('externalWeeklyDir:'), 'externalWeeklyDir still present (should be removed)');
+assert(!aiSettings.includes('externalMonthlyDir:'), 'externalMonthlyDir still present (should be removed)');
+assert(!aiSettings.includes('weeklyPrompt:'), 'weeklyPrompt still present (should be removed)');
+assert(!aiSettings.includes('weeklySourceMode:'), 'weeklySourceMode still present (should be removed)');
+assert(!aiSettings.includes('backfillDays:'), 'backfillDays still present (should be removed)');
+
+// Default factory test
+const ais = await import(pathToFileURL(join(root, 'shared/aiReview/aiReviewSettings.ts')).href);
+const factoryName = Object.keys(ais).find((k) => k.startsWith('createDefault') && k.includes('AiReview')) || Object.keys(ais).find((k) => k.toLowerCase().includes('default') && k.toLowerCase().includes('ai'));
+assert(factoryName, 'no createDefault factory found in aiReviewSettings module');
+const defaults = ais[factoryName]();
+assert(defaults.anonymizeExternalReports === true, `anonymizeExternalReports default should be true, got ${defaults.anonymizeExternalReports}`);
+assert('externalWeeklyTimerEnabled' in defaults, 'externalWeeklyTimerEnabled missing in defaults');
+assert('externalMonthlyTimerEnabled' in defaults, 'externalMonthlyTimerEnabled missing in defaults');
+
+console.log('T6: AiReviewSettings 4 timers + anonymize ✓');

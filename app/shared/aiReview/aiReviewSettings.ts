@@ -47,7 +47,6 @@ export interface AiReviewSettings {
   // 顶层 provider/baseUrl/apiKey/model/timeoutSeconds 仅作迁移来源与兜底，实际调用走 resolveActiveProfile。
   profiles: AiProfile[];
   activeProfileId: string;
-  backfillDays: number;
   timerEnabled: boolean;
   timerTime: string; // HH:mm
   // 周报定时：开关 + 星期几(0=周日..6=周六) + HH:mm。默认周一 09:00 生成上一周。
@@ -58,22 +57,17 @@ export interface AiReviewSettings {
   monthlyTimerEnabled: boolean;
   monthlyTimerDay: number;
   monthlyTimerTime: string;
+  // 对外周报定时（生成发给同事/客户的报告，独立于个人周报）。
+  externalWeeklyTimerEnabled: boolean;
+  externalWeeklyTimerWeekday: number;
+  externalWeeklyTimerTime: string;
+  // 对外月报定时。
+  externalMonthlyTimerEnabled: boolean;
+  externalMonthlyTimerDay: number;
+  externalMonthlyTimerTime: string;
+  // 对外报告轻量脱敏：开启时把姓名/联系方式/项目代号等替换成 [人员]/[联系方式]/[项目A] 等占位符。
+  anonymizeExternalReports: boolean;
   timeoutSeconds: number;
-  // 报告输出目录（相对 vault 根；保存原始输入，实际写入前再 sanitize）
-  weeklyDir: string;
-  monthlyDir: string;
-  externalWeeklyDir: string;
-  externalMonthlyDir: string;
-  // 报告生成模板（system prompt，空 = 用内置默认句）
-  weeklyPrompt: string;
-  monthlyPrompt: string;
-  externalWeeklyPrompt: string;
-  externalMonthlyPrompt: string;
-  // 报告素材来源策略：决定生成前去哪里读原始 .md 素材。
-  weeklySourceMode: WeeklySourceMode;
-  monthlySourceMode: MonthlySourceMode;
-  externalWeeklySourceMode: WeeklySourceMode;
-  externalMonthlySourceMode: MonthlySourceMode;
   onboardingDismissed: boolean;
 }
 
@@ -117,7 +111,6 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     baseUrl: 'https://api.openai.com/v1',
     apiKey: '',
     model: 'gpt-4o-mini',
-    backfillDays: 7,
     timerEnabled: false,
     timerTime: '23:00',
     weeklyTimerEnabled: false,
@@ -126,21 +119,16 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     monthlyTimerEnabled: false,
     monthlyTimerDay: 1,
     monthlyTimerTime: '09:00',
+    externalWeeklyTimerEnabled: false,
+    externalWeeklyTimerWeekday: 0, // 周日
+    externalWeeklyTimerTime: '21:00',
+    externalMonthlyTimerEnabled: false,
+    externalMonthlyTimerDay: 1,
+    externalMonthlyTimerTime: '21:00',
+    anonymizeExternalReports: true, // 默认开启对外报告脱敏
     timeoutSeconds: 90,
     profiles: [],
     activeProfileId: '',
-    weeklyDir: '',
-    monthlyDir: '',
-    externalWeeklyDir: '',
-    externalMonthlyDir: '',
-    weeklyPrompt: '',
-    monthlyPrompt: '',
-    externalWeeklyPrompt: '',
-    externalMonthlyPrompt: '',
-    weeklySourceMode: 'daily-notes',
-    monthlySourceMode: 'weekly-then-daily',
-    externalWeeklySourceMode: 'daily-notes',
-    externalMonthlySourceMode: 'weekly-then-daily',
     onboardingDismissed: false,
   };
 }
@@ -183,7 +171,6 @@ function normalizeProfile(value: unknown, fb: AiProfile): AiProfile {
 export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
   const d = createDefaultAiReviewSettings();
   if (!isObject(value)) return d;
-  const backfill = Number(value.backfillDays);
   const provider = isProvider(value.provider) ? value.provider : d.provider;
   const baseUrl = text(value.baseUrl, d.baseUrl);
   const apiKey = typeof value.apiKey === 'string' ? value.apiKey : d.apiKey;
@@ -212,7 +199,6 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     model,
     profiles,
     activeProfileId,
-    backfillDays: Number.isInteger(backfill) && backfill >= 1 && backfill <= 60 ? backfill : d.backfillDays,
     timerEnabled: typeof value.timerEnabled === 'boolean' ? value.timerEnabled : d.timerEnabled,
     timerTime: isTime(value.timerTime) ? value.timerTime : d.timerTime,
     weeklyTimerEnabled: typeof value.weeklyTimerEnabled === 'boolean' ? value.weeklyTimerEnabled : d.weeklyTimerEnabled,
@@ -227,20 +213,23 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
         ? Number(value.monthlyTimerDay)
         : d.monthlyTimerDay,
     monthlyTimerTime: isTime(value.monthlyTimerTime) ? value.monthlyTimerTime : d.monthlyTimerTime,
+    externalWeeklyTimerEnabled:
+      typeof value.externalWeeklyTimerEnabled === 'boolean' ? value.externalWeeklyTimerEnabled : d.externalWeeklyTimerEnabled,
+    externalWeeklyTimerWeekday:
+      Number.isInteger(Number(value.externalWeeklyTimerWeekday)) && Number(value.externalWeeklyTimerWeekday) >= 0 && Number(value.externalWeeklyTimerWeekday) <= 6
+        ? Number(value.externalWeeklyTimerWeekday)
+        : d.externalWeeklyTimerWeekday,
+    externalWeeklyTimerTime: isTime(value.externalWeeklyTimerTime) ? value.externalWeeklyTimerTime : d.externalWeeklyTimerTime,
+    externalMonthlyTimerEnabled:
+      typeof value.externalMonthlyTimerEnabled === 'boolean' ? value.externalMonthlyTimerEnabled : d.externalMonthlyTimerEnabled,
+    externalMonthlyTimerDay:
+      Number.isInteger(Number(value.externalMonthlyTimerDay)) && Number(value.externalMonthlyTimerDay) >= 1 && Number(value.externalMonthlyTimerDay) <= 31
+        ? Number(value.externalMonthlyTimerDay)
+        : d.externalMonthlyTimerDay,
+    externalMonthlyTimerTime: isTime(value.externalMonthlyTimerTime) ? value.externalMonthlyTimerTime : d.externalMonthlyTimerTime,
+    anonymizeExternalReports:
+      typeof value.anonymizeExternalReports === 'boolean' ? value.anonymizeExternalReports : d.anonymizeExternalReports,
     timeoutSeconds,
-    // 路径输入保留原样，允许用户输入 / 和 \；真正写文件前再 sanitize。
-    weeklyDir: typeof value.weeklyDir === 'string' ? value.weeklyDir : d.weeklyDir,
-    monthlyDir: typeof value.monthlyDir === 'string' ? value.monthlyDir : d.monthlyDir,
-    externalWeeklyDir: typeof value.externalWeeklyDir === 'string' ? value.externalWeeklyDir : d.externalWeeklyDir,
-    externalMonthlyDir: typeof value.externalMonthlyDir === 'string' ? value.externalMonthlyDir : d.externalMonthlyDir,
-    weeklyPrompt: typeof value.weeklyPrompt === 'string' ? value.weeklyPrompt : d.weeklyPrompt,
-    monthlyPrompt: typeof value.monthlyPrompt === 'string' ? value.monthlyPrompt : d.monthlyPrompt,
-    externalWeeklyPrompt: typeof value.externalWeeklyPrompt === 'string' ? value.externalWeeklyPrompt : d.externalWeeklyPrompt,
-    externalMonthlyPrompt: typeof value.externalMonthlyPrompt === 'string' ? value.externalMonthlyPrompt : d.externalMonthlyPrompt,
-    weeklySourceMode: normalizeWeeklySourceMode(value.weeklySourceMode, d.weeklySourceMode),
-    monthlySourceMode: normalizeMonthlySourceMode(value.monthlySourceMode, d.monthlySourceMode),
-    externalWeeklySourceMode: normalizeWeeklySourceMode(value.externalWeeklySourceMode, d.externalWeeklySourceMode),
-    externalMonthlySourceMode: normalizeMonthlySourceMode(value.externalMonthlySourceMode, d.externalMonthlySourceMode),
     onboardingDismissed:
       typeof value.onboardingDismissed === 'boolean' ? value.onboardingDismissed : d.onboardingDismissed,
   };
