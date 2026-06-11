@@ -45,3 +45,22 @@ const out4 = pt.expandPathTemplate('logs/{{unknown}}/{{date}}.md', d);
 assert(out4 === 'logs/{{unknown}}/2026-06-15.md', `unknown variable should be preserved, got: ${out4}`);
 
 console.log('T2: Path template variable expansion ✓');
+
+// T3: Light anonymization
+const blockDefaults = readFileSync(join(root, 'shared/templateBlockDefaults.ts'), 'utf8');
+assert(blockDefaults.includes('export function lightAnonymize'), 'lightAnonymize not exported');
+
+const bd = await import(pathToFileURL(join(root, 'shared/templateBlockDefaults.ts')).href);
+const sample = '联系张三 13800138000,邮箱 zhang@example.com,项目代号 Apollo-X';
+const redacted = bd.lightAnonymize(sample);
+assert(redacted.includes('[人员]'), 'name not anonymized');
+assert(redacted.includes('[联系方式]'), 'phone/email not anonymized');
+assert(redacted.includes('[项目A]') || redacted.includes('[项目B]'), 'project code not anonymized');
+assert(!redacted.includes('张三'), 'name still present');
+assert(!redacted.includes('13800138000'), 'phone still present');
+assert(!redacted.includes('zhang@example.com'), 'email still present');
+// Non-sensitive content preserved
+const noop = bd.lightAnonymize('这是普通文字,没有什么敏感信息。');
+assert(noop === '这是普通文字,没有什么敏感信息。', 'normal text should pass through unchanged');
+
+console.log('T3: Light anonymization ✓');
