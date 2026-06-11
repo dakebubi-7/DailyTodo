@@ -1,4 +1,6 @@
 import { strict as assert } from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   AI_REVIEW_SETTINGS_KEY,
   createDefaultAiReviewSettings,
@@ -125,5 +127,27 @@ assert.equal(activeFallback.id, 'only', 'active 失效回落首个 profile');
 const activeSynth = resolveActiveProfile(createDefaultAiReviewSettings());
 assert.equal(activeSynth.baseUrl, 'https://api.openai.com/v1', '无 profile 时用顶层字段合成');
 assert.equal(activeSynth.model, 'gpt-4o-mini');
+
+// === source modes ===
+assert.equal(def.weeklySourceMode, 'daily-notes');
+assert.equal(def.monthlySourceMode, 'weekly-then-daily');
+assert.equal(def.externalWeeklySourceMode, 'daily-notes');
+assert.equal(def.externalMonthlySourceMode, 'weekly-then-daily');
+
+// === SettingsPanel UI references the new template/source i18n keys ===
+const settingsPanelSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/SettingsPanel.tsx'), 'utf-8');
+// `templateSources` 在组件内别名为 `ts`，断言匹配实际渲染用法。
+assert.ok(settingsPanelSrc.includes('const ts = templateSources'), 'SettingsPanel aliases templateSources copy');
+assert.ok(settingsPanelSrc.includes('ts.personalReportsTitle'));
+assert.ok(settingsPanelSrc.includes('ts.externalReportsTitle'));
+assert.ok(settingsPanelSrc.includes('ts.personalWeeklyTemplate'));
+assert.ok(settingsPanelSrc.includes('ts.externalMonthlyTemplate'));
+assert.ok(settingsPanelSrc.includes("'personalWeekly'"));
+assert.ok(settingsPanelSrc.includes("'externalMonthly'"));
+assert.ok(settingsPanelSrc.includes('ts.sourceTitle'));
+assert.ok(settingsPanelSrc.includes('weeklySourceMode'));
+assert.ok(settingsPanelSrc.includes('monthlySourceMode'));
+assert.ok(settingsPanelSrc.includes('testSourceMaterials'));
+assert.ok(settingsPanelSrc.includes('sourceFound'));
 
 console.log('AI settings verification passed');

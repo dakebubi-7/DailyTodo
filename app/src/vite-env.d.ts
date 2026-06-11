@@ -42,6 +42,25 @@ interface Window {
       items: import('../shared/obsidianCompanion').CaptureItem[]
     ) => Promise<{ ok: boolean; errors: string[] }>;
     importMobileInbox: (inboxPath: string) => Promise<{ ok: boolean; items: import('../shared/obsidianCompanion').CaptureItem[]; errors: string[] }>;
+    openTaskContextMenu: (payload: {
+      task: import('./types/task').Task;
+      allTags: string[];
+      screenX: number;
+      screenY: number;
+      isDark: boolean;
+      theme: {
+        themeId: string;
+        accent: string;
+        secondary: string;
+        menuOpacity: number;
+        blurStrength: number;
+        cardRadius: number;
+      };
+    }) => Promise<void>;
+    closeTaskContextMenu: () => Promise<void>;
+    resizeTaskContextMenu: (height: number) => Promise<void>;
+    dispatchTaskMenuAction: (payload: { taskId: string; updates: Partial<import('./types/task').Task> }) => Promise<void>;
+    onTaskMenuAction: (callback: (payload: { taskId: string; updates: Partial<import('./types/task').Task> }) => void) => () => void;
     setWindowCompactMode: (compactMode: boolean) => Promise<void>;
     getWindowCompactMode: () => Promise<boolean>;
     getAutoStart: () => Promise<boolean>;
@@ -64,7 +83,14 @@ interface Window {
       generateMonthly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean }>;
       generateExternal: (kind: 'weekly' | 'monthly', date: string) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean }>;
       recognizeTemplate: (rawTemplate: string) => Promise<{ ok: boolean; error?: string; sections: import('../shared/aiReview/sectionConfig').SectionConfig[]; confidence?: 'high' | 'medium' | 'low'; unmatched?: boolean }>;
-      recognizeReportTemplate: (kind: 'weekly' | 'monthly', rawTemplate: string) => Promise<{ ok: boolean; error?: string; prompt: string }>;
+      recognizeReportTemplate: (
+        target: import('../shared/templateRecognition').TemplateRecognitionTarget,
+        rawTemplate: string
+      ) => Promise<{ ok: boolean; error?: string; target?: import('../shared/templateRecognition').TemplateRecognitionTarget; prompt: string }>;
+      testSourceMaterials: (
+        kind: 'weekly' | 'monthly',
+        date: string
+      ) => Promise<{ ok: boolean; error?: string; sources: Array<{ label: string; filePath: string }> }>;
       pickTemplateFile: () => Promise<{ ok: boolean; text?: string; fileName?: string; error?: string; canceled?: boolean }>;
       listModels: (cfg: { baseUrl?: string; apiKey?: string; provider?: string }) => Promise<{ ok: true; models: string[] } | { ok: false; error: string }>;
       onTick: (callback: () => void) => () => void;

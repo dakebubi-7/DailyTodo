@@ -8,7 +8,7 @@ import {
 } from '../../shared/appSettings';
 import { SyncPreview } from '../../shared/obsidianTemplates';
 import { ObsidianTemplateCenter } from './ObsidianTemplateCenter';
-import { PersonalizationSettings } from '../types/personalization';
+import { PersonalizationSettings, OPACITY_AREAS, OpacityKey } from '../types/personalization';
 import { Task } from '../types/task';
 import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
 import { getShellText } from '../i18n';
@@ -33,7 +33,7 @@ import {
 } from '../../shared/aiReview/sectionConfig';
 import { isoWeekKey, isoWeekToMonday } from '../../shared/aiReview/weekly';
 
-type SettingsSection = 'root' | 'personalization' | 'obsidian' | 'rollover' | 'ai-review' | 'general' | 'developer' | 'theme-minimal' | 'theme-neumorphism' | 'theme-watercolor' | 'theme-invisible' | 'window';
+type SettingsSection = 'root' | 'personalization' | 'obsidian' | 'rollover' | 'ai-review' | 'general' | 'developer' | 'window';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -60,16 +60,15 @@ interface SettingsPanelProps {
 
 type NavSection = 'personalization' | 'window' | 'obsidian' | 'rollover' | 'ai-review' | 'general' | 'developer';
 
-const sectionEntries: Array<{ key: NavSection; title: string; description: string }> = [
-  { key: 'personalization', title: 'Personalization', description: '外观、透明度、密度和动效。' },
-  { key: 'window', title: 'Window', description: '窗口行为、置顶、自启动。' },
-  { key: 'obsidian', title: 'Obsidian Sync', description: '路径、删除同步、模板中心和预览。' },
-  { key: 'rollover', title: 'Daily Rollover', description: '业务日期和任务结转规则。' },
-  { key: 'ai-review', title: 'AI Review', description: 'API 配置、定时生成和复盘段落。' },
+const sectionEntries: Array<{ key: NavSection; title: string; description: string; primary?: boolean }> = [
+  { key: 'personalization', title: 'Personalization', description: '外观、透明度、密度和动效。', primary: true },
+  { key: 'window', title: 'Window', description: '窗口行为、置顶、自启动。', primary: true },
+  { key: 'obsidian', title: 'Obsidian Sync', description: '路径、删除同步、模板中心和预览。', primary: true },
+  { key: 'rollover', title: 'Daily Rollover', description: '业务日期和任务结转规则。', primary: true },
+  { key: 'ai-review', title: 'AI Review', description: 'API 配置、定时生成和复盘段落。', primary: true },
   { key: 'general', title: 'General', description: '语言等低频偏好。' },
   { key: 'developer', title: 'Developer', description: '高级模板、调试入口和代码结构说明。' },
 ];
-
 function RangeControl({
   label,
   hint,
@@ -102,6 +101,59 @@ function RangeControl({
           onChange={(event) => onChange(Number(event.target.value))}
         />
         <b>{value}{unit}</b>
+      </div>
+    </label>
+  );
+}
+
+/** 当前主题的推荐设置（用于透明度建议与"恢复建议值"）。 */
+function getThemeRecommendation(settings: PersonalizationSettings): PersonalizationSettings {
+  const preset =
+    THEME_PRESETS.find((item) => item.id === settings.themeId) ||
+    THEME_PRESETS.find((item) => item.id === 'minimal');
+  return preset?.settings || settings;
+}
+
+/** 读取某个区域的透明度值，按计划回退到兼容字段。 */
+function opacityValue(settings: PersonalizationSettings, key: OpacityKey): number {
+  return settings[key] ?? settings.controlOpacity ?? settings.panelOpacity;
+}
+
+function OpacityAreaControl({
+  label,
+  hint,
+  value,
+  recommended,
+  resetTitle,
+  onChange,
+  onReset,
+}: {
+  label: string;
+  hint: string;
+  value: number;
+  recommended: number;
+  resetTitle: string;
+  onChange: (value: number) => void;
+  onReset: () => void;
+}) {
+  return (
+    <label className="settings-control settings-opacity-area-control">
+      <span>
+        <strong>{label}</strong>
+        <small>{hint}</small>
+      </span>
+      <div className="settings-range-row">
+        <input
+          type="range"
+          min={20}
+          max={100}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
+        <b>{value}%</b>
+        <button type="button" className="settings-mini-reset" title={resetTitle} onClick={onReset}>
+          {recommended}%
+        </button>
       </div>
     </label>
   );
@@ -194,6 +246,7 @@ function ToggleRow({
 }
 
 type AiReviewText = ReturnType<typeof getShellText>['settings']['aiReview'];
+type TemplateSourcesText = ReturnType<typeof getShellText>['settings']['templateSources'];
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
@@ -490,7 +543,7 @@ function AiAccountManager({
 }
 
 
-function AiReviewSection({ text, tasks }: { text: AiReviewText; tasks: Task[] }) {
+function AiReviewSection({ text, templateSources, tasks }: { text: AiReviewText; templateSources: TemplateSourcesText; tasks: Task[] }) {
   const [settings, setSettings] = useState<AiReviewSettings>(() => createDefaultAiReviewSettings());
   const [sections, setSections] = useState<SectionConfig[]>(() => createDefaultSections());
   const [openPrompt, setOpenPrompt] = useState<string | null>(null);
@@ -506,6 +559,9 @@ function AiReviewSection({ text, tasks }: { text: AiReviewText; tasks: Task[] })
   const [reportRecognizing, setReportRecognizing] = useState<'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly' | null>(null);
   const [reportRecognizeStatus, setReportRecognizeStatus] = useState<{ weekly: string; monthly: string; 'ext-weekly': string; 'ext-monthly': string }>({ weekly: '', monthly: '', 'ext-weekly': '', 'ext-monthly': '' });
   const [reportRecognized, setReportRecognized] = useState<{ weekly: string | null; monthly: string | null; 'ext-weekly': string | null; 'ext-monthly': string | null }>({ weekly: null, monthly: null, 'ext-weekly': null, 'ext-monthly': null });
+  // 素材来源测试结果（"测试素材来源"按钮）
+  const [sourceTestStatus, setSourceTestStatus] = useState('');
+  const [sourceTestFiles, setSourceTestFiles] = useState<Array<{ label: string; filePath: string }>>([]);
   // 报告周期：默认上一周期(上周/上月)，用户可改。生成时换算成该周期内的一个日期传给主进程。
   const [weekPeriod, setWeekPeriod] = useState(() => defaultReportPeriods(new Date()).week);
   const [monthPeriod, setMonthPeriod] = useState(() => defaultReportPeriods(new Date()).month);
@@ -648,6 +704,22 @@ function AiReviewSection({ text, tasks }: { text: AiReviewText; tasks: Task[] })
   };
 
   const rc = text.reportConfig;
+  const ts = templateSources;
+
+  const testSources = async (kind: 'weekly' | 'monthly') => {
+    const result = await window.electronAPI?.aiReview.testSourceMaterials(kind, kind === 'weekly' ? weekDate : monthDate);
+    if (!result?.ok) {
+      setSourceTestStatus(result?.error ?? ts.sourceNotFound);
+      setSourceTestFiles([]);
+      return;
+    }
+    setSourceTestFiles(result.sources);
+    setSourceTestStatus(
+      result.sources.length
+        ? ts.sourceFound.replace('{count}', String(result.sources.length))
+        : ts.sourceNotFound,
+    );
+  };
 
   const recognizeReport = async (kind: 'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly') => {
     const draft = reportDraft[kind];
@@ -656,7 +728,14 @@ function AiReviewSection({ text, tasks }: { text: AiReviewText; tasks: Task[] })
     setReportRecognizeStatus((s) => ({ ...s, [kind]: rc.recognizing }));
     setReportRecognized((s) => ({ ...s, [kind]: null }));
     try {
-      const apiKind = kind === 'monthly' || kind === 'ext-monthly' ? 'monthly' : 'weekly';
+      const apiKind =
+        kind === 'monthly'
+          ? 'personalMonthly'
+          : kind === 'ext-weekly'
+            ? 'externalWeekly'
+            : kind === 'ext-monthly'
+              ? 'externalMonthly'
+              : 'personalWeekly';
       const result = await window.electronAPI?.aiReview.recognizeReportTemplate(apiKind, draft);
       if (!result || !result.ok) {
         setReportRecognizeStatus((s) => ({ ...s, [kind]: `${rc.recognizeFailed}${result?.error ?? ''}` }));
@@ -935,38 +1014,79 @@ function AiReviewSection({ text, tasks }: { text: AiReviewText; tasks: Task[] })
         <div className="settings-preview-list">
           <p>{rc.hint}</p>
         </div>
+
+        <h4>{ts.personalReportsTitle}</h4>
         <div className="settings-grid">
-          <Field label={rc.weeklyDir} value={settings.weeklyDir} placeholder="logs/weekly-review" onChange={(v) => updateSettings('weeklyDir', v)} />
-          <Field label={rc.monthlyDir} value={settings.monthlyDir} placeholder="logs/monthly-review" onChange={(v) => updateSettings('monthlyDir', v)} />
-          <Field label={rc.extWeeklyDir} value={settings.externalWeeklyDir} placeholder="exports/weekly-reports" onChange={(v) => updateSettings('externalWeeklyDir', v)} />
-          <Field label={rc.extMonthlyDir} value={settings.externalMonthlyDir} placeholder="exports/monthly-reports" onChange={(v) => updateSettings('externalMonthlyDir', v)} />
+          <Field label={ts.personalWeeklyDir} value={settings.weeklyDir} placeholder="logs/weekly-review" onChange={(v) => updateSettings('weeklyDir', v)} />
+          <Field label={ts.personalMonthlyDir} value={settings.monthlyDir} placeholder="logs/monthly-review" onChange={(v) => updateSettings('monthlyDir', v)} />
         </div>
+
+        <h4>{ts.externalReportsTitle}</h4>
+        <div className="settings-grid">
+          <Field label={ts.externalWeeklyDir} value={settings.externalWeeklyDir} placeholder="exports/weekly-reports" onChange={(v) => updateSettings('externalWeeklyDir', v)} />
+          <Field label={ts.externalMonthlyDir} value={settings.externalMonthlyDir} placeholder="exports/monthly-reports" onChange={(v) => updateSettings('externalMonthlyDir', v)} />
+        </div>
+
+        <h4>{ts.sourceTitle}</h4>
+        <div className="settings-preview-list">
+          <p>{ts.sourceHint}</p>
+        </div>
+        <div className="settings-grid">
+          <label className="settings-field">
+            <span><strong>{ts.weeklySourceMode}</strong></span>
+            <select value={settings.weeklySourceMode} onChange={(e) => updateSettings('weeklySourceMode', e.target.value as typeof settings.weeklySourceMode)}>
+              <option value="daily-notes">{ts.sourceDailyNotes}</option>
+              <option value="manual-files">{ts.sourceManualFiles}</option>
+            </select>
+          </label>
+          <label className="settings-field">
+            <span><strong>{ts.monthlySourceMode}</strong></span>
+            <select value={settings.monthlySourceMode} onChange={(e) => updateSettings('monthlySourceMode', e.target.value as typeof settings.monthlySourceMode)}>
+              <option value="weekly-then-daily">{ts.sourceWeeklyThenDaily}</option>
+              <option value="weekly-reports">{ts.sourceWeeklyReports}</option>
+              <option value="daily-notes">{ts.sourceDailyNotes}</option>
+              <option value="manual-files">{ts.sourceManualFiles}</option>
+            </select>
+          </label>
+        </div>
+        <div className="settings-action-row">
+          <button type="button" className="settings-reset-button" onClick={() => testSources('weekly')}>{ts.testSources}（{ts.weeklySourceMode}）</button>
+          <button type="button" className="settings-reset-button" onClick={() => testSources('monthly')}>{ts.testSources}（{ts.monthlySourceMode}）</button>
+        </div>
+        {sourceTestStatus && <p className="settings-status-text">{sourceTestStatus}</p>}
+        {sourceTestFiles.length > 0 && (
+          <ul className="settings-preview-list">
+            {sourceTestFiles.map((source) => (
+              <li key={source.filePath}>{source.label}：{source.filePath}</li>
+            ))}
+          </ul>
+        )}
 
         {([
           {
             kind: 'weekly' as const,
-            promptLabel: rc.weeklyPrompt,
+            promptLabel: ts.personalWeeklyTemplate,
             promptValue: settings.weeklyPrompt,
             recognizeLabel: rc.recognizeWeekly,
             settingKey: 'weeklyPrompt' as const,
           },
           {
             kind: 'monthly' as const,
-            promptLabel: rc.monthlyPrompt,
+            promptLabel: ts.personalMonthlyTemplate,
             promptValue: settings.monthlyPrompt,
             recognizeLabel: rc.recognizeMonthly,
             settingKey: 'monthlyPrompt' as const,
           },
           {
             kind: 'ext-weekly' as const,
-            promptLabel: rc.extWeeklyPrompt,
+            promptLabel: ts.externalWeeklyTemplate,
             promptValue: settings.externalWeeklyPrompt,
             recognizeLabel: rc.recognizeExtWeekly,
             settingKey: 'externalWeeklyPrompt' as const,
           },
           {
             kind: 'ext-monthly' as const,
-            promptLabel: rc.extMonthlyPrompt,
+            promptLabel: ts.externalMonthlyTemplate,
             promptValue: settings.externalMonthlyPrompt,
             recognizeLabel: rc.recognizeExtMonthly,
             settingKey: 'externalMonthlyPrompt' as const,
@@ -1122,6 +1242,16 @@ export function SettingsPanel({
   const [section, setSection] = useState<SettingsSection>('root');
   const defaultTemplates = useMemo(() => createDefaultObsidianTemplateSettings(), []);
   const text = getShellText(appSettings.language).settings;
+  const navSections: Array<{ title: string; entries: typeof sectionEntries }> = [
+    {
+      title: appSettings.language === 'zh-CN' ? '常用设置' : 'Common',
+      entries: sectionEntries.filter((entry) => entry.primary),
+    },
+    {
+      title: appSettings.language === 'zh-CN' ? '高级设置' : 'Advanced',
+      entries: sectionEntries.filter((entry) => !entry.primary),
+    },
+  ];
 
   useEffect(() => {
     if (isOpen) setSection('root');
@@ -1132,6 +1262,8 @@ export function SettingsPanel({
   const updatePersonalization = <K extends keyof PersonalizationSettings>(key: K, value: PersonalizationSettings[K]) => {
     onChange({ ...settings, [key]: value });
   };
+
+  const recommendation = getThemeRecommendation(settings);
 
   const updateApp = <K extends keyof AppBehaviorSettings>(key: K, value: AppBehaviorSettings[K]) => {
     onAppSettingsChange({ ...appSettings, [key]: value });
@@ -1169,14 +1301,26 @@ export function SettingsPanel({
 
       {section === 'root' && (
         <div className="settings-nav-list">
-          {sectionEntries.map((entry) => (
-            <button key={entry.key} type="button" className="settings-nav-item" onClick={() => setSection(entry.key)}>
-              <span>
-                <strong>{text.sections[entry.key][0]}</strong>
-                <small>{text.sections[entry.key][1]}</small>
-              </span>
-              <b>›</b>
-            </button>
+          {navSections.map((group) => (
+            <div key={group.title}>
+              <p className="settings-nav-section-title">{group.title}</p>
+              <div className="settings-nav-list">
+                {group.entries.map((entry) => (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    className={`settings-nav-item ${entry.primary ? 'settings-nav-primary' : ''}`}
+                    onClick={() => setSection(entry.key)}
+                  >
+                    <span>
+                      <strong>{text.sections[entry.key][0]}</strong>
+                      <small>{text.sections[entry.key][1]}</small>
+                    </span>
+                    <b>›</b>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -1216,22 +1360,6 @@ export function SettingsPanel({
                       <span className="theme-preset-dot" />
                     </span>
                     <span className="theme-preset-name">{label}</span>
-                    {active && (
-                      <button
-                        className="theme-preset-edit"
-                        title={appSettings.language === 'zh-CN' ? '调整透明度' : 'Adjust Opacity'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSection(`theme-${preset.id}` as SettingsSection);
-                        }}
-                        aria-label={appSettings.language === 'zh-CN' ? '调整透明度' : 'Adjust Opacity'}
-                      >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-                    )}
                   </button>
                 );
               })}
@@ -1239,7 +1367,10 @@ export function SettingsPanel({
           </section>
 
           <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '字体大小' : 'Font Size'}</h3>
+            <h3>{text.globalAppearance}</h3>
+            <div className="settings-preview-list">
+              <p>{text.globalAppearanceHint}</p>
+            </div>
             <div className="settings-grid">
               <RangeControl
                 label={appSettings.language === 'zh-CN' ? '全局字体' : 'Global Font'}
@@ -1250,248 +1381,58 @@ export function SettingsPanel({
                 unit="%"
                 onChange={(value) => updatePersonalization('fontScale', value)}
               />
+              <RangeControl
+                label={text.radius}
+                value={settings.radius}
+                min={4}
+                max={36}
+                unit="px"
+                onChange={(value) => updatePersonalization('radius', value)}
+              />
             </div>
           </section>
-        </>
-      )}
-
-      {section === 'theme-minimal' && (
-        <>
-          <button className="settings-back-button" onClick={() => setSection('personalization')}>
-            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
-          </button>
 
           <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '极简纯白 - 透明度' : 'Minimal White - Opacity'}</h3>
+            <h3>{text.opacityRecommendations}</h3>
+            <div className="settings-preview-list">
+              <p>{text.opacityRecommendationsHint}</p>
+              <ul className="settings-opacity-reco-list">
+                {OPACITY_AREAS.map((area) => {
+                  const reco = opacityValue(recommendation, area.settingKey as OpacityKey);
+                  return (
+                    <li key={area.key}>
+                      <span>{appSettings.language === 'zh-CN' ? area.labelZh : area.labelEn}</span>
+                      <b>{reco}%</b>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </section>
+
+          <Collapsible title={text.areaFineTuning}>
+            <div className="settings-preview-list">
+              <p>{text.areaFineTuningHint}</p>
+            </div>
             <div className="settings-grid">
-              <RangeControl label={text.windowOpacity} hint={text.windowOpacityHint} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
-              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
-              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={36} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
-              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
+              {OPACITY_AREAS.map((area) => {
+                const settingKey = area.settingKey as OpacityKey;
+                const reco = opacityValue(recommendation, settingKey);
+                return (
+                  <OpacityAreaControl
+                    key={area.key}
+                    label={appSettings.language === 'zh-CN' ? area.labelZh : area.labelEn}
+                    hint={text.opacityAreaHints[area.key]}
+                    value={opacityValue(settings, settingKey)}
+                    recommended={reco}
+                    resetTitle={text.resetToRecommendation}
+                    onChange={(value) => updatePersonalization(settingKey, value)}
+                    onReset={() => updatePersonalization(settingKey, reco)}
+                  />
+                );
+              })}
             </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{text.colors}</h3>
-            <div className="settings-color-grid">
-              <label className="settings-color">
-                <span>{appSettings.language === 'zh-CN' ? '主色' : 'Primary'}</span>
-                <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
-              </label>
-              <label className="settings-color">
-                <span>{appSettings.language === 'zh-CN' ? '强调色' : 'Secondary'}</span>
-                <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
-              </label>
-            </div>
-          </section>
-        </>
-      )}
-
-      {section === 'theme-neumorphism' && (
-        <>
-          <button className="settings-back-button" onClick={() => setSection('personalization')}>
-            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
-          </button>
-
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '新拟态 - 基础透明度' : 'Neumorphism - Basic Opacity'}</h3>
-            <div className="settings-grid">
-              <RangeControl label={text.windowOpacity} hint={text.windowOpacityHint} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
-              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
-              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={36} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
-              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '新拟态 - 高级透明度' : 'Neumorphism - Advanced Opacity'}</h3>
-            <div className="settings-grid">
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '顶部区域' : 'Top Area'}
-                hint={appSettings.language === 'zh-CN' ? '标题栏和头部' : 'Title bar and header'}
-                value={settings.topOpacity ?? 90}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('topOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '任务卡片' : 'Task Cards'}
-                hint={appSettings.language === 'zh-CN' ? '任务列表卡片' : 'Task list cards'}
-                value={settings.cardOpacity ?? 86}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('cardOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '按钮输入框' : 'Controls'}
-                hint={appSettings.language === 'zh-CN' ? '按钮和输入框' : 'Buttons and inputs'}
-                value={settings.controlOpacity ?? 90}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('controlOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '弹出菜单' : 'Menus'}
-                hint={appSettings.language === 'zh-CN' ? '设置面板和日历' : 'Settings and calendar'}
-                value={settings.menuOpacity ?? 96}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('menuOpacity', value)}
-              />
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{text.colors}</h3>
-            <div className="settings-color-grid">
-              <label className="settings-color">
-                <span>{appSettings.language === 'zh-CN' ? '主色' : 'Primary'}</span>
-                <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
-              </label>
-              <label className="settings-color">
-                <span>{appSettings.language === 'zh-CN' ? '强调色' : 'Secondary'}</span>
-                <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
-              </label>
-            </div>
-          </section>
-        </>
-      )}
-
-      {section === 'theme-watercolor' && (
-        <>
-          <button className="settings-back-button" onClick={() => setSection('personalization')}>
-            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
-          </button>
-
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '水彩画风 - 基础透明度' : 'Watercolor - Basic Opacity'}</h3>
-            <div className="settings-grid">
-              <RangeControl label={text.windowOpacity} hint={text.windowOpacityHint} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
-              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
-              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={36} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
-              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '水彩画风 - 高级透明度' : 'Watercolor - Advanced Opacity'}</h3>
-            <div className="settings-grid">
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '顶部区域' : 'Top Area'}
-                hint={appSettings.language === 'zh-CN' ? '标题栏和头部' : 'Title bar and header'}
-                value={settings.topOpacity ?? 80}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('topOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '任务卡片' : 'Task Cards'}
-                hint={appSettings.language === 'zh-CN' ? '任务列表卡片' : 'Task list cards'}
-                value={settings.cardOpacity ?? 75}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('cardOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '按钮输入框' : 'Controls'}
-                hint={appSettings.language === 'zh-CN' ? '按钮和输入框' : 'Buttons and inputs'}
-                value={settings.controlOpacity ?? 60}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('controlOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '弹出菜单' : 'Menus'}
-                hint={appSettings.language === 'zh-CN' ? '设置面板和日历' : 'Settings and calendar'}
-                value={settings.menuOpacity ?? 90}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('menuOpacity', value)}
-              />
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{text.colors}</h3>
-            <div className="settings-color-grid">
-              <label className="settings-color">
-                <span>{appSettings.language === 'zh-CN' ? '主色' : 'Primary'}</span>
-                <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
-              </label>
-              <label className="settings-color">
-                <span>{appSettings.language === 'zh-CN' ? '强调色' : 'Secondary'}</span>
-                <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
-              </label>
-            </div>
-          </section>
-        </>
-      )}
-
-      {section === 'theme-invisible' && (
-        <>
-          <button className="settings-back-button" onClick={() => setSection('personalization')}>
-            ← {appSettings.language === 'zh-CN' ? '返回外观设置' : 'Back to Appearance'}
-          </button>
-
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '无感 - 透明度' : 'Invisible - Opacity'}</h3>
-            <div className="settings-grid">
-              <RangeControl label={text.windowOpacity} hint={appSettings.language === 'zh-CN' ? '越低越透明，推荐 2-5' : 'Lower = more transparent, 2-5 recommended'} value={settings.windowOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('windowOpacity', value)} />
-              <RangeControl label={text.panelOpacity} hint={text.panelOpacityHint} value={settings.panelOpacity} min={0} max={100} unit="%" onChange={(value) => updatePersonalization('panelOpacity', value)} />
-              <RangeControl label={text.blur} value={settings.blurStrength} min={0} max={48} unit="px" onChange={(value) => updatePersonalization('blurStrength', value)} />
-              <RangeControl label={text.radius} value={settings.radius} min={4} max={36} unit="px" onChange={(value) => updatePersonalization('radius', value)} />
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '无感 - 高级透明度' : 'Invisible - Advanced Opacity'}</h3>
-            <div className="settings-grid">
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '顶部区域' : 'Top Area'}
-                hint={appSettings.language === 'zh-CN' ? '标题栏和头部' : 'Title bar and header'}
-                value={settings.topOpacity ?? 2}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('topOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '任务卡片' : 'Task Cards'}
-                hint={appSettings.language === 'zh-CN' ? '任务列表卡片' : 'Task list cards'}
-                value={settings.cardOpacity ?? 3}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('cardOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '按钮输入框' : 'Controls'}
-                hint={appSettings.language === 'zh-CN' ? '按钮和输入框' : 'Buttons and inputs'}
-                value={settings.controlOpacity ?? 2}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('controlOpacity', value)}
-              />
-              <RangeControl
-                label={appSettings.language === 'zh-CN' ? '弹出菜单' : 'Menus'}
-                hint={appSettings.language === 'zh-CN' ? '设置面板和日历，建议 85+ 保证可用' : 'Settings and calendar, 85+ recommended'}
-                value={settings.menuOpacity ?? 85}
-                min={0}
-                max={100}
-                unit="%"
-                onChange={(value) => updatePersonalization('menuOpacity', value)}
-              />
-            </div>
-          </section>
+          </Collapsible>
 
           <section className="settings-section">
             <h3>{text.colors}</h3>
@@ -1553,6 +1494,7 @@ export function SettingsPanel({
 
           <ObsidianTemplateCenter
             language={appSettings.language}
+            text={text.templateSources}
             templates={obsidianTemplates}
             onChange={onObsidianTemplatesChange}
             onPreviewSync={onPreviewSync}
@@ -1613,7 +1555,7 @@ export function SettingsPanel({
       )}
 
       {section === 'ai-review' && (
-        <AiReviewSection text={text.aiReview} tasks={tasks} />
+        <AiReviewSection text={text.aiReview} templateSources={text.templateSources} tasks={tasks} />
       )}
 
       {section === 'general' && (

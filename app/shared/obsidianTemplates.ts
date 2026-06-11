@@ -228,6 +228,67 @@ export function buildDailyNoteContent(params: {
   return content.join('\n');
 }
 
+/**
+ * 用用户自定义的日报 Markdown 模板生成新日报文档。
+ * 核心占位符（{{work}}/{{inspiration}}/{{tasks}}）展开为「自带标题的 marker 块」，
+ * 与增量同步使用的块结构完全一致，因此模板布局自由但同步逻辑无需改动。
+ * review/tomorrow/knowledge 占位符展开为对应 AI 托管空块（标题在块外）。
+ * 模板缺失某个核心占位符时，仍把该块追加到文末，保证同步能定位到 marker。
+ * 模板为空时回退到基于模块的 buildDailyNoteContent。
+ */
+export function buildDailyNoteFromTemplate(params: {
+  date: string;
+  tasks: Task[];
+  dailyWork: string;
+  dailyInspiration: string;
+  templates: ObsidianTemplateSettings;
+}) {
+  const { date, tasks, dailyWork, dailyInspiration, templates } = params;
+  const template = templates.dailyMarkdownTemplate?.trim();
+  if (!template) {
+    return buildDailyNoteContent(params);
+  }
+
+  const coreBlocks: Record<'work' | 'inspiration' | 'tasks', { token: RegExp; block: string; present: boolean }> = {
+    work: { token: /\{\{\s*work\s*\}\}/g, block: buildWorkBlock(dailyWork, templates), present: false },
+    inspiration: { token: /\{\{\s*inspiration\s*\}\}/g, block: buildInspirationBlock(dailyInspiration, templates), present: false },
+    tasks: { token: /\{\{\s*tasks\s*\}\}/g, block: buildTaskBlock(date, tasks, templates), present: false },
+  };
+
+  const reviewBlocks: Record<'review' | 'tomorrow' | 'knowledge', { token: RegExp; title: string; marker: { start: string; end: string } }> = {
+    review: { token: /\{\{\s*review\s*\}\}/g, title: templates.reviewSectionTitle, marker: REVIEW_MARKERS.REVIEW },
+    tomorrow: { token: /\{\{\s*tomorrow\s*\}\}/g, title: templates.tomorrowTaskSectionTitle, marker: REVIEW_MARKERS.TOMORROW },
+    knowledge: { token: /\{\{\s*knowledge\s*\}\}/g, title: templates.reusableKnowledgeSectionTitle, marker: REVIEW_MARKERS.KNOWLEDGE },
+  };
+
+  let rendered = template.replace(/\{\{\s*date\s*\}\}/g, date);
+
+  for (const key of ['work', 'inspiration', 'tasks'] as const) {
+    const entry = coreBlocks[key];
+    if (entry.token.test(rendered)) {
+      entry.present = true;
+      rendered = rendered.replace(entry.token, () => entry.block);
+    }
+  }
+
+  for (const key of ['review', 'tomorrow', 'knowledge'] as const) {
+    const entry = reviewBlocks[key];
+    const reviewBlock = `## ${entry.title}\n${entry.marker.start}\n${entry.marker.end}`;
+    rendered = rendered.replace(entry.token, () => reviewBlock);
+  }
+
+  // 缺失的核心块追加到文末，保证后续增量同步能定位 marker。
+  const missing = (['work', 'inspiration', 'tasks'] as const)
+    .filter((key) => !coreBlocks[key].present)
+    .map((key) => coreBlocks[key].block);
+  if (missing.length) {
+    rendered = `${rendered.trimEnd()}\n\n${missing.join('\n\n')}`;
+  }
+
+  return `${rendered.trimEnd()}\n`;
+}
+
+
 export function replaceManagedBlock(existing: string, startMarker: string, endMarker: string, block: string) {
   const start = existing.indexOf(startMarker);
   const end = existing.indexOf(endMarker);

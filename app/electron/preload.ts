@@ -37,6 +37,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   previewCompanionSync: (settings: unknown, items: unknown[]) => ipcRenderer.invoke('companion:previewSync', settings, items),
   writeCompanionSync: (settings: unknown, items: unknown[]) => ipcRenderer.invoke('companion:writeSync', settings, items),
   importMobileInbox: (inboxPath: string) => ipcRenderer.invoke('companion:importMobileInbox', inboxPath),
+  openTaskContextMenu: (payload: unknown) => ipcRenderer.invoke('taskContextMenu:open', payload),
+  closeTaskContextMenu: () => ipcRenderer.invoke('taskContextMenu:close'),
+  resizeTaskContextMenu: (height: number) => ipcRenderer.invoke('taskContextMenu:resize', height),
+  dispatchTaskMenuAction: (payload: unknown) => ipcRenderer.invoke('taskContextMenu:action', payload),
+  onTaskMenuAction: (callback: (payload: unknown) => void) => {
+    const listener = (_event: unknown, payload: unknown) => callback(payload);
+    ipcRenderer.on('taskContextMenu:action', listener);
+    return () => ipcRenderer.removeListener('taskContextMenu:action', listener);
+  },
   setWindowCompactMode: (compactMode: boolean) => ipcRenderer.invoke('window:setCompactMode', compactMode),
   getWindowCompactMode: () => ipcRenderer.invoke('window:getCompactMode'),
   getAutoStart: () => ipcRenderer.invoke('window:getAutoStart'),
@@ -56,7 +65,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     generateMonthly: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:generateMonthly', date, tasks),
     generateExternal: (kind: 'weekly' | 'monthly', date: string) => ipcRenderer.invoke('aiReview:generateExternal', kind, date),
     recognizeTemplate: (rawTemplate: string) => ipcRenderer.invoke('aiReview:recognizeTemplate', rawTemplate),
-    recognizeReportTemplate: (kind: 'weekly' | 'monthly', rawTemplate: string) => ipcRenderer.invoke('aiReview:recognizeReportTemplate', kind, rawTemplate),
+    recognizeReportTemplate: (target: string, rawTemplate: string) => ipcRenderer.invoke('aiReview:recognizeReportTemplate', target, rawTemplate),
+    testSourceMaterials: (kind: 'weekly' | 'monthly', date: string) => ipcRenderer.invoke('aiReview:testSourceMaterials', kind, date),
     pickTemplateFile: () => ipcRenderer.invoke('aiReview:pickTemplateFile'),
     listModels: (cfg: { baseUrl?: string; apiKey?: string; provider?: string }) => ipcRenderer.invoke('aiReview:listModels', cfg),
     onTick: (callback: () => void) => {

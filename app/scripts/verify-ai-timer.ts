@@ -1,4 +1,6 @@
 import { strict as assert } from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 import { getNextTimerDelay, getNextWeeklyDelay, getNextMonthlyDelay } from '../shared/aiReview/timer';
 
 const HOUR = 60 * 60 * 1000;
@@ -43,5 +45,17 @@ assert.equal(getNextMonthlyDelay(firstEarly, 1, '09:00'), HOUR, '1号未到点 �
 const feb = new Date('2026-02-10T10:00:00');
 const toEnd = getNextMonthlyDelay(feb, 31, '09:00');
 assert.equal(new Date(feb.getTime() + toEnd).getDate(), 28, '2026年2月无31号 → 落到28号');
+
+// === 定时报告无素材时不能静默吞掉错误 ===
+const appSrc = fs.readFileSync(path.join(process.cwd(), 'src/App.tsx'), 'utf-8');
+assert.ok(appSrc.includes('handleScheduledReportResult'), 'App.tsx must define handleScheduledReportResult');
+assert.ok(
+  appSrc.includes('generateWeekly(ymd(lastWeek), allTasksRef.current).then(handleScheduledReportResult)'),
+  'weekly tick must pass result to handler',
+);
+assert.ok(
+  appSrc.includes('generateMonthly(ymd(prevMonthEnd), allTasksRef.current).then(handleScheduledReportResult)'),
+  'monthly tick must pass result to handler',
+);
 
 console.log('AI timer verification passed');

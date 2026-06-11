@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTasks } from './hooks/useTasks';
 import { useFloatingScrollbar } from './hooks/useFloatingScrollbar';
+import './styles/context-menu.css';
 import { TitleBar } from './components/TitleBar';
 import { Header } from './components/Header';
 import { DateNavigator } from './components/DateNavigator';
@@ -62,6 +63,21 @@ function shiftDate(date: string, days: number) {
   return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
 }
 
+function findTaskInTree(tasks: Task[], taskId: string): Task | null {
+  for (const task of tasks) {
+    if (task.id === taskId) return task;
+    if (task.subtasks?.length) {
+      const found = findTaskInTree(task.subtasks, taskId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function isSubtask(task: Task) {
+  return Boolean(task.parentTaskId);
+}
+
 export default function App() {
   const {
     tasks,
@@ -84,6 +100,13 @@ export default function App() {
     editTaskReview,
     deleteTask,
     editTask,
+    updateTask,
+    addSubtask,
+    toggleSubtask,
+    deleteSubtask,
+    toggleTaskCollapse,
+    updateSubtaskReview,
+    markSubtaskDoneWithoutReview,
     changePriority,
     completedCount,
     totalCount,
@@ -111,7 +134,10 @@ export default function App() {
   const [aiOnboarding, setAiOnboarding] = useState<AiReviewSettings | null>(null);
   const [completionTask, setCompletionTask] = useState<Task | null>(null);
   const [reviewTask, setReviewTask] = useState<Task | null>(null);
+  const [completionTarget, setCompletionTarget] = useState<{ mode: 'task' | 'subtask'; id: string } | null>(null);
   const [personalization, setPersonalization] = useState<PersonalizationSettings>(DEFAULT_PERSONALIZATION);
+  // 右键菜单 popup 触发的「编辑」请求：{任务 id, 递增 nonce}。
+  const [editRequest, setEditRequest] = useState<{ id: string; nonce: number } | null>(null);
   // 每个主题单独记忆的透明度，避免切回主题时被预设默认值覆盖。
   const [themeOverrides, setThemeOverrides] = useState<Record<string, ThemeOpacityOverride>>({});
   const [personalizationReady, setPersonalizationReady] = useState(false);
@@ -213,16 +239,28 @@ export default function App() {
     // 周报定时：到点生成「上一周」（今天往前 7 天落在上一个完整周）。
     const pad2 = (n: number) => String(n).padStart(2, '0');
     const ymd = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    // 定时报告找不到素材时不再静默吞掉错误：记录到 console 并保存到 window 上供后续读取，
+    // 这样设置页/最近生成状态可以显示具体原因（如 NO_SOURCE_MATERIALS_ERROR）。
+    const handleScheduledReportResult = (result?: { ok: boolean; error?: string }) => {
+      if (!result || result.ok) return;
+      const message = result.error || '没有找到本周期原始记录，请检查素材来源或手动选择素材文件。';
+      console.warn('[scheduled report]', message);
+      try {
+        (window as unknown as { __dailytodoLastScheduledError?: string }).__dailytodoLastScheduledError = message;
+      } catch {
+        /* noop */
+      }
+    };
     const offWeekly = window.electronAPI?.aiReview?.onWeeklyTick(() => {
       const lastWeek = new Date();
       lastWeek.setDate(lastWeek.getDate() - 7);
-      void window.electronAPI?.aiReview?.generateWeekly(ymd(lastWeek), allTasksRef.current);
+      void window.electronAPI?.aiReview?.generateWeekly(ymd(lastWeek), allTasksRef.current).then(handleScheduledReportResult);
     });
     // 月报定时：到点生成「上一个月」（用上月最后一天，落在该月内）。
     const offMonthly = window.electronAPI?.aiReview?.onMonthlyTick(() => {
       const now = new Date();
       const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-      void window.electronAPI?.aiReview?.generateMonthly(ymd(prevMonthEnd), allTasksRef.current);
+      void window.electronAPI?.aiReview?.generateMonthly(ymd(prevMonthEnd), allTasksRef.current).then(handleScheduledReportResult);
     });
     return () => {
       offDaily?.();
@@ -287,6 +325,28 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openSelectedDailyNote, setSelectedDate]);
 
+  // 右键菜单 popup 把用户操作通过主进程转发回来：在这里落到实际的任务更新。
+  useEffect(() => {
+    const off = window.electronAPI?.onTaskMenuAction((payload) => {
+      const { taskId, updates } = payload;
+      const action = (updates as { __action?: 'edit' | 'delete' | 'addSubtask'; text?: string }).__action;
+      if (action === 'addSubtask') {
+        addSubtask(taskId, String((updates as { text?: string }).text || ''));
+        return;
+      }
+      if (action === 'delete') {
+        deleteTask(taskId);
+        return;
+      }
+      if (action === 'edit') {
+        setEditRequest((prev) => ({ id: taskId, nonce: (prev?.nonce || 0) + 1 }));
+        return;
+      }
+      updateTask(taskId, updates);
+    });
+    return () => off?.();
+  }, [addSubtask, deleteTask, updateTask]);
+
   const visibleTasks = tasks.filter((task) => {
     if (showOpenOnly && task.completed) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
@@ -294,7 +354,7 @@ export default function App() {
     return true;
   });
   const selectedDateTasksForCommands = selectedDateTaskCommands;
-  const currentReviewTask = reviewTask ? allTasks.find((task) => task.id === reviewTask.id) || null : null;
+  const currentReviewTask = reviewTask ? findTaskInTree(allTasks, reviewTask.id) : null;
   const shellText = getShellText(appSettings.language).app;
   const activeThemeId = personalization.themeId || matchThemePreset(personalization, isDark);
   const activeThemeClass = activeThemeId ? `theme-${activeThemeId}` : '';
@@ -306,22 +366,47 @@ export default function App() {
       return;
     }
 
+    setCompletionTarget({ mode: 'task', id: task.id });
     setCompletionTask(task);
   };
 
+  const handleToggleSubtask = (id: string) => {
+    const subtask = findTaskInTree(allTasks, id);
+    if (!subtask || subtask.completed) {
+      toggleSubtask(id);
+      return;
+    }
+
+    setCompletionTarget({ mode: 'subtask', id: subtask.id });
+    setCompletionTask(subtask);
+  };
+
   const handleCompleteWithReview = (taskId: string, review: Omit<TaskCompletionReview, 'reviewedAt' | 'id'>) => {
-    completeTaskWithReview(taskId, review);
+    const target = completionTarget?.id === taskId ? completionTarget : { mode: 'task' as const, id: taskId };
+    if (target.mode === 'subtask') {
+      updateSubtaskReview(taskId, review);
+    } else {
+      completeTaskWithReview(taskId, review);
+    }
     setCompletionTask(null);
     setReviewTask(null);
+    setCompletionTarget(null);
   };
 
   const handleCompleteWithoutReview = (taskId: string) => {
-    toggleTask(taskId);
+    const target = completionTarget?.id === taskId ? completionTarget : { mode: 'task' as const, id: taskId };
+    if (target.mode === 'subtask') {
+      markSubtaskDoneWithoutReview(taskId);
+    } else {
+      toggleTask(taskId);
+    }
     setCompletionTask(null);
+    setCompletionTarget(null);
   };
 
   const handleViewCompletion = (task: Task) => {
     const hasReview = Boolean(task.completionReviews?.length || task.completionReview);
+    setCompletionTarget({ mode: isSubtask(task) ? 'subtask' : 'task', id: task.id });
     if (!hasReview && task.completed) {
       setCompletionTask(task);
       return;
@@ -413,9 +498,14 @@ export default function App() {
   const cardOpacity = clamp((personalization.cardOpacity ?? 86) / 100, 0, 1);
   const controlOpacity = clamp((personalization.controlOpacity ?? 90) / 100, 0, 1);
   const menuOpacity = clamp((personalization.menuOpacity ?? 96) / 100, 0, 1);
+  const inputOpacity = clamp((personalization.inputOpacity ?? personalization.controlOpacity ?? personalization.panelOpacity) / 100, 0, 1);
+  const dialogOpacity = clamp((personalization.dialogOpacity ?? personalization.menuOpacity ?? 94) / 100, 0, 1);
+  const settingsPanelOpacity = clamp((personalization.settingsPanelOpacity ?? personalization.menuOpacity ?? 92) / 100, 0, 1);
   const blurStrength = clamp(personalization.blurStrength, 0, 48);
   const shellRadius = clamp(personalization.radius, 4, 36);
   const cardRadius = clamp(personalization.radius - 4, 4, 28);
+  const controlRadius = clamp(personalization.radius - 8, 4, 24);
+  const glassSaturation = clamp(1.08 + (1 - Math.min(windowOpacity, panelOpacity)) * 0.32, 1.08, 1.4);
 
   return (
     <div
@@ -429,10 +519,15 @@ export default function App() {
         '--card-opacity': cardOpacity,
         '--control-opacity': controlOpacity,
         '--menu-opacity': menuOpacity,
+        '--input-opacity': inputOpacity,
+        '--dialog-opacity': dialogOpacity,
+        '--settings-panel-opacity': settingsPanelOpacity,
         '--readable-surface-opacity': clamp(panelOpacity + 0.16, 0.62, 0.98),
+        '--glass-saturation': glassSaturation,
         '--blur-strength': `${blurStrength}px`,
         '--shell-radius': `${shellRadius}px`,
         '--card-radius': `${cardRadius}px`,
+        '--control-radius': `${controlRadius}px`,
       } as CSSProperties}
     >
       <div className={`app-shell ${activeThemeClass} density-${personalization.layoutDensity} ${personalization.texture ? 'texture-on' : 'texture-off'} ${personalization.animations ? 'motion-on' : 'motion-off'} ${compactMode ? 'task-priority-mode' : ''} relative flex h-full flex-col overflow-hidden border border-white/45 text-zinc-900 backdrop-blur-2xl dark:border-white/10 dark:text-zinc-100`}>
@@ -604,6 +699,11 @@ export default function App() {
                 onEdit={editTask}
                 onPriorityChange={changePriority}
                 onViewReview={handleViewCompletion}
+                onToggleSubtask={handleToggleSubtask}
+                onDeleteSubtask={deleteSubtask}
+                onToggleCollapse={toggleTaskCollapse}
+                onViewSubtaskReview={handleViewCompletion}
+                editRequest={editRequest}
               />
             )}
           </div>

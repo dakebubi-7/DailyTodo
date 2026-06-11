@@ -12,9 +12,29 @@ const content = buildDailyNoteContent({
   templates,
 });
 
-assert.ok(hasBlock(content, REVIEW_MARKERS.REVIEW), 'REVIEW block present');
-assert.ok(hasBlock(content, REVIEW_MARKERS.TOMORROW), 'TOMORROW block present');
-assert.ok(hasBlock(content, REVIEW_MARKERS.KNOWLEDGE), 'KNOWLEDGE block present');
+// 仅断言默认启用的模块块（默认：work/tasks/review 开，inspiration/tomorrow/knowledge 关）。
+// 启用某模块时其 marker 块才会出现，未启用模块不应强制存在。
+assert.ok(templates.modules.review.enabled, 'review module enabled by default');
+assert.ok(hasBlock(content, REVIEW_MARKERS.REVIEW), 'REVIEW block present when enabled');
+
+// 启用全部 review 系模块后，TOMORROW / KNOWLEDGE 块也应正确产出。
+const allOn = {
+  ...templates,
+  modules: {
+    ...templates.modules,
+    tomorrow: { ...templates.modules.tomorrow, enabled: true },
+    knowledge: { ...templates.modules.knowledge, enabled: true },
+  },
+};
+const contentAllOn = buildDailyNoteContent({
+  date: '2026-06-07',
+  tasks: [],
+  dailyWork: '',
+  dailyInspiration: '',
+  templates: allOn,
+});
+assert.ok(hasBlock(contentAllOn, REVIEW_MARKERS.TOMORROW), 'TOMORROW block present when enabled');
+assert.ok(hasBlock(contentAllOn, REVIEW_MARKERS.KNOWLEDGE), 'KNOWLEDGE block present when enabled');
 // 既有任务/工作标记仍在
 assert.ok(content.includes('<!-- DAILYTODO:TASKS:START -->'));
 assert.ok(content.includes('<!-- DAILYTODO:WORK:START -->'));
@@ -26,8 +46,8 @@ assert.ok(
   'review heading must precede the START marker (heading outside block)',
 );
 assert.equal(readBlockBody(content, REVIEW_MARKERS.REVIEW), '', 'REVIEW block starts empty');
-assert.equal(readBlockBody(content, REVIEW_MARKERS.TOMORROW), '', 'TOMORROW block starts empty');
-assert.equal(readBlockBody(content, REVIEW_MARKERS.KNOWLEDGE), '', 'KNOWLEDGE block starts empty');
+assert.equal(readBlockBody(contentAllOn, REVIEW_MARKERS.TOMORROW), '', 'TOMORROW block starts empty');
+assert.equal(readBlockBody(contentAllOn, REVIEW_MARKERS.KNOWLEDGE), '', 'KNOWLEDGE block starts empty');
 
 console.log('Daily review blocks verification passed');
 

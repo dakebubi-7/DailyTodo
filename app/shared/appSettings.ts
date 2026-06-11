@@ -43,9 +43,18 @@ export interface AppBehaviorSettings {
   lockWindowPosition: boolean;
 }
 
+export interface DailySourceRule {
+  id: string;
+  label: string;
+  path: string;
+  enabled: boolean;
+}
+
 export interface ObsidianTemplateSettings {
   dailyNotePath: string;
   taskExportPath: string;
+  dailyMarkdownTemplate: string;
+  dailySourceRules: DailySourceRule[];
   presetId: ObsidianTemplatePresetId;
   modules: ObsidianTemplateModules;
   workSectionTitle: string;
@@ -77,10 +86,45 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
   };
 }
 
+export const DEFAULT_DAILY_MARKDOWN_TEMPLATE = `---
+类型: 日报
+日期: {{date}}
+标签:
+  - 日报
+---
+
+# DailyTodo · {{date}}
+
+## 今日工作
+{{work}}
+
+## 灵感随笔
+{{inspiration}}
+
+## 每日任务
+{{tasks}}
+
+## 复盘
+{{review}}
+
+## 明日待办
+{{tomorrow}}
+
+## 可复用知识
+{{knowledge}}
+`;
+
+export function createDefaultDailySourceRules(dailyNotePath = 'logs/daily/DailyTodo/{{date}}.md'): DailySourceRule[] {
+  return [{ id: 'daily-note-path', label: '每日记录文件位置', path: dailyNotePath, enabled: true }];
+}
+
 export function createDefaultObsidianTemplateSettings(): ObsidianTemplateSettings {
+  const dailyNotePath = 'logs/daily/DailyTodo/{{date}}.md';
   return syncTemplateTitlesFromModules({
-    dailyNotePath: 'logs/daily/DailyTodo/{{date}}.md',
+    dailyNotePath,
     taskExportPath: 'logs/daily/DailyTodo/tasks/{{date}}.md',
+    dailyMarkdownTemplate: DEFAULT_DAILY_MARKDOWN_TEMPLATE,
+    dailySourceRules: createDefaultDailySourceRules(dailyNotePath),
     presetId: 'simple',
     modules: createDefaultModules(),
     workSectionTitle: '今日工作',
@@ -135,6 +179,20 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
   };
 }
 
+function normalizeDailySourceRules(value: unknown, dailyNotePath: string): DailySourceRule[] {
+  if (!Array.isArray(value)) return createDefaultDailySourceRules(dailyNotePath);
+  const rules = value
+    .filter(isObject)
+    .map((rule, index) => ({
+      id: text(rule.id, `daily-source-${index + 1}`),
+      label: text(rule.label, `素材规则 ${index + 1}`),
+      path: text(rule.path, dailyNotePath),
+      enabled: typeof rule.enabled === 'boolean' ? rule.enabled : true,
+    }))
+    .filter((rule) => rule.path.trim());
+  return rules.length ? rules : createDefaultDailySourceRules(dailyNotePath);
+}
+
 export function normalizeObsidianTemplateSettings(value: unknown): ObsidianTemplateSettings {
   const defaults = createDefaultObsidianTemplateSettings();
   if (!isObject(value)) return defaults;
@@ -148,10 +206,13 @@ export function normalizeObsidianTemplateSettings(value: unknown): ObsidianTempl
     knowledge: optionalText(value.reusableKnowledgeSectionTitle),
   };
   const modules = normalizeTemplateModules(value.modules, legacyTitles);
+  const dailyNotePath = text(value.dailyNotePath, defaults.dailyNotePath);
 
   return syncTemplateTitlesFromModules({
-    dailyNotePath: text(value.dailyNotePath, defaults.dailyNotePath),
+    dailyNotePath,
     taskExportPath: text(value.taskExportPath, defaults.taskExportPath),
+    dailyMarkdownTemplate: text(value.dailyMarkdownTemplate, defaults.dailyMarkdownTemplate),
+    dailySourceRules: normalizeDailySourceRules(value.dailySourceRules, dailyNotePath),
     presetId: normalizeTemplatePresetId(value.presetId),
     modules,
     workSectionTitle: modules.work.title,

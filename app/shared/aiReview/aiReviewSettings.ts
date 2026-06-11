@@ -17,6 +17,20 @@ export const DEFAULT_MAX_TOKENS = 8192;
 export const MIN_MAX_TOKENS = 256;
 export const MAX_MAX_TOKENS = 32768;
 
+export type WeeklySourceMode = 'daily-notes' | 'manual-files';
+export type MonthlySourceMode = 'weekly-then-daily' | 'weekly-reports' | 'daily-notes' | 'manual-files';
+
+const WEEKLY_SOURCE_MODES: WeeklySourceMode[] = ['daily-notes', 'manual-files'];
+const MONTHLY_SOURCE_MODES: MonthlySourceMode[] = ['weekly-then-daily', 'weekly-reports', 'daily-notes', 'manual-files'];
+
+function normalizeWeeklySourceMode(v: unknown, fb: WeeklySourceMode): WeeklySourceMode {
+  return typeof v === 'string' && (WEEKLY_SOURCE_MODES as string[]).includes(v) ? (v as WeeklySourceMode) : fb;
+}
+
+function normalizeMonthlySourceMode(v: unknown, fb: MonthlySourceMode): MonthlySourceMode {
+  return typeof v === 'string' && (MONTHLY_SOURCE_MODES as string[]).includes(v) ? (v as MonthlySourceMode) : fb;
+}
+
 /** 归一化输出上限：取整后限定在 [256, 32768]，非法回落默认 8192。 */
 export function normalizeMaxTokens(v: unknown, fb: number = DEFAULT_MAX_TOKENS): number {
   const n = Math.round(Number(v));
@@ -55,6 +69,11 @@ export interface AiReviewSettings {
   monthlyPrompt: string;
   externalWeeklyPrompt: string;
   externalMonthlyPrompt: string;
+  // 报告素材来源策略：决定生成前去哪里读原始 .md 素材。
+  weeklySourceMode: WeeklySourceMode;
+  monthlySourceMode: MonthlySourceMode;
+  externalWeeklySourceMode: WeeklySourceMode;
+  externalMonthlySourceMode: MonthlySourceMode;
   onboardingDismissed: boolean;
 }
 
@@ -118,6 +137,10 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     monthlyPrompt: '',
     externalWeeklyPrompt: '',
     externalMonthlyPrompt: '',
+    weeklySourceMode: 'daily-notes',
+    monthlySourceMode: 'weekly-then-daily',
+    externalWeeklySourceMode: 'daily-notes',
+    externalMonthlySourceMode: 'weekly-then-daily',
     onboardingDismissed: false,
   };
 }
@@ -214,6 +237,10 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     monthlyPrompt: typeof value.monthlyPrompt === 'string' ? value.monthlyPrompt : d.monthlyPrompt,
     externalWeeklyPrompt: typeof value.externalWeeklyPrompt === 'string' ? value.externalWeeklyPrompt : d.externalWeeklyPrompt,
     externalMonthlyPrompt: typeof value.externalMonthlyPrompt === 'string' ? value.externalMonthlyPrompt : d.externalMonthlyPrompt,
+    weeklySourceMode: normalizeWeeklySourceMode(value.weeklySourceMode, d.weeklySourceMode),
+    monthlySourceMode: normalizeMonthlySourceMode(value.monthlySourceMode, d.monthlySourceMode),
+    externalWeeklySourceMode: normalizeWeeklySourceMode(value.externalWeeklySourceMode, d.externalWeeklySourceMode),
+    externalMonthlySourceMode: normalizeMonthlySourceMode(value.externalMonthlySourceMode, d.externalMonthlySourceMode),
     onboardingDismissed:
       typeof value.onboardingDismissed === 'boolean' ? value.onboardingDismissed : d.onboardingDismissed,
   };

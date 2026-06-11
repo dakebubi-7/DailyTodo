@@ -18,7 +18,7 @@ import {
   TASK_START_MARKER,
   WORK_END_MARKER,
   WORK_START_MARKER,
-  buildDailyNoteContent,
+  buildDailyNoteFromTemplate,
   buildInspirationBlock as buildTemplateInspirationBlock,
   buildSyncPreview,
   buildTaskBlock as buildTemplateTaskBlock,
@@ -52,7 +52,7 @@ import type { LlmProvider } from '../shared/llm/openaiClient';
 import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings, DEFAULT_REPORT_DIRS, sanitizeRelDir, resolveActiveProfile } from '../shared/aiReview/aiReviewSettings';
 import { normalizeSections } from '../shared/aiReview/sectionConfig';
 import { buildRecognizeMessages, parseRecognizedSections } from '../shared/aiReview/recognizeTemplate';
-import { buildRecognizeReportMessages, parseRecognizedReportPrompt } from '../shared/aiReview/recognizeReportTemplate';
+import { buildRecognizeReportMessages, parseRecognizedReportPrompt, type ReportTemplateTarget } from '../shared/aiReview/recognizeReportTemplate';
 import { parseTemplateFile } from '../shared/aiReview/templateFile';
 import {
   buildRecognizeObsidianTemplateMessages,
@@ -65,7 +65,13 @@ import { shiftDateKey, getBusinessDateKey } from '../shared/taskRollover';
 import { getNextTimerDelay, getNextWeeklyDelay, getNextMonthlyDelay } from '../shared/aiReview/timer';
 import { generatePersonalWeekly, generatePersonalMonthly, generateExternalReport } from './aiReview/exportReports';
 import { isoWeekKey } from '../shared/aiReview/weekly';
-import { buildMonthlyMessages, monthKey, monthRange, selectMonthlySources, type MonthlySource } from '../shared/aiReview/monthly';
+import { buildMonthlyMessages, monthKey, monthRange } from '../shared/aiReview/monthly';
+import {
+  NO_SOURCE_MATERIALS_ERROR,
+  collectDailySourcesForDates,
+  collectMonthlySources,
+  hasSourceMaterials,
+} from '../shared/aiReview/sourceMaterials';
 import { DEFAULT_EXTERNAL_WEEKLY_SYSTEM, DEFAULT_EXTERNAL_MONTHLY_SYSTEM } from '../shared/aiReview/defaultPrompts';
 import { computeRangeStats } from '../shared/aiReview/stats';
 
@@ -199,6 +205,7 @@ function createTrayIcon() {
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let taskMenuWindow: BrowserWindow | null = null;
 let persistTimer: NodeJS.Timeout | null = null;
 let isQuitting = false;
 // 当前窗口模式的进程内真相源（normal / onTop / desktop）。createWindow 时从存储解析。
@@ -687,7 +694,7 @@ function buildInspirationBlock(inspiration = '', templates = getObsidianTemplate
 
 function buildDailyTemplate(date: string, dailyWork = '', inspiration = '', templates = getObsidianTemplateSettings()) {
   const selected = getDateKey(date);
-  return buildDailyNoteContent({ date: selected, tasks: [], dailyWork, dailyInspiration: inspiration, templates });
+  return buildDailyNoteFromTemplate({ date: selected, tasks: [], dailyWork, dailyInspiration: inspiration, templates });
 }
 
 function migrateLegacyInspirationSection(existing: string, inspiration = '') {
@@ -1127,6 +1134,90 @@ function createTray() {
   tray.on('click', showMainWindow);
 }
 
+// ===== 任务右键菜单：独立 popup 窗口 =====
+// 在主窗口内，DOM 永远裁切在窗口边界内；窗口很小时菜单显示不全。
+// 用一个独立无边框透明 BrowserWindow 承载菜单，可漂浮在屏幕任意位置、不受主窗口大小限制。
+type TaskMenuPayload = {
+  task: unknown;
+  allTags: string[];
+  isDark?: boolean;
+  theme?: {
+    themeId?: string;
+    accent?: string;
+    secondary?: string;
+    menuOpacity?: number;
+    blurStrength?: number;
+    cardRadius?: number;
+  };
+  screenX: number;
+  screenY: number;
+};
+
+const TASK_MENU_WIDTH = 320;
+const TASK_MENU_HEIGHT = 360;
+
+function closeTaskMenuWindow() {
+  if (taskMenuWindow && !taskMenuWindow.isDestroyed()) {
+    taskMenuWindow.close();
+  }
+  taskMenuWindow = null;
+}
+
+function openTaskMenuWindow(payload: TaskMenuPayload) {
+  closeTaskMenuWindow();
+
+  const { workArea } = screen.getPrimaryDisplay();
+  const margin = 8;
+  const x = Math.round(
+    Math.max(workArea.x + margin, Math.min(payload.screenX, workArea.x + workArea.width - TASK_MENU_WIDTH - margin)),
+  );
+  const y = Math.round(
+    Math.max(workArea.y + margin, Math.min(payload.screenY, workArea.y + workArea.height - TASK_MENU_HEIGHT - margin)),
+  );
+
+  const menu = new BrowserWindow({
+    width: TASK_MENU_WIDTH,
+    height: TASK_MENU_HEIGHT,
+    x,
+    y,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    // Windows 上 transparent + hasShadow 会渲染出黑色非客户区阴影（黑边）。
+    // 关掉原生阴影，改由 CSS box-shadow 在面板上画柔和阴影。
+    hasShadow: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    roundedCorners: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      backgroundThrottling: false,
+    },
+  });
+
+  taskMenuWindow = menu;
+  menu.setAlwaysOnTop(true, 'screen-saver');
+
+  loadRenderer(menu, {
+    view: 'task-menu',
+    params: { payload: JSON.stringify(payload) },
+  });
+
+  menu.once('ready-to-show', () => menu.show());
+  // 失焦即关：点其它地方就消失，符合上下文菜单语义。
+  menu.on('blur', () => closeTaskMenuWindow());
+  menu.on('closed', () => {
+    if (taskMenuWindow === menu) taskMenuWindow = null;
+  });
+}
+
 function createWindow() {
   if (!store.get(OBSIDIAN_PATH_KEY) && getDefaultVaultPath()) {
     store.set(OBSIDIAN_PATH_KEY, getDefaultVaultPath());
@@ -1361,12 +1452,12 @@ function createWindow() {
     const dayNr = (d.getDay() + 6) % 7;
     const monday = shiftDateKey(selected, -dayNr);
     const weekDates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
-    const dailyContents = weekDates
-      .map((wd) => {
-        const filePath = getDailyFilePath(wd);
-        return fs.existsSync(filePath) ? { date: wd, content: fs.readFileSync(filePath, 'utf-8') } : null;
-      })
-      .filter((x): x is { date: string; content: string } => x !== null);
+    const dailyContents = collectDailySourcesForDates({
+      vaultPath: vaultStatus.vaultPath,
+      dates: weekDates,
+      rules: getObsidianTemplateSettings().dailySourceRules,
+    }).map((source) => ({ date: source.date, content: source.content }));
+    if (!hasSourceMaterials(dailyContents)) return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh };
     const stats = computeRangeStats(tasks as StatTask[], monday, weekDates[6]);
     return generatePersonalWeekly({
       vaultPath: vaultStatus.vaultPath,
@@ -1385,24 +1476,14 @@ function createWindow() {
     if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
     const month = monthKey(getDateKey(date));
     const { first, last } = monthRange(month);
-    const dayCount = Number(last.slice(-2));
-    // 当月所有日报全文（不再截断），同时收集本月相交 ISO 周的周报。
-    const dailyReports: MonthlySource[] = [];
-    const weekKeys = new Set<string>();
-    for (let i = 0; i < dayCount; i++) {
-      const wd = shiftDateKey(first, i);
-      weekKeys.add(isoWeekKey(wd));
-      const filePath = getDailyFilePath(wd);
-      if (fs.existsSync(filePath)) dailyReports.push({ label: `${wd} 日报`, content: fs.readFileSync(filePath, 'utf-8') });
-    }
-    const weeklyDir = sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly);
-    const weeklyReports: MonthlySource[] = [];
-    for (const wk of weekKeys) {
-      const wkPath = path.join(vaultStatus.vaultPath, weeklyDir, `${wk}.md`);
-      if (fs.existsSync(wkPath)) weeklyReports.push({ label: `${wk} 周报`, content: fs.readFileSync(wkPath, 'utf-8') });
-    }
-    // 周报优先，没有则回落当月日报全文。
-    const sources = selectMonthlySources(weeklyReports, dailyReports);
+    const sources = collectMonthlySources({
+      vaultPath: vaultStatus.vaultPath,
+      month,
+      weeklyDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
+      dailyRules: getObsidianTemplateSettings().dailySourceRules,
+      mode: settings.monthlySourceMode,
+    }).map((source) => ({ label: source.label, content: source.content }));
+    if (!hasSourceMaterials(sources)) return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh };
     const stats = computeRangeStats(tasks as StatTask[], first, last);
     return generatePersonalMonthly({
       vaultPath: vaultStatus.vaultPath,
@@ -1422,23 +1503,33 @@ function createWindow() {
     const selected = getDateKey(date);
     let periodKey: string;
     let dates: string[];
+    let rawDailyContents: string[];
     if (kind === 'weekly') {
       const d = new Date(`${selected}T00:00:00`);
       const monday = shiftDateKey(selected, -((d.getDay() + 6) % 7));
       dates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
       periodKey = isoWeekKey(selected);
+      rawDailyContents = collectDailySourcesForDates({
+        vaultPath: vaultStatus.vaultPath,
+        dates,
+        rules: getObsidianTemplateSettings().dailySourceRules,
+      }).map((source) => source.content);
     } else {
       const month = monthKey(selected);
       const { first, last } = monthRange(month);
       dates = Array.from({ length: Number(last.slice(-2)) }, (_, i) => shiftDateKey(first, i));
       periodKey = month;
+      rawDailyContents = collectMonthlySources({
+        vaultPath: vaultStatus.vaultPath,
+        month,
+        weeklyDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
+        dailyRules: getObsidianTemplateSettings().dailySourceRules,
+        mode: settings.externalMonthlySourceMode,
+      }).map((source) => source.content);
     }
-    const rawDailyContents = dates
-      .map((d) => {
-        const filePath = getDailyFilePath(d);
-        return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
-      })
-      .filter(Boolean);
+    if (!hasSourceMaterials(rawDailyContents.map((content) => ({ content })))) {
+      return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh };
+    }
     const externalDir =
       kind === 'weekly'
         ? sanitizeRelDir(settings.externalWeeklyDir, DEFAULT_REPORT_DIRS.externalWeekly)
@@ -1461,6 +1552,30 @@ function createWindow() {
       callLlm: getLlmCaller(),
     });
   });
+  ipcMain.handle('aiReview:testSourceMaterials', async (_e, kind: 'weekly' | 'monthly', date: string) => {
+    const vaultStatus = getVaultStatus();
+    if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason, sources: [] };
+    const settings = getAiReviewSettings();
+    const templateSettings = getObsidianTemplateSettings();
+    const selected = getDateKey(date);
+    if (kind === 'weekly') {
+      const d = new Date(`${selected}T00:00:00`);
+      const dayNr = (d.getDay() + 6) % 7;
+      const monday = shiftDateKey(selected, -dayNr);
+      const weekDates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
+      const sources = collectDailySourcesForDates({ vaultPath: vaultStatus.vaultPath, dates: weekDates, rules: templateSettings.dailySourceRules });
+      return { ok: true, sources: sources.map((source) => ({ label: source.label, filePath: source.filePath })) };
+    }
+    const month = monthKey(selected);
+    const sources = collectMonthlySources({
+      vaultPath: vaultStatus.vaultPath,
+      month,
+      weeklyDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
+      dailyRules: templateSettings.dailySourceRules,
+      mode: settings.monthlySourceMode,
+    });
+    return { ok: true, sources: sources.map((source) => ({ label: source.label, filePath: source.filePath })) };
+  });
   ipcMain.handle('aiReview:recognizeTemplate', async (_e, rawTemplate: string) => {
     const fallback = getReviewSections();
     const settings = getAiReviewSettings();
@@ -1475,16 +1590,17 @@ function createWindow() {
     const parsed = parseRecognizedSections(llm.content, fallback);
     return { ok: true, sections: parsed.sections, confidence: parsed.confidence, unmatched: parsed.unmatched };
   });
-  ipcMain.handle('aiReview:recognizeReportTemplate', async (_e, kind: 'weekly' | 'monthly', rawTemplate: string) => {
+  ipcMain.handle('aiReview:recognizeReportTemplate', async (_e, target: string, rawTemplate: string) => {
     const settings = getAiReviewSettings();
     if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', prompt: '' };
     if (typeof rawTemplate !== 'string' || !rawTemplate.trim()) return { ok: false, error: '请粘贴你的报告模板', prompt: '' };
-    const safeKind = kind === 'monthly' ? 'monthly' : 'weekly';
-    const llm = await getLlmCaller()(buildRecognizeReportMessages(rawTemplate, safeKind));
+    const safeTarget: ReportTemplateTarget =
+      target === 'personalMonthly' || target === 'externalWeekly' || target === 'externalMonthly' ? target : 'personalWeekly';
+    const llm = await getLlmCaller()(buildRecognizeReportMessages(rawTemplate, safeTarget));
     if (!llm.ok) return { ok: false, error: llm.error, prompt: '' };
     const prompt = parseRecognizedReportPrompt(llm.content);
     if (!prompt) return { ok: false, error: '未能识别出可用的生成指令', prompt: '' };
-    return { ok: true, prompt };
+    return { ok: true, target: safeTarget, prompt };
   });
 
   // 一键拉取模型列表：用「正在编辑」的账号配置（前端传入，不必是当前生效账号）。
@@ -1603,6 +1719,31 @@ function createWindow() {
   });
   ipcMain.handle('companion:importMobileInbox', (_event, inboxPath: string) => {
     return importMobileInbox(inboxPath);
+  });
+
+  // 任务右键菜单 popup：主窗口请求打开 → 主进程开独立小窗口承载菜单。
+  ipcMain.handle('taskContextMenu:open', (_event, payload: TaskMenuPayload) => {
+    openTaskMenuWindow(payload);
+  });
+  ipcMain.handle('taskContextMenu:close', () => {
+    closeTaskMenuWindow();
+  });
+  ipcMain.handle('taskContextMenu:resize', (_event, height: number) => {
+    if (!taskMenuWindow || taskMenuWindow.isDestroyed()) return;
+    const h = Math.round(Math.max(80, Math.min(600, Number(height) || TASK_MENU_HEIGHT)));
+    const { workArea } = screen.getPrimaryDisplay();
+    const bounds = taskMenuWindow.getBounds();
+    const margin = 8;
+    // 高度变化后重新 clamp y，避免向下溢出工作区。
+    const y = Math.max(workArea.y + margin, Math.min(bounds.y, workArea.y + workArea.height - h - margin));
+    taskMenuWindow.setBounds({ x: bounds.x, y, width: bounds.width, height: h });
+  });
+  // popup 内点了某项 → 转发回主窗口执行实际更新，再关闭 popup。
+  ipcMain.handle('taskContextMenu:action', (_event, payload: unknown) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('taskContextMenu:action', payload);
+    }
+    closeTaskMenuWindow();
   });
 }
 

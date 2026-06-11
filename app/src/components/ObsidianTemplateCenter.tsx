@@ -10,11 +10,14 @@ import {
   type ObsidianTemplateModuleId,
 } from '../../shared/obsidianTemplateCenter';
 import type { RecognizedObsidianTemplateDraft } from '../../shared/obsidianTemplateRecognition';
+import { getShellText } from '../i18n';
 
 type Language = 'zh-CN' | 'en-US';
+type TemplateSourceText = ReturnType<typeof getShellText>['settings']['templateSources'];
 
 interface ObsidianTemplateCenterProps {
   language: Language;
+  text: TemplateSourceText;
   templates: ObsidianTemplateSettings;
   onChange: (settings: ObsidianTemplateSettings) => void;
   onPreviewSync: () => void;
@@ -54,6 +57,7 @@ function draftToSettings(current: ObsidianTemplateSettings, draft: RecognizedObs
     ...current,
     presetId: draft.presetId,
     dailyNotePath: draft.dailyNotePath || current.dailyNotePath,
+    dailyMarkdownTemplate: draft.dailyMarkdownTemplate || current.dailyMarkdownTemplate,
     modules: draft.modules,
     taskLineTemplate: draft.taskLineTemplate || current.taskLineTemplate,
     completionReviewTemplate: draft.completionReviewTemplate || current.completionReviewTemplate,
@@ -67,6 +71,7 @@ function draftToSettings(current: ObsidianTemplateSettings, draft: RecognizedObs
 
 export function ObsidianTemplateCenter({
   language,
+  text,
   templates,
   onChange,
   onPreviewSync,
@@ -133,12 +138,24 @@ export function ObsidianTemplateCenter({
   return (
     <div className="obsidian-template-center">
       <section className="settings-section">
-        <h3>{zh ? '模板中心' : 'Template Center'}</h3>
+        <h3>{text.dailyTemplateTitle}</h3>
         <Field
-          label={zh ? '每日记录位置' : 'Daily note target path'}
-          hint={zh ? '{{date}} 会替换成当天日期。' : '{{date}} is replaced with the date.'}
+          label={text.dailyNotePath}
+          hint={text.dailyNotePathHint}
           value={templates.dailyNotePath}
-          onChange={(value) => setAdvanced('dailyNotePath', value)}
+          onChange={(value) => {
+            const nextRules = templates.dailySourceRules.map((rule) =>
+              rule.id === 'daily-note-path' ? { ...rule, path: value } : rule,
+            );
+            onChange({ ...templates, dailyNotePath: value, dailySourceRules: nextRules });
+          }}
+        />
+        <Field
+          label={text.dailyMarkdownTemplate}
+          hint={text.dailyMarkdownTemplateHint}
+          value={templates.dailyMarkdownTemplate}
+          onChange={(value) => setAdvanced('dailyMarkdownTemplate', value)}
+          multiline
         />
       </section>
 
@@ -237,6 +254,11 @@ export function ObsidianTemplateCenter({
                 {recognizedDraft.dailyNotePath}
               </p>
             )}
+            {recognizedDraft.missingCoreFields.length > 0 && (
+              <p className="settings-status-text">
+                {text.missingCore.replace('{fields}', recognizedDraft.missingCoreFields.join('、'))}
+              </p>
+            )}
             {recognizedDraft.unmappedSections.length > 0 && (
               <div>
                 <strong>{zh ? '未识别内容' : 'Unmapped content'}</strong>
@@ -262,30 +284,29 @@ export function ObsidianTemplateCenter({
       <section className="settings-section">
         <button type="button" className="settings-reset-button" onClick={() => setAdvancedOpen((open) => !open)}>
           {advancedOpen
-            ? (zh ? '收起高级模板设置' : 'Hide Advanced Template Settings')
-            : (zh ? '高级模板设置' : 'Advanced Template Settings')}
+            ? (zh ? `收起${text.advancedDaily}` : `Hide ${text.advancedDaily}`)
+            : text.advancedDaily}
         </button>
         {advancedOpen && (
           <div className="template-advanced-fields">
             <Field
-              label="Legacy task export path"
-              hint="RC sync no longer writes this file by default. Existing task export files are left untouched."
+              label={text.taskExportPath}
               value={templates.taskExportPath}
               onChange={(value) => setAdvanced('taskExportPath', value)}
             />
-            <Field label="Work section title" value={templates.workSectionTitle} onChange={(value) => setAdvanced('workSectionTitle', value)} />
-            <Field label="Inspiration section title" value={templates.inspirationSectionTitle} onChange={(value) => setAdvanced('inspirationSectionTitle', value)} />
-            <Field label="Task section title" value={templates.taskSectionTitle} onChange={(value) => setAdvanced('taskSectionTitle', value)} />
-            <Field label="Review section title" value={templates.reviewSectionTitle} onChange={(value) => setAdvanced('reviewSectionTitle', value)} />
-            <Field label="Tomorrow task section title" value={templates.tomorrowTaskSectionTitle} onChange={(value) => setAdvanced('tomorrowTaskSectionTitle', value)} />
-            <Field label="Reusable knowledge section title" value={templates.reusableKnowledgeSectionTitle} onChange={(value) => setAdvanced('reusableKnowledgeSectionTitle', value)} />
-            <Field label="Task line template" value={templates.taskLineTemplate} onChange={(value) => setAdvanced('taskLineTemplate', value)} />
-            <Field label="Completion review template" value={templates.completionReviewTemplate} onChange={(value) => setAdvanced('completionReviewTemplate', value)} multiline />
+            <Field label={text.workSectionTitle} value={templates.workSectionTitle} onChange={(value) => setAdvanced('workSectionTitle', value)} />
+            <Field label={text.inspirationSectionTitle} value={templates.inspirationSectionTitle} onChange={(value) => setAdvanced('inspirationSectionTitle', value)} />
+            <Field label={text.taskSectionTitle} value={templates.taskSectionTitle} onChange={(value) => setAdvanced('taskSectionTitle', value)} />
+            <Field label={text.reviewSectionTitle} value={templates.reviewSectionTitle} onChange={(value) => setAdvanced('reviewSectionTitle', value)} />
+            <Field label={text.tomorrowSectionTitle} value={templates.tomorrowTaskSectionTitle} onChange={(value) => setAdvanced('tomorrowTaskSectionTitle', value)} />
+            <Field label={text.knowledgeSectionTitle} value={templates.reusableKnowledgeSectionTitle} onChange={(value) => setAdvanced('reusableKnowledgeSectionTitle', value)} />
+            <Field label={text.taskLineTemplate} value={templates.taskLineTemplate} onChange={(value) => setAdvanced('taskLineTemplate', value)} />
+            <Field label={text.completionReviewTemplate} value={templates.completionReviewTemplate} onChange={(value) => setAdvanced('completionReviewTemplate', value)} multiline />
           </div>
         )}
         <div className="settings-action-row">
           <button type="button" className="settings-reset-button" onClick={onPreviewSync}>{zh ? '预览同步' : 'Preview Sync'}</button>
-          <button type="button" className="settings-reset-button" onClick={onResetTemplates}>{zh ? '重置模板' : 'Reset Templates'}</button>
+          <button type="button" className="settings-reset-button" onClick={onResetTemplates}>{text.restoreDefault}</button>
         </div>
       </section>
     </div>

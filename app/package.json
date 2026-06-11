@@ -18,6 +18,8 @@
     "verify:review-fields": "tsx scripts/verify-review-empty-fields.ts",
     "verify:no-captures": "tsx scripts/verify-no-captures-feature.ts",
     "verify:daily-command": "tsx scripts/verify-daily-command-editor.ts",
+    "verify:ux-polish": "tsx scripts/verify-ux-polish.ts",
+    "verify:context-menu": "tsx scripts/verify-context-menu.ts",
     "verify:markdown-editor": "tsx scripts/verify-markdown-editor.ts",
     "verify:rc-sync": "tsx scripts/verify-rc-sync.ts",
     "verify:rc-strings": "tsx scripts/verify-rc-strings.ts",
@@ -37,7 +39,7 @@
     "verify:atomic-write": "tsx scripts/verify-atomic-write.ts",
     "verify:daily-review-blocks": "tsx scripts/verify-daily-review-blocks.ts",
     "verify:ai-runner": "tsx scripts/verify-ai-runner.ts",
-    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision && npm run verify:ai-stats && npm run verify:ai-settings && npm run verify:profile-ops && npm run verify:section-config && npm run verify:openai-client && npm run verify:template-file && npm run verify:atomic-write && npm run verify:daily-review-blocks && npm run verify:ai-runner && npm run verify:ai-timer && npm run verify:weekly && npm run verify:export-reports && npm run verify:recognize-template && npm run verify:monthly && npm run verify:redaction && npm run verify:section-overrides && npm run verify:fuzzy-match && npm run verify:onboarding-state && npm run verify:recognize-report && npm run verify:obsidian-template-center && npm run verify:obsidian-template-recognition && npm run verify:obsidian-template-ui",
+    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision && npm run verify:ai-stats && npm run verify:ai-settings && npm run verify:profile-ops && npm run verify:section-config && npm run verify:openai-client && npm run verify:template-file && npm run verify:atomic-write && npm run verify:daily-review-blocks && npm run verify:ai-runner && npm run verify:ai-timer && npm run verify:weekly && npm run verify:export-reports && npm run verify:recognize-template && npm run verify:monthly && npm run verify:redaction && npm run verify:section-overrides && npm run verify:fuzzy-match && npm run verify:onboarding-state && npm run verify:recognize-report && npm run verify:obsidian-template-center && npm run verify:obsidian-template-recognition && npm run verify:obsidian-template-ui && npm run verify:template-source-settings && npm run verify:daily-markdown-template && npm run verify:daily-template-markers && npm run verify:source-materials && npm run verify:unified-template-recognition && npm run verify:template-source-i18n",
     "verify:ai-timer": "tsx scripts/verify-ai-timer.ts",
     "verify:weekly": "tsx scripts/verify-weekly.ts",
     "verify:export-reports": "tsx scripts/verify-export-reports.ts",
@@ -50,7 +52,13 @@
     "verify:recognize-report": "tsx scripts/verify-recognize-report.ts",
     "verify:obsidian-template-center": "tsx scripts/verify-obsidian-template-center.ts",
     "verify:obsidian-template-recognition": "tsx scripts/verify-obsidian-template-recognition.ts",
-    "verify:obsidian-template-ui": "tsx scripts/verify-obsidian-template-ui.ts"
+    "verify:obsidian-template-ui": "tsx scripts/verify-obsidian-template-ui.ts",
+    "verify:template-source-settings": "tsx scripts/verify-template-source-settings.ts",
+    "verify:daily-markdown-template": "tsx scripts/verify-daily-markdown-template.ts",
+    "verify:daily-template-markers": "tsx scripts/verify-daily-template-markers.ts",
+    "verify:source-materials": "tsx scripts/verify-source-materials.ts",
+    "verify:unified-template-recognition": "tsx scripts/verify-unified-template-recognition.ts",
+    "verify:template-source-i18n": "tsx scripts/verify-template-source-i18n.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
