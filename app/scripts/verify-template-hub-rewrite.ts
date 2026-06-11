@@ -190,3 +190,32 @@ assert('externalWeeklyTimerEnabled' in defaults, 'externalWeeklyTimerEnabled mis
 assert('externalMonthlyTimerEnabled' in defaults, 'externalMonthlyTimerEnabled missing in defaults');
 
 console.log('T6: AiReviewSettings 4 timers + anonymize ✓');
+
+// T7: AI recognition — N blocks + renderType
+const recog = readFileSync(join(root, 'shared/recognizeTemplateBlocks.ts'), 'utf8');
+assert(recog.includes('export function buildRecognizeBlocksMessages'), 'buildRecognizeBlocksMessages not exported');
+assert(recog.includes('export function parseRecognizedBlocks'), 'parseRecognizedBlocks not exported');
+
+const r = await import(pathToFileURL(join(root, 'shared/recognizeTemplateBlocks.ts')).href);
+
+// basic parsing: 3 blocks with renderType inferred from content
+const sampleMd = `## 今日总结\n- 完成 A\n- 完成 B\n## 下周计划\n1. 计划 X\n## 灵感\n> [!note] 想法\n> 内容`;
+const result = r.parseRecognizedBlocks(sampleMd, []);
+assert(result.blocks.length === 3, `expected 3 blocks from parseRecognizedBlocks, got ${result.blocks.length}`);
+assert(result.blocks[0].name === '今日总结', `block 0 name wrong: ${result.blocks[0].name}`);
+assert(result.blocks[0].renderType === 'list', `block 0 should be list, got ${result.blocks[0].renderType}`);
+assert(result.blocks[2].renderType === 'callout', `block 2 should be callout, got ${result.blocks[2].renderType}`);
+
+// fixed block names are excluded
+const mdWithFixed = `## 今日工作\n- 内容\n## 复盘\n- 复盘内容`;
+const result2 = r.parseRecognizedBlocks(mdWithFixed, []);
+assert(result2.blocks.length === 1, `should exclude fixed block 今日工作, got ${result2.blocks.length}`);
+assert(result2.blocks[0].name === '复盘', `should keep 复盘, got ${result2.blocks[0].name}`);
+
+// invalid input → low confidence + fallback
+const fallback = [{ id: 'fb', name: 'fallback', aiGenerate: true, renderType: 'text', prompt: '' }];
+const badResult = r.parseRecognizedBlocks('not valid', fallback);
+assert(badResult.confidence === 'low', `should be low confidence, got ${badResult.confidence}`);
+assert(badResult.blocks[0].name === 'fallback', 'should return fallback on bad input');
+
+console.log('T7: AI recognition N blocks + renderType ✓');
