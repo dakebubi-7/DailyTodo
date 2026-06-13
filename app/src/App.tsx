@@ -12,6 +12,7 @@ import { DailyWorkPanel } from './components/DailyWorkPanel';
 import { ReviewView } from './components/ReviewView';
 import { AddTaskInput } from './components/AddTaskInput';
 import { SettingsPanel } from './components/SettingsPanel';
+import { TemplateEditorModal } from './components/TemplateEditorModal';
 import { AiOnboarding } from './components/AiOnboarding';
 import { TaskCompletionDialog } from './components/TaskCompletionDialog';
 import { TaskReviewDialog } from './components/TaskReviewDialog';
@@ -29,7 +30,7 @@ import {
   ObsidianTemplateSettings,
   createDefaultObsidianTemplateSettings,
 } from '../shared/appSettings';
-import { SyncPreview } from '../shared/obsidianTemplates';
+import type { SyncPreview } from '../shared/obsidianTemplates';
 import { createDefaultCompanionSettings } from '../shared/obsidianCompanionDefaults';
 import {
   buildCaptureItems,
@@ -48,6 +49,10 @@ import {
   AiReviewSettings,
 } from '../shared/aiReview/aiReviewSettings';
 import { shouldShowOnboarding } from '../shared/aiReview/onboarding';
+import {
+  createDefaultDailyTemplate,
+  createDefaultReportTemplate,
+} from '../shared/aiReview/sectionConfig';
 
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low';
 const PERSONALIZATION_KEY = 'personalizationSettings';
@@ -131,6 +136,7 @@ export default function App() {
   const [showOpenOnly, setShowOpenOnly] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editingTemplateKind, setEditingTemplateKind] = useState<'daily' | 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly' | null>(null);
   const [aiOnboarding, setAiOnboarding] = useState<AiReviewSettings | null>(null);
   const [completionTask, setCompletionTask] = useState<Task | null>(null);
   const [reviewTask, setReviewTask] = useState<Task | null>(null);
@@ -150,6 +156,10 @@ export default function App() {
   const [settingsSyncPreview, setSettingsSyncPreview] = useState<SyncPreview | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
   useFloatingScrollbar(mainScrollRef, { headerSelector: '.app-top' });
+
+  useEffect(() => {
+    void window.electronAPI?.setSettingsMode?.(settingsOpen);
+  }, [settingsOpen]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
@@ -559,6 +569,7 @@ export default function App() {
           onChooseObsidian={chooseObsidianFolder}
           onPreviewSync={previewSettingsSync}
           onResetTemplates={resetObsidianTemplates}
+          onEditTemplate={(kind) => setEditingTemplateKind(kind)}
           onClose={() => setSettingsOpen(false)}
           onOpenCompanionSettings={() => {
             setCompanionOpen(true);
@@ -574,6 +585,33 @@ export default function App() {
               void window.electronAPI?.aiReview?.setSettings(next);
               setAiOnboarding(null);
             }}
+          />
+        )}
+        {editingTemplateKind && (
+          <TemplateEditorModal
+            kind={editingTemplateKind}
+            initialTemplate={
+              editingTemplateKind === 'daily'
+                ? ((obsidianTemplates as any).dailyTemplate ?? createDefaultDailyTemplate())
+                : editingTemplateKind === 'personalWeekly'
+                ? ((obsidianTemplates as any).weeklyTemplate ?? createDefaultReportTemplate('personalWeekly'))
+                : editingTemplateKind === 'personalMonthly'
+                ? ((obsidianTemplates as any).monthlyTemplate ?? createDefaultReportTemplate('personalMonthly'))
+                : editingTemplateKind === 'externalWeekly'
+                ? ((obsidianTemplates as any).externalWeeklyTemplate ?? createDefaultReportTemplate('externalWeekly'))
+                : ((obsidianTemplates as any).externalMonthlyTemplate ?? createDefaultReportTemplate('externalMonthly'))
+            }
+            onSave={(tpl) => {
+              const field =
+                editingTemplateKind === 'daily' ? 'dailyTemplate'
+                : editingTemplateKind === 'personalWeekly' ? 'weeklyTemplate'
+                : editingTemplateKind === 'personalMonthly' ? 'monthlyTemplate'
+                : editingTemplateKind === 'externalWeekly' ? 'externalWeeklyTemplate'
+                : 'externalMonthlyTemplate';
+              updateObsidianTemplates({ ...obsidianTemplates, [field]: tpl } as any);
+              setEditingTemplateKind(null);
+            }}
+            onCancel={() => setEditingTemplateKind(null)}
           />
         )}
         <ObsidianCompanionPanel

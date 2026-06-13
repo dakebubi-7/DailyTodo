@@ -1,9 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { DailySourceRule } from '../appSettings';
 import type { MonthlySourceMode } from './aiReviewSettings';
 import { monthRange } from './monthly';
 import { isoWeekKey } from './weekly';
+
+export interface DailySourceRule {
+  id: string;
+  label: string;
+  path: string;
+  enabled: boolean;
+}
 
 export const NO_SOURCE_MATERIALS_ERROR = {
   zh: '没有找到本周期原始记录，请检查素材来源或手动选择素材文件。',

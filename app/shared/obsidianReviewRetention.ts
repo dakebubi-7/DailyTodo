@@ -25,16 +25,38 @@ export function retainDeletedReview(
   return [...retainedReviews, { task, review, deletedAt }];
 }
 
+function mapTaskTree(tasks: Task[], targetId: string, updater: (task: Task) => Task): Task[] {
+  return tasks.map((task) => {
+    const nextTask = task.id === targetId ? updater(task) : task;
+    if (!nextTask.subtasks?.length) return nextTask;
+    return {
+      ...nextTask,
+      subtasks: mapTaskTree(nextTask.subtasks, targetId, updater),
+    };
+  });
+}
+
+function findTaskInTree(tasks: Task[], targetId: string): Task | undefined {
+  for (const task of tasks) {
+    if (task.id === targetId) return task;
+    const found = task.subtasks?.length ? findTaskInTree(task.subtasks, targetId) : undefined;
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export function mergeRetainedReviewsForObsidian(
   tasks: Task[],
   retainedReviews: RetainedObsidianReview[],
 ) {
   if (!retainedReviews.length) return tasks;
 
-  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+  let nextTasks = tasks;
+  const archivedOnly = new Map<string, Task>();
 
   retainedReviews.forEach(({ task: archivedTask, review }) => {
-    const baseTask = taskMap.get(archivedTask.id) || archivedTask;
+    const existingTask = findTaskInTree(nextTasks, archivedTask.id);
+    const baseTask = existingTask || archivedTask;
     const reviews = baseTask.completionReviews?.length
       ? [...baseTask.completionReviews]
       : baseTask.completionReview
@@ -47,20 +69,19 @@ export function mergeRetainedReviewsForObsidian(
     }
 
     reviews.sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt));
-    taskMap.set(baseTask.id, {
+    const nextTask = {
       ...baseTask,
       completed: true,
       completionReviews: reviews,
       completionReview: reviews[reviews.length - 1],
-    });
+    };
+
+    if (existingTask) {
+      nextTasks = mapTaskTree(nextTasks, baseTask.id, () => nextTask);
+    } else {
+      archivedOnly.set(baseTask.id, nextTask);
+    }
   });
 
-  const originalIds = new Set(tasks.map((task) => task.id));
-  const archivedOnlyTasks = retainedReviews
-    .map(({ task }) => task.id)
-    .filter((id, index, ids) => !originalIds.has(id) && ids.indexOf(id) === index)
-    .map((id) => taskMap.get(id))
-    .filter(Boolean) as Task[];
-
-  return [...tasks.map((task) => taskMap.get(task.id) || task), ...archivedOnlyTasks];
+  return [...nextTasks, ...archivedOnly.values()];
 }

@@ -11,6 +11,73 @@ export const REVIEW_MARKERS = {
 
 export type ReviewMarkerKey = keyof typeof REVIEW_MARKERS;
 
+const SAFE_CUSTOM_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const BASE64URL_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+function utf8Bytes(input: string): number[] {
+  const bytes: number[] = [];
+
+  for (const char of input) {
+    const codePoint = char.codePointAt(0) ?? 0;
+
+    if (codePoint <= 0x7f) {
+      bytes.push(codePoint);
+    } else if (codePoint <= 0x7ff) {
+      bytes.push(0xc0 | (codePoint >> 6));
+      bytes.push(0x80 | (codePoint & 0x3f));
+    } else if (codePoint <= 0xffff) {
+      bytes.push(0xe0 | (codePoint >> 12));
+      bytes.push(0x80 | ((codePoint >> 6) & 0x3f));
+      bytes.push(0x80 | (codePoint & 0x3f));
+    } else {
+      bytes.push(0xf0 | (codePoint >> 18));
+      bytes.push(0x80 | ((codePoint >> 12) & 0x3f));
+      bytes.push(0x80 | ((codePoint >> 6) & 0x3f));
+      bytes.push(0x80 | (codePoint & 0x3f));
+    }
+  }
+
+  return bytes;
+}
+
+function toBase64Url(input: string): string {
+  const bytes = utf8Bytes(input);
+  let output = '';
+
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index] ?? 0;
+    const second = bytes[index + 1];
+    const third = bytes[index + 2];
+
+    output += BASE64URL_CHARS[first >> 2];
+    output += BASE64URL_CHARS[((first & 0x03) << 4) | ((second ?? 0) >> 4)];
+
+    if (second !== undefined) {
+      output += BASE64URL_CHARS[((second & 0x0f) << 2) | ((third ?? 0) >> 6)];
+    }
+
+    if (third !== undefined) {
+      output += BASE64URL_CHARS[third & 0x3f];
+    }
+  }
+
+  return output;
+}
+
+export function safeCustomBlockId(id: string): string {
+  const raw = String(id ?? '');
+  if (SAFE_CUSTOM_ID_PATTERN.test(raw)) return raw;
+  return `~${toBase64Url(raw)}`;
+}
+
+export function customBlockMarker(id: string): BlockMarker {
+  const safeId = safeCustomBlockId(id);
+  return {
+    start: `<!-- DAILYTODO:CUSTOM:${safeId}:START -->`,
+    end: `<!-- DAILYTODO:CUSTOM:${safeId}:END -->`,
+  };
+}
+
 export function readBlockBody(existing: string, marker: BlockMarker): string {
   const start = existing.indexOf(marker.start);
   const end = existing.indexOf(marker.end);

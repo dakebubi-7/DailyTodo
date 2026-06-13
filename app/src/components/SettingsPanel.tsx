@@ -1,13 +1,10 @@
-import { CSSProperties, ReactNode, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AppBehaviorSettings,
   AppLanguage,
   ObsidianTemplateSettings,
-  createDefaultObsidianTemplateSettings,
 } from '../../shared/appSettings';
-import type { SyncPreview } from '../../shared/obsidianTemplates';
-import { ObsidianTemplateCenter } from './ObsidianTemplateCenter';
 import { PersonalizationSettings, OPACITY_AREAS, OpacityKey } from '../types/personalization';
 import { Task } from '../types/task';
 import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
@@ -15,25 +12,14 @@ import { getShellText } from '../i18n';
 import {
   AiReviewSettings,
   AiProfile,
+  WeeklySourceMode,
+  MonthlySourceMode,
   createDefaultAiReviewSettings,
   createDefaultAiProfile,
-  resolveActiveProfile,
 } from '../../shared/aiReview/aiReviewSettings';
-import {
-  selectProfile,
-  updateProfile,
-  addProfile,
-  duplicateProfile,
-  deleteProfile,
-} from '../../shared/aiReview/profileOps';
-import {
-  SectionConfig,
-  SectionType,
-  createDefaultSections,
-} from '../../shared/aiReview/sectionConfig';
-import { isoWeekKey, isoWeekToMonday } from '../../shared/aiReview/weekly';
+import type { SyncPreview } from '../../shared/obsidianTemplates';
 
-type SettingsSection = 'root' | 'personalization' | 'settings' | 'rollover' | 'general' | 'developer' | 'window';
+type SettingsSection = 'appearance' | 'sync' | 'templates' | 'aiReview' | 'schedule' | 'general';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -59,9 +45,9 @@ interface SettingsPanelProps {
   onEditTemplate?: (kind: 'daily' | 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly') => void;
 }
 
-type NavSection = 'personalization' | 'window' | 'settings' | 'rollover' | 'general' | 'developer';
+type NavSection = SettingsSection;
 
-type SectionEntry = { key: NavSection; title: string; description: string; primary?: boolean };
+type SectionEntry = { key: NavSection; title: string; description: string };
 function RangeControl({
   label,
   hint,
@@ -239,42 +225,27 @@ function ToggleRow({
 }
 
 type AiReviewText = ReturnType<typeof getShellText>['settings']['aiReview'];
-type TemplateSourcesText = ReturnType<typeof getShellText>['settings']['templateSources'];
+type GenerationAction = 'daily' | 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly';
 
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-function ymd(d: Date): string {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-/** 报告周期默认值：上一周(ISO 周键) + 上个月(月键)。用户可在选择器里改。 */
-function defaultReportPeriods(now: Date): { week: string; month: string } {
-  const lastWeek = new Date(now);
-  lastWeek.setDate(now.getDate() - 7);
-  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0); // 上月最后一天
-  return {
-    week: isoWeekKey(ymd(lastWeek)),
-    month: `${prevMonthEnd.getFullYear()}-${pad2(prevMonthEnd.getMonth() + 1)}`,
-  };
+function formatLocalDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-/** 可折叠区块：标题行点按展开/收起。默认收起，账号区块传 defaultOpen。 */
-function Collapsible({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <section className="settings-section">
-      <button
-        type="button"
-        className="settings-collapsible-head"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <h3>{title}</h3>
-        <span className="settings-collapsible-caret" aria-hidden="true">{open ? '▾' : '▸'}</span>
-      </button>
-      {open && <div className="settings-collapsible-body">{children}</div>}
-    </section>
-  );
+function previousWeekDate() {
+  const date = new Date();
+  date.setDate(date.getDate() - 7);
+  return formatLocalDate(date);
+}
+
+function previousMonthStart() {
+  const date = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+  return formatLocalDate(date);
+}
+
+function resultMessage(text: AiReviewText, result: { ok: boolean; error?: string; filePath?: string; truncated?: boolean }) {
+  if (!result.ok) return `${text.genFailed}${result.error ?? '未知错误'}`;
+  const prefix = result.truncated ? text.genTruncated : text.genSuccess;
+  return `${prefix}${result.filePath ?? '完成'}`;
 }
 
 const AI_PRESETS: Array<{ id: string; label: string; baseUrl: string; provider: AiProfile['provider']; model: string }> = [
@@ -348,8 +319,31 @@ function AiAccountManager({
     <div className="ai-account-backdrop" onClick={onClose}>
       <div className="ai-account-modal" onClick={(e) => e.stopPropagation()}>
         <div className="ai-account-header">
-          <h3>{text.manageTitle}</h3>
-          <button type="button" className="ai-account-close" onClick={onClose} aria-label={text.close}>✕</button>
+          <div>
+            <h3>{text.manageTitle}</h3>
+            {editing && <p>{editing.name || editing.model || editing.id}</p>}
+          </div>
+          <div className="ai-account-header-actions">
+            <button type="button" className="settings-reset-button" onClick={onAdd}>{text.accountAdd}</button>
+            <button type="button" className="settings-reset-button" onClick={() => onDuplicate(editing.id)}>{text.accountCopy}</button>
+            <button
+              type="button"
+              className="settings-reset-button"
+              disabled={editing.id === activeId}
+              onClick={() => onSetActive(editing.id)}
+            >
+              {editing.id === activeId ? text.accountIsActive : text.setActive}
+            </button>
+            <button
+              type="button"
+              className="settings-reset-button settings-danger-button"
+              disabled={profiles.length <= 1}
+              onClick={() => onDelete(editing.id)}
+            >
+              {text.accountDelete}
+            </button>
+            <button type="button" className="ai-account-close" onClick={onClose} aria-label={text.close}>✕</button>
+          </div>
         </div>
         <div className="ai-account-body">
           <div className="ai-account-list">
@@ -535,676 +529,74 @@ function AiAccountManager({
   );
 }
 
-
-function AiReviewSection({ text, templateSources, tasks }: { text: AiReviewText; templateSources: TemplateSourcesText; tasks: Task[] }) {
-  const [settings, setSettings] = useState<AiReviewSettings>(() => createDefaultAiReviewSettings());
-  const [sections, setSections] = useState<SectionConfig[]>(() => createDefaultSections());
-  const [openPrompt, setOpenPrompt] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [reportStatus, setReportStatus] = useState<string>('');
-  const [templateDraft, setTemplateDraft] = useState('');
-  const [recognizing, setRecognizing] = useState(false);
-  const [recognizeStatus, setRecognizeStatus] = useState<string>('');
-  const [recognizedSections, setRecognizedSections] = useState<SectionConfig[] | null>(null);
-  // 报告模板展开 + 认报告模板（个人周/月 + 对外周/月 各一套）
-  const [openTemplate, setOpenTemplate] = useState<'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly' | null>(null);
-  const [reportDraft, setReportDraft] = useState<{ weekly: string; monthly: string; 'ext-weekly': string; 'ext-monthly': string }>({ weekly: '', monthly: '', 'ext-weekly': '', 'ext-monthly': '' });
-  const [reportRecognizing, setReportRecognizing] = useState<'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly' | null>(null);
-  const [reportRecognizeStatus, setReportRecognizeStatus] = useState<{ weekly: string; monthly: string; 'ext-weekly': string; 'ext-monthly': string }>({ weekly: '', monthly: '', 'ext-weekly': '', 'ext-monthly': '' });
-  const [reportRecognized, setReportRecognized] = useState<{ weekly: string | null; monthly: string | null; 'ext-weekly': string | null; 'ext-monthly': string | null }>({ weekly: null, monthly: null, 'ext-weekly': null, 'ext-monthly': null });
-  // 素材来源测试结果（"测试素材来源"按钮）
-  const [sourceTestStatus, setSourceTestStatus] = useState('');
-  const [sourceTestFiles, setSourceTestFiles] = useState<Array<{ label: string; filePath: string }>>([]);
-  // 报告周期：默认上一周期(上周/上月)，用户可改。生成时换算成该周期内的一个日期传给主进程。
-  const [weekPeriod, setWeekPeriod] = useState(() => defaultReportPeriods(new Date()).week);
-  const [monthPeriod, setMonthPeriod] = useState(() => defaultReportPeriods(new Date()).month);
-  const weekDate = isoWeekToMonday(weekPeriod);
-  const monthDate = `${monthPeriod}-01`;
-
-  useEffect(() => {
-    let active = true;
-    window.electronAPI?.aiReview.getSettings().then((value) => {
-      if (active) setSettings(value);
-    });
-    window.electronAPI?.aiReview.getSections().then((value) => {
-      if (active && value.length) setSections(value);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // 持久化：函数式更新 + fire-and-forget 保存（不再用 IPC 返回值回写覆盖，根治并发竞态）。
-  const persist = (updater: (prev: AiReviewSettings) => AiReviewSettings) => {
-    setSettings((prev) => {
-      const next = updater(prev);
-      void window.electronAPI?.aiReview.setSettings(next);
-      return next;
-    });
-  };
-
-  const updateSettings = <K extends keyof AiReviewSettings>(key: K, value: AiReviewSettings[K]) => {
-    persist((prev) => ({ ...prev, [key]: value }));
-  };
-
-  // 轻量多账号：当前生效账号 + 增删改/切换/复制（数据变换走 shared/profileOps 纯函数）。
-  const active = resolveActiveProfile(settings);
-  const profiles = settings.profiles.length ? settings.profiles : [active];
-
-  const [manageOpen, setManageOpen] = useState(false);
+/** 轻量 AI 账号区，仅展示当前账号 + 管理按钮，不依赖 AiReviewSection 的复杂状态。 */
+function AiAccountZone({ text, settings, onChange }: { text: AiReviewText; settings: AiReviewSettings; onChange: (settings: AiReviewSettings) => void }) {
+  const [showManager, setShowManager] = useState(false);
   const [editingId, setEditingId] = useState('');
 
-  const openManager = () => {
-    setEditingId(active.id);
-    setManageOpen(true);
-  };
-  const handleSelectProfile = (id: string) => persist((prev) => selectProfile(prev, id));
-  const handleUpdateProfile = (id: string, patch: Partial<AiProfile>) => persist((prev) => updateProfile(prev, id, patch));
-  const handleAddProfile = () => {
-    const p: AiProfile = { ...createDefaultAiProfile(), name: text.accountNewName };
-    setEditingId(p.id);
-    persist((prev) => addProfile(prev, p));
-  };
-  const handleDuplicateProfile = (id: string) => {
-    const newId = createDefaultAiProfile().id;
-    setEditingId(newId);
-    persist((prev) => {
-      const src = prev.profiles.find((p) => p.id === id);
-      return duplicateProfile(prev, id, newId, `${src?.name ?? ''} ${text.accountCopySuffix}`.trim());
-    });
-  };
-  const handleDeleteProfile = (id: string) => {
-    const fallback = createDefaultAiProfile();
-    persist((prev) => deleteProfile(prev, id, fallback));
-  };
+  const profiles = settings.profiles?.length ? settings.profiles : [];
+  const active = profiles.find((p) => p.id === settings.activeProfileId) ?? profiles[0];
 
-  const updateSection = <K extends keyof SectionConfig>(markerKey: SectionConfig['markerKey'], key: K, value: SectionConfig[K]) => {
-    const next = sections.map((s) => (s.markerKey === markerKey ? { ...s, [key]: value } : s));
-    setSections(next);
-    window.electronAPI?.aiReview.setSections(next).then((saved) => {
-      if (saved.length) setSections(saved);
-    });
-  };
-
-  const runReport = async (
-    kind: 'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly',
-    run: () => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean }>,
-  ) => {
-    setBusy(kind);
-    setReportStatus(text.generating);
-    try {
-      const result = await run();
-      if (!result.ok) {
-        setReportStatus(`${text.genFailed}${result.error ?? ''}`);
-      } else {
-        const prefix = result.truncated ? text.genTruncated : text.genSuccess;
-        setReportStatus(`${prefix}${result.filePath ?? ''}`);
-      }
-    } catch (error) {
-      setReportStatus(`${text.genFailed}${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  // 「选文件」识别：弹文件框读出纯文本，回填到对应草稿框（保留粘贴，二者并存）。
-  const pickTemplateFile = async (
-    fill: (text: string) => void,
-    setStatus: (status: string) => void,
-  ) => {
-    try {
-      const res = await window.electronAPI?.aiReview.pickTemplateFile();
-      if (!res || res.canceled) return;
-      if (!res.ok) {
-        setStatus(`${text.recognizeFileFailed}${res.error ?? ''}`);
-        return;
-      }
-      fill(res.text ?? '');
-      setStatus('');
-    } catch (error) {
-      setStatus(`${text.recognizeFileFailed}${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
-
-  const recognizeTemplate = async () => {    if (!templateDraft.trim()) return;
-    setRecognizing(true);
-    setRecognizeStatus(text.recognizing);
-    setRecognizedSections(null);
-    try {
-      const result = await window.electronAPI?.aiReview.recognizeTemplate(templateDraft);
-      if (!result || !result.ok) {
-        setRecognizeStatus(`${text.genFailed}${result?.error ?? ''}`);
-        return;
-      }
-      setRecognizedSections(result.sections);
-      setRecognizeStatus(result.unmatched ? text.recognizeUnmatched : text.recognizeReady);
-    } catch (error) {
-      setRecognizeStatus(`${text.genFailed}${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setRecognizing(false);
-    }
-  };
-
-  const applyRecognized = () => {
-    if (!recognizedSections) return;
-    setSections(recognizedSections);
-    window.electronAPI?.aiReview.setSections(recognizedSections).then((saved) => {
-      if (saved.length) setSections(saved);
-    });
-    setRecognizedSections(null);
-    setRecognizeStatus('');
-    setTemplateDraft('');
-  };
-
-  const rc = text.reportConfig;
-  const ts = templateSources;
-
-  const testSources = async (kind: 'weekly' | 'monthly') => {
-    const result = await window.electronAPI?.aiReview.testSourceMaterials(kind, kind === 'weekly' ? weekDate : monthDate);
-    if (!result?.ok) {
-      setSourceTestStatus(result?.error ?? ts.sourceNotFound);
-      setSourceTestFiles([]);
-      return;
-    }
-    setSourceTestFiles(result.sources);
-    setSourceTestStatus(
-      result.sources.length
-        ? ts.sourceFound.replace('{count}', String(result.sources.length))
-        : ts.sourceNotFound,
-    );
-  };
-
-  const recognizeReport = async (kind: 'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly') => {
-    const draft = reportDraft[kind];
-    if (!draft.trim()) return;
-    setReportRecognizing(kind);
-    setReportRecognizeStatus((s) => ({ ...s, [kind]: rc.recognizing }));
-    setReportRecognized((s) => ({ ...s, [kind]: null }));
-    try {
-      const apiKind =
-        kind === 'monthly'
-          ? 'personalMonthly'
-          : kind === 'ext-weekly'
-            ? 'externalWeekly'
-            : kind === 'ext-monthly'
-              ? 'externalMonthly'
-              : 'personalWeekly';
-      const result = await window.electronAPI?.aiReview.recognizeReportTemplate(apiKind, draft);
-      if (!result || !result.ok) {
-        setReportRecognizeStatus((s) => ({ ...s, [kind]: `${rc.recognizeFailed}${result?.error ?? ''}` }));
-        return;
-      }
-      setReportRecognized((s) => ({ ...s, [kind]: result.prompt }));
-      setReportRecognizeStatus((s) => ({ ...s, [kind]: rc.recognizeOk }));
-    } catch (error) {
-      setReportRecognizeStatus((s) => ({ ...s, [kind]: `${rc.recognizeFailed}${error instanceof Error ? error.message : String(error)}` }));
-    } finally {
-      setReportRecognizing(null);
-    }
-  };
-
-  const applyReportPrompt = (kind: 'weekly' | 'monthly' | 'ext-weekly' | 'ext-monthly') => {
-    const prompt = reportRecognized[kind];
-    if (!prompt) return;
-    const key =
-      kind === 'weekly'
-        ? 'weeklyPrompt'
-        : kind === 'monthly'
-          ? 'monthlyPrompt'
-          : kind === 'ext-weekly'
-            ? 'externalWeeklyPrompt'
-            : 'externalMonthlyPrompt';
-    updateSettings(key, prompt);
-    setReportRecognized((s) => ({ ...s, [kind]: null }));
-    setReportRecognizeStatus((s) => ({ ...s, [kind]: '' }));
-    setReportDraft((s) => ({ ...s, [kind]: '' }));
-    setOpenTemplate(kind);
+  const saveSettings = (next: AiReviewSettings) => {
+    onChange(next);
+    window.electronAPI?.aiReview.setSettings(next);
   };
 
   return (
     <>
-      <Collapsible title={text.title} defaultOpen>
-        <ToggleRow
-          title={text.enable}
-          description={text.enableHint}
-          checked={settings.enabled}
-          onChange={(value) => updateSettings('enabled', value)}
-        />
-        <div className="settings-field" style={{ marginTop: 12 }}>
-          <span>
-            <strong>{text.account}</strong>
-            <small>{text.accountHint}</small>
-          </span>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select
-              value={active.id}
-              onChange={(event) => handleSelectProfile(event.target.value)}
-              style={{ flex: '1 1 180px' }}
-              aria-label={text.currentAccount}
-            >
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>{p.name || p.id}</option>
-              ))}
-            </select>
-            <button type="button" className="settings-reset-button" onClick={openManager}>{text.manage}</button>
-          </div>
-          <small className="ai-account-summary">
-            {active.provider} · {active.model || '—'} · {active.baseUrl || '—'}
-          </small>
-        </div>
-        <div className="settings-grid">
-          <label className="settings-field">
-            <span>
-              <strong>{text.backfillDays}</strong>
-              <small>{text.backfillDaysHint}</small>
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={60}
-              value={settings.backfillDays}
-              onChange={(event) => {
-                const raw = Number(event.target.value);
-                if (!Number.isFinite(raw)) return;
-                const clamped = Math.min(60, Math.max(1, Math.round(raw)));
-                updateSettings('backfillDays', clamped);
-              }}
-            />
-          </label>
-        </div>
-      </Collapsible>
-
-      <Collapsible title={text.timer}>
-        <ToggleRow
-          title={text.timerEnable}
-          description={text.timerEnableHint}
-          checked={settings.timerEnabled}
-          onChange={(value) => updateSettings('timerEnabled', value)}
-        />
-        <label className="settings-field">
-          <span>
-            <strong>{text.timerTime}</strong>
-            <small>{text.timerTimeHint}</small>
-          </span>
-          <input
-            type="time"
-            value={settings.timerTime}
-            disabled={!settings.timerEnabled}
-            onChange={(event) => updateSettings('timerTime', event.target.value)}
-          />
-        </label>
-
-        <ToggleRow
-          title={text.weeklyTimerEnable}
-          description={text.weeklyTimerEnableHint}
-          checked={settings.weeklyTimerEnabled}
-          onChange={(value) => updateSettings('weeklyTimerEnabled', value)}
-        />
-        <div className="settings-grid">
-          <label className="settings-field">
-            <span><strong>{text.weeklyTimerWeekday}</strong></span>
-            <select
-              value={settings.weeklyTimerWeekday}
-              disabled={!settings.weeklyTimerEnabled}
-              onChange={(event) => updateSettings('weeklyTimerWeekday', Number(event.target.value))}
-            >
-              {text.weekdays.map((w, i) => (
-                <option key={i} value={i}>{w}</option>
-              ))}
-            </select>
-          </label>
-          <label className="settings-field">
-            <span><strong>{text.timerTime}</strong></span>
-            <input
-              type="time"
-              value={settings.weeklyTimerTime}
-              disabled={!settings.weeklyTimerEnabled}
-              onChange={(event) => updateSettings('weeklyTimerTime', event.target.value)}
-            />
-          </label>
-        </div>
-
-        <ToggleRow
-          title={text.monthlyTimerEnable}
-          description={text.monthlyTimerEnableHint}
-          checked={settings.monthlyTimerEnabled}
-          onChange={(value) => updateSettings('monthlyTimerEnabled', value)}
-        />
-        <div className="settings-grid">
-          <label className="settings-field">
-            <span><strong>{text.monthlyTimerDay}</strong></span>
-            <input
-              type="number"
-              min={1}
-              max={31}
-              value={settings.monthlyTimerDay}
-              disabled={!settings.monthlyTimerEnabled}
-              onChange={(event) => {
-                const raw = Number(event.target.value);
-                if (!Number.isFinite(raw)) return;
-                updateSettings('monthlyTimerDay', Math.min(31, Math.max(1, Math.round(raw))));
-              }}
-            />
-          </label>
-          <label className="settings-field">
-            <span><strong>{text.timerTime}</strong></span>
-            <input
-              type="time"
-              value={settings.monthlyTimerTime}
-              disabled={!settings.monthlyTimerEnabled}
-              onChange={(event) => updateSettings('monthlyTimerTime', event.target.value)}
-            />
-          </label>
-        </div>
-      </Collapsible>
-
-      <Collapsible title={text.sectionsTitle}>
-        <div className="settings-preview-list">
-          <p>{text.sectionsHint}</p>
-        </div>
-        {sections.map((sectionConfig) => {
-          const isPromptOpen = openPrompt === sectionConfig.markerKey;
-          return (
-            <div key={sectionConfig.markerKey} className="settings-grid">
-              <Field
-                label={text.sectionTitle}
-                value={sectionConfig.title}
-                onChange={(value) => updateSection(sectionConfig.markerKey, 'title', value)}
-              />
-              <label className="settings-field">
-                <span>
-                  <strong>{text.sectionType}</strong>
-                </span>
-                <select
-                  value={sectionConfig.type}
-                  onChange={(event) => updateSection(sectionConfig.markerKey, 'type', event.target.value as SectionType)}
-                >
-                  <option value={SectionType.Ai}>{text.typeAi}</option>
-                  <option value={SectionType.Deterministic}>{text.typeDeterministic}</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                className="settings-reset-button"
-                onClick={() => setOpenPrompt(isPromptOpen ? null : sectionConfig.markerKey)}
-                aria-expanded={isPromptOpen}
-              >
-                {isPromptOpen ? text.hidePrompt : text.showPrompt}
-              </button>
-              {isPromptOpen && (
-                <Field
-                  label={text.prompt}
-                  value={sectionConfig.prompt}
-                  multiline
-                  onChange={(value) => updateSection(sectionConfig.markerKey, 'prompt', value)}
-                />
-              )}
-            </div>
-          );
-        })}
-      </Collapsible>
-
-      <Collapsible title={text.reportsTitle}>
-        <div className="settings-preview-list">
-          <p>{text.reportsHint}</p>
-        </div>
-        <div className="settings-grid" style={{ marginBottom: '0.5rem' }}>
-          <label className="settings-field">
-            <span>
-              <strong>{text.weekPeriod}</strong>
-              <small>{text.weekPeriodHint}</small>
-            </span>
-            <input type="week" value={weekPeriod} onChange={(e) => setWeekPeriod(e.target.value)} />
-          </label>
-          <label className="settings-field">
-            <span>
-              <strong>{text.monthPeriod}</strong>
-              <small>{text.monthPeriodHint}</small>
-            </span>
-            <input type="month" value={monthPeriod} onChange={(e) => setMonthPeriod(e.target.value)} />
-          </label>
-        </div>
-        <div className="settings-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button
-            type="button"
-            className="settings-reset-button"
-            disabled={busy !== null}
-            onClick={() => runReport('weekly', () => window.electronAPI!.aiReview.generateWeekly(weekDate, tasks))}
+      <div className="settings-field ai-account-inline-row">
+        <span className="ai-account-inline-copy">
+          <strong>{text.account}</strong>
+          <small>{text.accountHint}</small>
+        </span>
+        <div className="ai-account-inline-actions">
+          <select
+            value={active?.id ?? ''}
+            onChange={(event) => saveSettings({ ...settings, activeProfileId: event.target.value })}
+            aria-label={text.currentAccount}
           >
-            {busy === 'weekly' ? text.generating : text.genWeekly}
-          </button>
-          <button
-            type="button"
-            className="settings-reset-button"
-            disabled={busy !== null}
-            onClick={() => runReport('monthly', () => window.electronAPI!.aiReview.generateMonthly(monthDate, tasks))}
-          >
-            {busy === 'monthly' ? text.generating : text.genMonthly}
-          </button>
-          <button
-            type="button"
-            className="settings-reset-button"
-            disabled={busy !== null}
-            onClick={() => runReport('ext-weekly', () => window.electronAPI!.aiReview.generateExternal('weekly', weekDate))}
-          >
-            {busy === 'ext-weekly' ? text.generating : text.genExternalWeekly}
-          </button>
-          <button
-            type="button"
-            className="settings-reset-button"
-            disabled={busy !== null}
-            onClick={() => runReport('ext-monthly', () => window.electronAPI!.aiReview.generateExternal('monthly', monthDate))}
-          >
-            {busy === 'ext-monthly' ? text.generating : text.genExternalMonthly}
-          </button>
-        </div>
-        {reportStatus && (
-          <p className="settings-status" style={{ marginTop: '0.5rem', wordBreak: 'break-all' }}>{reportStatus}</p>
-        )}
-      </Collapsible>
-
-      <Collapsible title={rc.title}>
-        <div className="settings-preview-list">
-          <p>{rc.hint}</p>
-        </div>
-
-        <h4>{ts.personalReportsTitle}</h4>
-        <div className="settings-grid">
-          <Field label={ts.personalWeeklyDir} value={settings.weeklyDir} placeholder="logs/weekly-review" onChange={(v) => updateSettings('weeklyDir', v)} />
-          <Field label={ts.personalMonthlyDir} value={settings.monthlyDir} placeholder="logs/monthly-review" onChange={(v) => updateSettings('monthlyDir', v)} />
-        </div>
-
-        <h4>{ts.externalReportsTitle}</h4>
-        <div className="settings-grid">
-          <Field label={ts.externalWeeklyDir} value={settings.externalWeeklyDir} placeholder="exports/weekly-reports" onChange={(v) => updateSettings('externalWeeklyDir', v)} />
-          <Field label={ts.externalMonthlyDir} value={settings.externalMonthlyDir} placeholder="exports/monthly-reports" onChange={(v) => updateSettings('externalMonthlyDir', v)} />
-        </div>
-
-        <h4>{ts.sourceTitle}</h4>
-        <div className="settings-preview-list">
-          <p>{ts.sourceHint}</p>
-        </div>
-        <div className="settings-grid">
-          <label className="settings-field">
-            <span><strong>{ts.weeklySourceMode}</strong></span>
-            <select value={settings.weeklySourceMode} onChange={(e) => updateSettings('weeklySourceMode', e.target.value as typeof settings.weeklySourceMode)}>
-              <option value="daily-notes">{ts.sourceDailyNotes}</option>
-              <option value="manual-files">{ts.sourceManualFiles}</option>
-            </select>
-          </label>
-          <label className="settings-field">
-            <span><strong>{ts.monthlySourceMode}</strong></span>
-            <select value={settings.monthlySourceMode} onChange={(e) => updateSettings('monthlySourceMode', e.target.value as typeof settings.monthlySourceMode)}>
-              <option value="weekly-then-daily">{ts.sourceWeeklyThenDaily}</option>
-              <option value="weekly-reports">{ts.sourceWeeklyReports}</option>
-              <option value="daily-notes">{ts.sourceDailyNotes}</option>
-              <option value="manual-files">{ts.sourceManualFiles}</option>
-            </select>
-          </label>
-        </div>
-        <div className="settings-action-row">
-          <button type="button" className="settings-reset-button" onClick={() => testSources('weekly')}>{ts.testSources}（{ts.weeklySourceMode}）</button>
-          <button type="button" className="settings-reset-button" onClick={() => testSources('monthly')}>{ts.testSources}（{ts.monthlySourceMode}）</button>
-        </div>
-        {sourceTestStatus && <p className="settings-status-text">{sourceTestStatus}</p>}
-        {sourceTestFiles.length > 0 && (
-          <ul className="settings-preview-list">
-            {sourceTestFiles.map((source) => (
-              <li key={source.filePath}>{source.label}：{source.filePath}</li>
+            {profiles.length === 0 && <option value="">—</option>}
+            {profiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>{profile.name || profile.model || profile.id}</option>
             ))}
-          </ul>
-        )}
-
-        {([
-          {
-            kind: 'weekly' as const,
-            promptLabel: ts.personalWeeklyTemplate,
-            promptValue: settings.weeklyPrompt,
-            recognizeLabel: rc.recognizeWeekly,
-            settingKey: 'weeklyPrompt' as const,
-          },
-          {
-            kind: 'monthly' as const,
-            promptLabel: ts.personalMonthlyTemplate,
-            promptValue: settings.monthlyPrompt,
-            recognizeLabel: rc.recognizeMonthly,
-            settingKey: 'monthlyPrompt' as const,
-          },
-          {
-            kind: 'ext-weekly' as const,
-            promptLabel: ts.externalWeeklyTemplate,
-            promptValue: settings.externalWeeklyPrompt,
-            recognizeLabel: rc.recognizeExtWeekly,
-            settingKey: 'externalWeeklyPrompt' as const,
-          },
-          {
-            kind: 'ext-monthly' as const,
-            promptLabel: ts.externalMonthlyTemplate,
-            promptValue: settings.externalMonthlyPrompt,
-            recognizeLabel: rc.recognizeExtMonthly,
-            settingKey: 'externalMonthlyPrompt' as const,
-          },
-        ]).map(({ kind, promptLabel, promptValue, recognizeLabel, settingKey }) => {
-          const isOpen = openTemplate === kind;
-          return (
-            <div key={kind} className="settings-grid" style={{ marginTop: '0.75rem' }}>
-              <button
-                type="button"
-                className="settings-reset-button"
-                onClick={() => setOpenTemplate(isOpen ? null : kind)}
-                aria-expanded={isOpen}
-              >
-                {promptLabel}: {isOpen ? rc.hideTemplate : rc.showTemplate}
-              </button>
-              {isOpen && (
-                <>
-                  <Field
-                    label={promptLabel}
-                    value={promptValue}
-                    multiline
-                    onChange={(v) => updateSettings(settingKey, v)}
-                  />
-                  <label className="settings-field">
-                    <span><strong>{recognizeLabel}</strong></span>
-                    <textarea
-                      rows={3}
-                      placeholder={rc.recognizePlaceholder}
-                      value={reportDraft[kind]}
-                      onChange={(e) => setReportDraft((s) => ({ ...s, [kind]: e.target.value }))}
-                      style={{ width: '100%' }}
-                    />
-                  </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      className="settings-reset-button"
-                      disabled={reportRecognizing === kind || !reportDraft[kind].trim()}
-                      onClick={() => recognizeReport(kind)}
-                    >
-                      {reportRecognizing === kind ? rc.recognizing : rc.recognizeRun}
-                    </button>
-                    <button
-                      type="button"
-                      className="settings-reset-button"
-                      disabled={reportRecognizing === kind}
-                      onClick={() =>
-                        pickTemplateFile(
-                          (t) => setReportDraft((s) => ({ ...s, [kind]: t })),
-                          (status) => setReportRecognizeStatus((s) => ({ ...s, [kind]: status })),
-                        )
-                      }
-                    >
-                      {rc.recognizeFile}
-                    </button>
-                    {reportRecognized[kind] && (
-                      <button type="button" className="settings-reset-button" onClick={() => applyReportPrompt(kind)}>
-                        {rc.recognizeApply}
-                      </button>
-                    )}
-                  </div>
-                  {reportRecognizeStatus[kind] && (
-                    <p className="settings-status" style={{ wordBreak: 'break-all' }}>{reportRecognizeStatus[kind]}</p>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })}
-      </Collapsible>
-
-      <Collapsible title={text.recognizeTitle}>
-        <div className="settings-preview-list">
-          <p>{text.recognizeHint}</p>
-        </div>
-        <textarea
-          className="settings-textarea"
-          rows={4}
-          placeholder={text.recognizePlaceholder}
-          value={templateDraft}
-          onChange={(event) => setTemplateDraft(event.target.value)}
-          style={{ width: '100%' }}
-        />
-        <div className="settings-actions-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+          </select>
           <button
             type="button"
             className="settings-reset-button"
-            disabled={recognizing || !templateDraft.trim()}
-            onClick={recognizeTemplate}
+            onClick={() => { setEditingId(active?.id ?? ''); setShowManager(true); }}
           >
-            {recognizing ? text.recognizing : text.recognizeButton}
+            {text.manageAccounts ?? '管理'}
           </button>
-          <button
-            type="button"
-            className="settings-reset-button"
-            disabled={recognizing}
-            onClick={() => pickTemplateFile(setTemplateDraft, setRecognizeStatus)}
-          >
-            {text.recognizeFile}
-          </button>
-          {recognizedSections && (
-            <button type="button" className="settings-reset-button" onClick={applyRecognized}>
-              {text.recognizeApply}
-            </button>
-          )}
         </div>
-        {recognizeStatus && (
-          <p className="settings-status" style={{ marginTop: '0.5rem' }}>{recognizeStatus}</p>
-        )}
-      </Collapsible>
-
-      {manageOpen && (
+      </div>
+      {showManager && (
         <AiAccountManager
           text={text}
           profiles={profiles}
-          activeId={active.id}
+          activeId={active?.id ?? ''}
           editingId={editingId}
           onSelectEditing={setEditingId}
-          onSetActive={handleSelectProfile}
-          onUpdate={handleUpdateProfile}
-          onAdd={handleAddProfile}
-          onDuplicate={handleDuplicateProfile}
-          onDelete={handleDeleteProfile}
-          onClose={() => setManageOpen(false)}
+          onSetActive={(id) => saveSettings({ ...settings, activeProfileId: id })}
+          onUpdate={(id, patch) => saveSettings({ ...settings, profiles: profiles.map((p) => p.id === id ? { ...p, ...patch } : p) })}
+          onAdd={() => {
+            const newP: AiProfile = { ...createDefaultAiProfile(), name: text.accountNewName ?? '新账号' };
+            saveSettings({ ...settings, profiles: [...profiles, newP], activeProfileId: newP.id });
+            setEditingId(newP.id);
+          }}
+          onDuplicate={(id) => {
+            const src = profiles.find((p) => p.id === id);
+            if (!src) return;
+            const newId = Math.random().toString(36).slice(2);
+            saveSettings({ ...settings, profiles: [...profiles, { ...src, id: newId, name: `${src.name} ${text.accountCopySuffix ?? '副本'}` }] });
+            setEditingId(newId);
+          }}
+          onDelete={(id) => {
+            if (profiles.length <= 1) return;
+            const next = profiles.filter((p) => p.id !== id);
+            saveSettings({ ...settings, profiles: next, activeProfileId: next[0]?.id ?? '' });
+            setEditingId(next[0]?.id ?? '');
+          }}
+          onClose={() => setShowManager(false)}
         />
       )}
     </>
@@ -1228,35 +620,40 @@ export function SettingsPanel({
   onObsidianTemplatesChange,
   onChooseObsidian,
   onPreviewSync,
-  onResetTemplates,
   onClose,
-  onOpenCompanionSettings,
   onEditTemplate,
 }: SettingsPanelProps) {
-  const [section, setSection] = useState<SettingsSection>('root');
-  const defaultTemplates = useMemo(() => createDefaultObsidianTemplateSettings(), []);
+  const [aiReviewSettings, setAiReviewSettings] = useState<AiReviewSettings>(() => createDefaultAiReviewSettings());
+  const [generationStatus, setGenerationStatus] = useState('');
+  const [generatingAction, setGeneratingAction] = useState<GenerationAction | null>(null);
+  const [section, setSection] = useState<SettingsSection>('appearance');
+  const [opacityExpanded, setOpacityExpanded] = useState(false);
   const text = getShellText(appSettings.language).settings;
+  const zh = appSettings.language === 'zh-CN';
   const sectionEntries: SectionEntry[] = [
-    { key: 'personalization', title: text.sections.personalization[0], description: text.sections.personalization[1], primary: true },
-    { key: 'window', title: text.sections.window[0], description: text.sections.window[1], primary: true },
-    { key: 'settings', title: text.sections['settings'][0], description: text.sections['settings'][1], primary: true },
-    { key: 'rollover', title: text.sections.rollover[0], description: text.sections.rollover[1], primary: true },
-    { key: 'general', title: text.sections.general[0], description: text.sections.general[1] },
-    { key: 'developer', title: text.sections.developer[0], description: text.sections.developer[1] },
+    { key: 'appearance', title: zh ? '外观' : 'Appearance', description: zh ? '主题、透明度、圆角与字体' : 'Theme, opacity, radius, and font' },
+    { key: 'sync', title: zh ? '同步' : 'Sync', description: zh ? '仓库位置与日报/周报/月报路径' : 'Vault and note paths' },
+    { key: 'templates', title: zh ? '模板' : 'Templates', description: zh ? '日报、个人报告、对外报告模板' : 'Daily and report templates' },
+    { key: 'aiReview', title: zh ? 'AI 复盘' : 'AI Review', description: zh ? '账号、模型、立即生成与脱敏' : 'Accounts, models, generation, and anonymization' },
+    { key: 'schedule', title: zh ? '日程' : 'Schedule', description: zh ? '结转时间、自动生成时间与清理' : 'Rollover, timers, and cleanup' },
+    { key: 'general', title: zh ? '通用' : 'General', description: zh ? '语言、窗口与启动行为' : 'Language, window, and startup behavior' },
   ];
-  const navSections: Array<{ title: string; entries: typeof sectionEntries }> = [
-    {
-      title: appSettings.language === 'zh-CN' ? '常用设置' : 'Common',
-      entries: sectionEntries.filter((entry) => entry.primary),
-    },
-    {
-      title: appSettings.language === 'zh-CN' ? '高级设置' : 'Advanced',
-      entries: sectionEntries.filter((entry) => !entry.primary),
-    },
+  const navSections: Array<{ title: string; entries: SectionEntry[] }> = [
+    { title: zh ? '常用' : 'Common', entries: sectionEntries.filter((entry) => ['appearance', 'sync', 'templates', 'aiReview'].includes(entry.key)) },
+    { title: zh ? '系统' : 'System', entries: sectionEntries.filter((entry) => ['schedule', 'general'].includes(entry.key)) },
   ];
 
   useEffect(() => {
-    if (isOpen) setSection('root');
+    if (isOpen) setSection('appearance');
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    window.electronAPI?.aiReview.getSettings().then((value) => {
+      if (active) setAiReviewSettings(value);
+    });
+    return () => { active = false; };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -1271,9 +668,70 @@ export function SettingsPanel({
     onAppSettingsChange({ ...appSettings, [key]: value });
   };
 
-  const title = section === 'root'
-    ? text.title
-    : sectionEntries.find((entry) => entry.key === section)?.title || '设置';
+  const title = sectionEntries.find((entry) => entry.key === section)?.title || (zh ? '设置' : 'Settings');
+  const sectionDescription = sectionEntries.find((entry) => entry.key === section)?.description || text.intro;
+
+  const saveAiReviewSettings = (next: AiReviewSettings) => {
+    setAiReviewSettings(next);
+    window.electronAPI?.aiReview.setSettings(next);
+  };
+
+  const updateAiReview = <K extends keyof AiReviewSettings>(key: K, value: AiReviewSettings[K]) => {
+    saveAiReviewSettings({ ...aiReviewSettings, [key]: value });
+  };
+
+  const runGeneration = async (action: GenerationAction) => {
+    setGeneratingAction(action);
+    setGenerationStatus(text.aiReview.generating);
+    try {
+      if (action === 'daily') {
+        const result = await window.electronAPI?.aiReview.runForDate(selectedDate, tasks);
+        if (!result) throw new Error('AI Review API unavailable');
+        setGenerationStatus(result.ok ? `${text.aiReview.genSuccess}${selectedDate}` : `${text.aiReview.genFailed}${result.error ?? '未知错误'}`);
+        return;
+      }
+      const result =
+        action === 'personalWeekly'
+          ? await window.electronAPI?.aiReview.generateWeekly(previousWeekDate(), tasks)
+          : action === 'personalMonthly'
+          ? await window.electronAPI?.aiReview.generateMonthly(previousMonthStart(), tasks)
+          : action === 'externalWeekly'
+          ? await window.electronAPI?.aiReview.generateExternal('weekly', previousWeekDate())
+          : await window.electronAPI?.aiReview.generateExternal('monthly', previousMonthStart());
+      if (!result) throw new Error('AI Review API unavailable');
+      setGenerationStatus(resultMessage(text.aiReview, result));
+    } catch (error) {
+      setGenerationStatus(`${text.aiReview.genFailed}${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setGeneratingAction(null);
+    }
+  };
+
+  const weekOptions = text.aiReview.weekdays.map((label, index) => ({ label, value: index }));
+  const weeklySourceOptions: Array<{ value: WeeklySourceMode; label: string; hint: string }> = [
+    {
+      value: 'daily-notes',
+      label: zh ? '聚合日报' : 'Daily notes',
+      hint: zh ? '周报直接读取本周每日记录，细节最完整。' : 'Read every daily note in the week for the most detail.',
+    },
+  ];
+  const monthlySourceOptions: Array<{ value: MonthlySourceMode; label: string; hint: string }> = [
+    {
+      value: 'weekly-then-daily',
+      label: zh ? '优先周报，没有则日报' : 'Weekly first, daily fallback',
+      hint: zh ? '优先使用本月周报，缺少周报时自动回退到日报。' : 'Use weekly reports first and fall back to daily notes when needed.',
+    },
+    {
+      value: 'weekly-reports',
+      label: zh ? '只使用周报' : 'Weekly reports only',
+      hint: zh ? '月报只汇总已经生成的周报，适合先周报后月报。' : 'Build monthly reports only from existing weekly reports.',
+    },
+    {
+      value: 'daily-notes',
+      label: zh ? '直接聚合日报' : 'Daily notes directly',
+      hint: zh ? '月报直接读取整月日报，细节最多但素材更长。' : 'Read every daily note in the month for the most source detail.',
+    },
+  ];
 
   return (
     <motion.aside
@@ -1284,50 +742,50 @@ export function SettingsPanel({
       className="settings-panel"
       style={{ WebkitAppRegion: 'no-drag' }}
     >
-      <div className="settings-sticky-toolbar settings-panel-header">
-        <div>
-          {section !== 'root' && (
-            <button type="button" className="settings-back-button" onClick={() => setSection('root')}>
-              {text.back}
-            </button>
-          )}
-          <h2>{title}</h2>
-          <p>{text.intro}</p>
-        </div>
-        <button onClick={onClose} className="settings-icon-button" aria-label={text.close} title={text.close}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-
-      {section === 'root' && (
-        <div className="settings-nav-list">
-          {navSections.map((group) => (
-            <div key={group.title}>
-              <p className="settings-nav-section-title">{group.title}</p>
-              <div className="settings-nav-list">
-                {group.entries.map((entry) => (
-                  <button
-                    key={entry.key}
-                    type="button"
-                    className={`settings-nav-item ${entry.primary ? 'settings-nav-primary' : ''}`}
-                    onClick={() => setSection(entry.key)}
-                  >
-                    <span>
-                      <strong>{(text.sections as Record<string, [string, string]>)[entry.key]?.[0] ?? entry.title}</strong>
-                      <small>{(text.sections as Record<string, [string, string]>)[entry.key]?.[1] ?? entry.description}</small>
-                    </span>
-                    <b>›</b>
-                  </button>
-                ))}
+      <div className="settings-v2-layout">
+        <nav className="settings-v2-sidebar" aria-label={zh ? '设置导航' : 'Settings navigation'}>
+          <div className="settings-v2-sidebar-title">
+            <h2>{text.title}</h2>
+            <p>{zh ? '选择左侧分类，右侧直接调整功能。' : 'Choose a section and adjust settings on the right.'}</p>
+          </div>
+          <div className="settings-nav-list">
+            {navSections.map((group) => (
+              <div key={group.title}>
+                <p className="settings-nav-section-title">{group.title}</p>
+                <div className="settings-nav-list">
+                  {group.entries.map((entry) => (
+                    <button
+                      key={entry.key}
+                      type="button"
+                      className={`settings-nav-item ${section === entry.key ? 'settings-nav-active' : ''}`}
+                      onClick={() => setSection(entry.key)}
+                      aria-current={section === entry.key ? 'page' : undefined}
+                    >
+                      <span>
+                        <strong>{entry.title}</strong>
+                        <small>{entry.description}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        </nav>
 
-      {section === 'personalization' && (
+        <div className="settings-v2-content">
+          <button onClick={onClose} className="settings-floating-close settings-icon-button" aria-label={text.close} title={text.close}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <div className="settings-v2-page">
+            <div className="settings-page-title">
+              <h2>{title}</h2>
+              <p>{sectionDescription}</p>
+            </div>
+      {section === 'appearance' && (
         <>
           <section className="settings-section">
             <h3>{appSettings.language === 'zh-CN' ? '外观风格' : 'Appearance Style'}</h3>
@@ -1412,29 +870,37 @@ export function SettingsPanel({
             </div>
           </section>
 
-          <Collapsible title={text.areaFineTuning}>
-            <div className="settings-preview-list">
-              <p>{text.areaFineTuningHint}</p>
-            </div>
-            <div className="settings-grid">
-              {OPACITY_AREAS.map((area) => {
-                const settingKey = area.settingKey as OpacityKey;
-                const reco = opacityValue(recommendation, settingKey);
-                return (
-                  <OpacityAreaControl
-                    key={area.key}
-                    label={appSettings.language === 'zh-CN' ? area.labelZh : area.labelEn}
-                    hint={text.opacityAreaHints[area.key]}
-                    value={opacityValue(settings, settingKey)}
-                    recommended={reco}
-                    resetTitle={text.resetToRecommendation}
-                    onChange={(value) => updatePersonalization(settingKey, value)}
-                    onReset={() => updatePersonalization(settingKey, reco)}
-                  />
-                );
-              })}
-            </div>
-          </Collapsible>
+          <section className="settings-section settings-highlight-section">
+            <button type="button" className="settings-collapsible-head" onClick={() => setOpacityExpanded((value) => !value)}>
+              <span>
+                <h3>{text.areaFineTuning}</h3>
+                <small>{text.areaFineTuningHint}</small>
+              </span>
+              <span className="settings-collapsible-caret">{opacityExpanded ? '收起' : '展开'}</span>
+            </button>
+            {opacityExpanded && (
+              <div className="settings-collapsible-body">
+                <div className="settings-grid">
+                  {OPACITY_AREAS.map((area) => {
+                    const settingKey = area.settingKey as OpacityKey;
+                    const reco = opacityValue(recommendation, settingKey);
+                    return (
+                      <OpacityAreaControl
+                        key={area.key}
+                        label={appSettings.language === 'zh-CN' ? area.labelZh : area.labelEn}
+                        hint={text.opacityAreaHints[area.key]}
+                        value={opacityValue(settings, settingKey)}
+                        recommended={reco}
+                        resetTitle={text.resetToRecommendation}
+                        onChange={(value) => updatePersonalization(settingKey, value)}
+                        onReset={() => updatePersonalization(settingKey, reco)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
 
           <section className="settings-section">
             <h3>{text.colors}</h3>
@@ -1452,26 +918,10 @@ export function SettingsPanel({
         </>
       )}
 
-      {section === 'window' && (
-        <>
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '窗口行为' : 'Window Behavior'}</h3>
-            <AutoStartToggle />
-            <ToggleRow
-              title={appSettings.language === 'zh-CN' ? '启动时窗口置顶' : 'Always on top on start'}
-              description={appSettings.language === 'zh-CN' ? '应用启动时自动置顶' : 'Keep window always on top'}
-              checked={settings.alwaysOnTop ?? false}
-              onChange={(value) => onChange({ ...settings, alwaysOnTop: value })}
-            />
-          </section>
-        </>
-      )}
-
-      {section === 'settings' && (
+      {section === 'sync' && (
         <div className="settings-section-content">
-          {/* Zone 1: Obsidian 同步 */}
           <section className="settings-zone">
-            <h3>{text.settingsZones.obsidianSync}</h3>
+            <h3>{zh ? '同步路径' : text.settingsZones.obsidianSync}</h3>
             <div className="settings-field">
               <span>
                 <strong>{text.vaultPath}</strong>
@@ -1481,48 +931,69 @@ export function SettingsPanel({
                 <button type="button" className="settings-reset-button" onClick={onChooseObsidian}>{text.chooseVault}</button>
               </div>
             </div>
-            {/* 5 path fields */}
-            {[
-              { label: '日报路径', field: 'dailyPath', defaultVal: 'logs/daily/{{date}}.md' },
-              { label: '个人周报路径', field: 'weeklyPath', defaultVal: 'logs/weekly/personal/{{year}}-W{{week}}.md' },
-              { label: '个人月报路径', field: 'monthlyPath', defaultVal: 'logs/monthly/personal/{{year}}-{{month}}.md' },
-              { label: '对外周报路径', field: 'externalWeeklyPath', defaultVal: 'logs/weekly/external/{{year}}-W{{week}}.md' },
-              { label: '对外月报路径', field: 'externalMonthlyPath', defaultVal: 'logs/monthly/external/{{year}}-{{month}}.md' },
-            ].map(({ label, field, defaultVal }) => (
+            {(
+              [
+                { label: zh ? '日报路径' : 'Daily note path', field: 'dailyPath', defaultVal: 'logs/daily/{{date}}.md' },
+                { label: zh ? '个人周报路径' : 'Personal weekly path', field: 'weeklyPath', defaultVal: 'logs/weekly/personal/{{year}}-W{{week}}.md' },
+                { label: zh ? '个人月报路径' : 'Personal monthly path', field: 'monthlyPath', defaultVal: 'logs/monthly/personal/{{year}}-{{month}}.md' },
+                { label: zh ? '对外周报路径' : 'External weekly path', field: 'externalWeeklyPath', defaultVal: 'logs/weekly/external/{{year}}-W{{week}}.md' },
+                { label: zh ? '对外月报路径' : 'External monthly path', field: 'externalMonthlyPath', defaultVal: 'logs/monthly/external/{{year}}-{{month}}.md' },
+              ] as Array<{
+                label: string;
+                field: 'dailyPath' | 'weeklyPath' | 'monthlyPath' | 'externalWeeklyPath' | 'externalMonthlyPath';
+                defaultVal: string;
+              }>
+            ).map(({ label, field, defaultVal }) => (
               <label className="settings-field" key={field}>
                 <span><strong>{label}</strong></span>
                 <input
                   className="settings-input"
-                  value={(obsidianTemplates as Record<string, unknown>)[field] as string ?? defaultVal}
+                  value={obsidianTemplates[field] || defaultVal}
                   onChange={(e) => onObsidianTemplatesChange({ ...obsidianTemplates, [field]: e.target.value })}
                   placeholder={defaultVal}
                 />
               </label>
             ))}
-            {/* Behavior toggles */}
+            <div className="settings-action-row">
+              <button type="button" className="settings-reset-button" onClick={onPreviewSync}>
+                {zh ? '预览今日同步' : 'Preview today sync'}
+              </button>
+            </div>
+            {syncPreview && (
+              <div className="settings-preview-list">
+                <p>{zh ? `将处理 ${syncPreview.files.length} 个文件、${syncPreview.taskCount} 个任务。` : `Will process ${syncPreview.files.length} files and ${syncPreview.taskCount} tasks.`}</p>
+              </div>
+            )}
+          </section>
+
+          <section className="settings-zone">
+            <h3>{text.syncDeleted}</h3>
             <ToggleRow
               title={text.syncDeleted}
               description={text.syncDeletedHint}
-              checked={appSettings.syncDeletedReviewsToObsidian}
-              onChange={(value) => updateApp('syncDeletedReviewsToObsidian', value)}
+              checked={obsidianTemplates.syncDeletedReviewsToObsidian}
+              onChange={(value) => onObsidianTemplatesChange({ ...obsidianTemplates, syncDeletedReviewsToObsidian: value })}
             />
             <ToggleRow
               title={text.confirmDelete}
               description={text.confirmDeleteHint}
-              checked={appSettings.confirmBeforeDeletingReview}
-              onChange={(value) => updateApp('confirmBeforeDeletingReview', value)}
+              checked={obsidianTemplates.confirmBeforeDeletingReview}
+              onChange={(value) => onObsidianTemplatesChange({ ...obsidianTemplates, confirmBeforeDeletingReview: value })}
             />
           </section>
+        </div>
+      )}
 
-          {/* Zone 2: 模板设置 */}
+      {section === 'templates' && (
+        <div className="settings-section-content">
           <section className="settings-zone">
-            <h3>{text.settingsZones.templateSettings}</h3>
+            <h3>{zh ? '模板' : text.settingsZones.templateSettings}</h3>
             {[
-              { label: '日报模板', kind: 'daily' as const },
-              { label: '个人周报模板', kind: 'personalWeekly' as const },
-              { label: '个人月报模板', kind: 'personalMonthly' as const },
-              { label: '对外周报模板', kind: 'externalWeekly' as const },
-              { label: '对外月报模板', kind: 'externalMonthly' as const },
+              { label: zh ? '日报模板' : 'Daily template', kind: 'daily' as const },
+              { label: zh ? '个人周报模板' : 'Personal weekly template', kind: 'personalWeekly' as const },
+              { label: zh ? '个人月报模板' : 'Personal monthly template', kind: 'personalMonthly' as const },
+              { label: zh ? '对外周报模板' : 'External weekly template', kind: 'externalWeekly' as const },
+              { label: zh ? '对外月报模板' : 'External monthly template', kind: 'externalMonthly' as const },
             ].map(({ label, kind }) => (
               <div className="settings-field" key={kind}>
                 <span><strong>{label}</strong></span>
@@ -1531,76 +1002,15 @@ export function SettingsPanel({
                   className="settings-reset-button"
                   onClick={() => onEditTemplate?.(kind)}
                 >
-                  [编辑 →]
+                  {zh ? '编辑 →' : 'Edit →'}
                 </button>
               </div>
             ))}
           </section>
-
-          {/* Zone 3: AI 设置 */}
-          <section className="settings-zone">
-            <h3>{text.settingsZones.aiSettings}</h3>
-            <AiReviewSection text={text.aiReview} templateSources={text.templateSources} tasks={tasks} />
-          </section>
-
-          {/* Zone 4: 周/月报自动生成 */}
-          <section className="settings-zone">
-            <h3>{text.settingsZones.timerSettings}</h3>
-            <div className="settings-generate-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <button
-                type="button"
-                className="settings-reset-button"
-                onClick={() => window.electronAPI?.aiReview.generateWeekly(
-                  (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
-                  tasks
-                )}
-              >
-                立即生成本人周报
-              </button>
-              <button
-                type="button"
-                className="settings-reset-button"
-                onClick={() => {
-                  const d = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
-                  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
-                  window.electronAPI?.aiReview.generateMonthly(dateStr, tasks);
-                }}
-              >
-                立即生成本人月报
-              </button>
-              <button
-                type="button"
-                className="settings-reset-button"
-                onClick={() => {
-                  const d = new Date(); d.setDate(d.getDate() - 7);
-                  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                  window.electronAPI?.aiReview.generateExternal('weekly', dateStr);
-                }}
-              >
-                立即生成对外周报
-              </button>
-              <button
-                type="button"
-                className="settings-reset-button"
-                onClick={() => {
-                  const d = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
-                  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
-                  window.electronAPI?.aiReview.generateExternal('monthly', dateStr);
-                }}
-              >
-                立即生成对外月报
-              </button>
-              <button
-                type="button"
-                className="settings-reset-button"
-                onClick={() => window.electronAPI?.aiReview.generateDaily?.(selectedDate)}
-              >
-                立即重新生成今日日报
-              </button>
-            </div>
-          </section>
         </div>
       )}
+
+      {section === 'schedule' && (
         <>
           <section className="settings-section">
             <h3>{text.rollover}</h3>
@@ -1639,37 +1049,223 @@ export function SettingsPanel({
         </>
       )}
 
-      {section === 'general' && (
-        <section className="settings-section">
-          <h3>{text.language}</h3>
-          <label className="settings-field">
-            <span>
-              <strong>Language</strong>
-              <small>{text.languageHint}</small>
-            </span>
-            <select value={appSettings.language} onChange={(event) => updateApp('language', event.target.value as AppLanguage)}>
-              <option value="zh-CN">中文</option>
-              <option value="en-US">English</option>
-            </select>
-          </label>
-        </section>
+      {section === 'aiReview' && (
+        <div className="settings-section-content">
+          <section className="settings-zone settings-highlight-section">
+            <h3>{text.settingsZones.aiSettings}</h3>
+            <ToggleRow
+              title={text.aiReview.enable}
+              description={text.aiReview.enableHint}
+              checked={aiReviewSettings.enabled}
+              onChange={(value) => updateAiReview('enabled', value)}
+            />
+            <AiAccountZone text={text.aiReview} settings={aiReviewSettings} onChange={saveAiReviewSettings} />
+
+            <section className="settings-inline-section settings-highlight-section">
+              <h3>{zh ? '手动生成' : 'Manual generation'}</h3>
+              <div className="settings-action-row settings-action-row-wide">
+                {([
+                  ['personalWeekly', text.aiReview.genWeekly],
+                  ['personalMonthly', text.aiReview.genMonthly],
+                  ['externalWeekly', text.aiReview.genExternalWeekly],
+                  ['externalMonthly', text.aiReview.genExternalMonthly],
+                  ['daily', zh ? '重新生成今日日报' : 'Regenerate today'],
+                ] as Array<[GenerationAction, string]>).map(([action, label]) => (
+                  <button
+                    key={action}
+                    type="button"
+                    className="settings-reset-button"
+                    disabled={generatingAction !== null}
+                    onClick={() => runGeneration(action)}
+                  >
+                    {generatingAction === action ? text.aiReview.generating : label}
+                  </button>
+                ))}
+              </div>
+              {generationStatus && <div className="settings-preview-list settings-generation-status"><p>{generationStatus}</p></div>}
+            </section>
+
+            <section className="settings-inline-section">
+              <h3>{zh ? '周报/月报数据精度' : 'Report source detail'}</h3>
+              <div className="settings-preview-list">
+                <p>{zh ? '选择 AI 生成周报、月报时读取哪些素材。素材越细，内容越完整；素材越汇总，结果越稳定。' : 'Choose which materials AI reads when generating weekly and monthly reports.'}</p>
+              </div>
+              <div className="settings-grid settings-compact-grid">
+                <label className="settings-field">
+                  <span>
+                    <strong>{zh ? '个人周报来源' : 'Personal weekly source'}</strong>
+                    <small>{weeklySourceOptions.find((option) => option.value === aiReviewSettings.weeklySourceMode)?.hint}</small>
+                  </span>
+                  <select
+                    value={aiReviewSettings.weeklySourceMode}
+                    onChange={(event) => updateAiReview('weeklySourceMode', event.target.value as WeeklySourceMode)}
+                  >
+                    {weeklySourceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label className="settings-field">
+                  <span>
+                    <strong>{zh ? '个人月报来源' : 'Personal monthly source'}</strong>
+                    <small>{monthlySourceOptions.find((option) => option.value === aiReviewSettings.monthlySourceMode)?.hint}</small>
+                  </span>
+                  <select
+                    value={aiReviewSettings.monthlySourceMode}
+                    onChange={(event) => updateAiReview('monthlySourceMode', event.target.value as MonthlySourceMode)}
+                  >
+                    {monthlySourceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label className="settings-field">
+                  <span>
+                    <strong>{zh ? '对外周报来源' : 'External weekly source'}</strong>
+                    <small>{weeklySourceOptions.find((option) => option.value === aiReviewSettings.externalWeeklySourceMode)?.hint}</small>
+                  </span>
+                  <select
+                    value={aiReviewSettings.externalWeeklySourceMode}
+                    onChange={(event) => updateAiReview('externalWeeklySourceMode', event.target.value as WeeklySourceMode)}
+                  >
+                    {weeklySourceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label className="settings-field">
+                  <span>
+                    <strong>{zh ? '对外月报来源' : 'External monthly source'}</strong>
+                    <small>{monthlySourceOptions.find((option) => option.value === aiReviewSettings.externalMonthlySourceMode)?.hint}</small>
+                  </span>
+                  <select
+                    value={aiReviewSettings.externalMonthlySourceMode}
+                    onChange={(event) => updateAiReview('externalMonthlySourceMode', event.target.value as MonthlySourceMode)}
+                  >
+                    {monthlySourceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+              </div>
+            </section>
+            <div className="settings-grid">
+              <Field
+                label={text.aiReview.requestTimeout}
+                hint={text.aiReview.requestTimeoutHint}
+                value={String(aiReviewSettings.timeoutSeconds)}
+                onChange={(value) => updateAiReview('timeoutSeconds', Number(value) || 90)}
+              />
+              <Field
+                label={text.aiReview.timerTime}
+                hint={text.aiReview.timerTimeHint}
+                value={aiReviewSettings.timerTime}
+                onChange={(value) => updateAiReview('timerTime', value)}
+              />
+            </div>
+            <ToggleRow
+              title={text.aiReview.timerEnable}
+              description={text.aiReview.timerEnableHint}
+              checked={aiReviewSettings.timerEnabled}
+              onChange={(value) => updateAiReview('timerEnabled', value)}
+            />
+          </section>
+
+          <section className="settings-zone">
+            <h3>{zh ? '个人自动生成' : 'Personal auto generation'}</h3>
+            <ToggleRow
+              title={text.aiReview.weeklyTimerEnable}
+              description={text.aiReview.weeklyTimerEnableHint}
+              checked={aiReviewSettings.weeklyTimerEnabled}
+              onChange={(value) => updateAiReview('weeklyTimerEnabled', value)}
+            />
+            <div className="settings-grid settings-compact-grid">
+              <label className="settings-field">
+                <span><strong>{text.aiReview.weeklyTimerWeekday}</strong></span>
+                <select value={aiReviewSettings.weeklyTimerWeekday} onChange={(event) => updateAiReview('weeklyTimerWeekday', Number(event.target.value))}>
+                  {weekOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <Field label={text.aiReview.timerTime} value={aiReviewSettings.weeklyTimerTime} onChange={(value) => updateAiReview('weeklyTimerTime', value)} />
+            </div>
+            <ToggleRow
+              title={text.aiReview.monthlyTimerEnable}
+              description={text.aiReview.monthlyTimerEnableHint}
+              checked={aiReviewSettings.monthlyTimerEnabled}
+              onChange={(value) => updateAiReview('monthlyTimerEnabled', value)}
+            />
+            <div className="settings-grid settings-compact-grid">
+              <Field label={text.aiReview.monthlyTimerDay} value={String(aiReviewSettings.monthlyTimerDay)} onChange={(value) => updateAiReview('monthlyTimerDay', Number(value) || 1)} />
+              <Field label={text.aiReview.timerTime} value={aiReviewSettings.monthlyTimerTime} onChange={(value) => updateAiReview('monthlyTimerTime', value)} />
+            </div>
+          </section>
+
+          <section className="settings-zone">
+            <h3>{zh ? '对外自动生成' : 'External auto generation'}</h3>
+            <ToggleRow
+              title={zh ? '对外周报自动生成' : 'External weekly auto generation'}
+              description={zh ? '按设定时间生成上一周的脱敏对外周报。' : 'Generate an anonymized external weekly report on schedule.'}
+              checked={aiReviewSettings.externalWeeklyTimerEnabled}
+              onChange={(value) => updateAiReview('externalWeeklyTimerEnabled', value)}
+            />
+            <div className="settings-grid settings-compact-grid">
+              <label className="settings-field">
+                <span><strong>{text.aiReview.weeklyTimerWeekday}</strong></span>
+                <select value={aiReviewSettings.externalWeeklyTimerWeekday} onChange={(event) => updateAiReview('externalWeeklyTimerWeekday', Number(event.target.value))}>
+                  {weekOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <Field label={text.aiReview.timerTime} value={aiReviewSettings.externalWeeklyTimerTime} onChange={(value) => updateAiReview('externalWeeklyTimerTime', value)} />
+            </div>
+            <ToggleRow
+              title={zh ? '对外月报自动生成' : 'External monthly auto generation'}
+              description={zh ? '按设定时间生成上个月的脱敏对外月报。' : 'Generate an anonymized external monthly report on schedule.'}
+              checked={aiReviewSettings.externalMonthlyTimerEnabled}
+              onChange={(value) => updateAiReview('externalMonthlyTimerEnabled', value)}
+            />
+            <div className="settings-grid settings-compact-grid">
+              <Field label={text.aiReview.monthlyTimerDay} value={String(aiReviewSettings.externalMonthlyTimerDay)} onChange={(value) => updateAiReview('externalMonthlyTimerDay', Number(value) || 1)} />
+              <Field label={text.aiReview.timerTime} value={aiReviewSettings.externalMonthlyTimerTime} onChange={(value) => updateAiReview('externalMonthlyTimerTime', value)} />
+            </div>
+            <ToggleRow
+              title={zh ? '对外报告轻量脱敏' : 'Light anonymization for external reports'}
+              description={zh ? '默认开启，生成对外周报/月报时弱化私人细节和敏感表述。' : 'Enabled by default to soften private details in external reports.'}
+              checked={aiReviewSettings.anonymizeExternalReports}
+              onChange={(value) => updateAiReview('anonymizeExternalReports', value)}
+            />
+          </section>
+        </div>
       )}
 
-      {section === 'developer' && (
+      {section === 'general' && (
         <>
           <section className="settings-section">
-            <h3>{text.developerTools}</h3>
-            <div className="settings-action-row">
-              <button type="button" className="settings-reset-button" onClick={onOpenCompanionSettings}>{text.advancedCompanion}</button>
-              <button type="button" className="settings-reset-button" onClick={() => onObsidianTemplatesChange(defaultTemplates)}>{text.resetDraft}</button>
-            </div>
-            <div className="settings-preview-list">
-              <p>{text.developerRisk}</p>
-              <p>{text.codeGuide}</p>
-            </div>
+            <h3>{text.language}</h3>
+            <label className="settings-field">
+              <span>
+                <strong>{zh ? '语言' : 'Language'}</strong>
+                <small>{text.languageHint}</small>
+              </span>
+              <select value={appSettings.language} onChange={(event) => updateApp('language', event.target.value as AppLanguage)}>
+                <option value="zh-CN">中文</option>
+                <option value="en-US">English</option>
+              </select>
+            </label>
+          </section>
+
+          <section className="settings-section">
+            <h3>{zh ? '窗口行为' : 'Window Behavior'}</h3>
+            <AutoStartToggle />
+            <ToggleRow
+              title={zh ? '关闭时最小化到托盘' : 'Minimize to tray on close'}
+              description={zh ? '点关闭按钮时隐藏到系统托盘；关闭后仍可从托盘恢复。' : 'Hide the app to the system tray when the close button is clicked.'}
+              checked={appSettings.minimizeToTrayOnClose}
+              onChange={(value) => updateApp('minimizeToTrayOnClose', value)}
+            />
+            <ToggleRow
+              title={zh ? '启动时窗口置顶' : 'Always on top on start'}
+              description={zh ? '应用启动时自动置顶' : 'Keep window always on top'}
+              checked={settings.alwaysOnTop ?? false}
+              onChange={(value) => onChange({ ...settings, alwaysOnTop: value })}
+            />
           </section>
         </>
       )}
+          </div>
+        </div>
+      </div>
     </motion.aside>
   );
 }

@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
-import { createDefaultSections, normalizeSections, SectionType } from '../shared/aiReview/sectionConfig';
-import { buildReviewMessages } from '../shared/aiReview/promptBuilder';
+import { createDefaultDailyTemplate, createDefaultSections, normalizeSections, SectionType } from '../shared/aiReview/sectionConfig';
+import { buildCustomBlockReviewMessages, buildReviewMessages } from '../shared/aiReview/promptBuilder';
 
 const sections = createDefaultSections();
 const review = sections.find((s) => s.markerKey === 'REVIEW')!;
@@ -22,6 +22,52 @@ assert.ok(messages[1].content.includes('2026-06-07'));
 assert.ok(messages[1].content.includes('写了复盘引擎'), 'daily content included');
 assert.ok(messages[1].content.includes('100'), 'deterministic stats injected, not invented');
 assert.ok(messages[0].content.includes('不要编造数字') || messages[0].content.includes('do not invent'));
+
+const customTemplate = createDefaultDailyTemplate();
+const [reviewBlock, tomorrowBlock, knowledgeBlock] = customTemplate.customBlocks;
+
+const customReviewMessages = buildCustomBlockReviewMessages({
+  date: '2026-06-07',
+  dailyContent: '## 今日工作\n写了复盘引擎',
+  block: reviewBlock,
+  stats: { date: '2026-06-07', total: 1, completed: 1, completionRate: 100 },
+});
+assert.equal(customReviewMessages[0].role, 'system');
+assert.equal(customReviewMessages[1].role, 'user');
+assert.ok(customReviewMessages[1].content.includes('任务：『复盘』'));
+assert.ok(customReviewMessages[1].content.includes('输出格式：使用普通 Markdown 段落'));
+assert.ok(customReviewMessages[1].content.includes('请根据今天的记录生成“复盘”这个区块的内容。'));
+
+const listMessages = buildCustomBlockReviewMessages({
+  date: '2026-06-07',
+  dailyContent: '## 每日任务\n- [x] Task1',
+  block: tomorrowBlock,
+  stats: { date: '2026-06-07', total: 1, completed: 1, completionRate: 100 },
+});
+assert.ok(listMessages[1].content.includes('输出格式：使用 Markdown 无序列表'));
+assert.ok(listMessages[1].content.includes('请根据今天的记录生成“明日待办”这个区块的内容。'));
+assert.ok(listMessages[1].content.includes('完成率：100%'));
+
+const dataviewBlock = { ...knowledgeBlock, renderType: 'dataview' as const, prompt: '' };
+const dataviewMessages = buildCustomBlockReviewMessages({
+  date: '2026-06-07',
+  dailyContent: '',
+  block: dataviewBlock,
+  stats: { date: '2026-06-07', total: 0, completed: 0, completionRate: 0 },
+});
+assert.ok(dataviewMessages[1].content.includes('输出格式：优先使用 Obsidian dataview 代码块'));
+assert.ok(dataviewMessages[1].content.includes('可复用知识'));
+
+const tableBlock = { ...tomorrowBlock, renderType: 'table' as const, prompt: '只输出表格' };
+const tableMessages = buildCustomBlockReviewMessages({
+  date: '2026-06-07',
+  dailyContent: '',
+  block: tableBlock,
+  stats: { date: '2026-06-07', total: 0, completed: 0, completionRate: 0 },
+});
+assert.ok(tableMessages[1].content.includes('只输出表格'));
+assert.ok(tableMessages[1].content.includes('输出格式：使用 Markdown 表格'));
+
 
 // KNOWLEDGE 默认段
 const knowledge = sections.find((s) => s.markerKey === 'KNOWLEDGE')!;

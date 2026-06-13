@@ -20,17 +20,6 @@ export const MAX_MAX_TOKENS = 32768;
 export type WeeklySourceMode = 'daily-notes' | 'manual-files';
 export type MonthlySourceMode = 'weekly-then-daily' | 'weekly-reports' | 'daily-notes' | 'manual-files';
 
-const WEEKLY_SOURCE_MODES: WeeklySourceMode[] = ['daily-notes', 'manual-files'];
-const MONTHLY_SOURCE_MODES: MonthlySourceMode[] = ['weekly-then-daily', 'weekly-reports', 'daily-notes', 'manual-files'];
-
-function normalizeWeeklySourceMode(v: unknown, fb: WeeklySourceMode): WeeklySourceMode {
-  return typeof v === 'string' && (WEEKLY_SOURCE_MODES as string[]).includes(v) ? (v as WeeklySourceMode) : fb;
-}
-
-function normalizeMonthlySourceMode(v: unknown, fb: MonthlySourceMode): MonthlySourceMode {
-  return typeof v === 'string' && (MONTHLY_SOURCE_MODES as string[]).includes(v) ? (v as MonthlySourceMode) : fb;
-}
-
 /** 归一化输出上限：取整后限定在 [256, 32768]，非法回落默认 8192。 */
 export function normalizeMaxTokens(v: unknown, fb: number = DEFAULT_MAX_TOKENS): number {
   const n = Math.round(Number(v));
@@ -67,6 +56,10 @@ export interface AiReviewSettings {
   externalMonthlyTimerTime: string;
   // 对外报告轻量脱敏：开启时把姓名/联系方式/项目代号等替换成 [人员]/[联系方式]/[项目A] 等占位符。
   anonymizeExternalReports: boolean;
+  weeklySourceMode: WeeklySourceMode;
+  monthlySourceMode: MonthlySourceMode;
+  externalWeeklySourceMode: WeeklySourceMode;
+  externalMonthlySourceMode: MonthlySourceMode;
   timeoutSeconds: number;
   onboardingDismissed: boolean;
 }
@@ -126,6 +119,10 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     externalMonthlyTimerDay: 1,
     externalMonthlyTimerTime: '21:00',
     anonymizeExternalReports: true, // 默认开启对外报告脱敏
+    weeklySourceMode: 'daily-notes',
+    monthlySourceMode: 'weekly-then-daily',
+    externalWeeklySourceMode: 'daily-notes',
+    externalMonthlySourceMode: 'weekly-then-daily',
     timeoutSeconds: 90,
     profiles: [],
     activeProfileId: '',
@@ -145,6 +142,17 @@ function text(v: unknown, fb: string) {
 const PROVIDERS: AiProvider[] = ['auto', 'openai', 'anthropic', 'gemini'];
 function isProvider(v: unknown): v is AiProvider {
   return typeof v === 'string' && (PROVIDERS as string[]).includes(v);
+}
+
+const WEEKLY_SOURCE_MODES: WeeklySourceMode[] = ['daily-notes', 'manual-files'];
+const MONTHLY_SOURCE_MODES: MonthlySourceMode[] = ['weekly-then-daily', 'weekly-reports', 'daily-notes', 'manual-files'];
+
+export function normalizeWeeklySourceMode(value: unknown): WeeklySourceMode {
+  return typeof value === 'string' && (WEEKLY_SOURCE_MODES as string[]).includes(value) ? value as WeeklySourceMode : 'daily-notes';
+}
+
+export function normalizeMonthlySourceMode(value: unknown): MonthlySourceMode {
+  return typeof value === 'string' && (MONTHLY_SOURCE_MODES as string[]).includes(value) ? value as MonthlySourceMode : 'weekly-then-daily';
 }
 
 function normalizeTimeout(v: unknown, fb: number): number {
@@ -229,6 +237,10 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     externalMonthlyTimerTime: isTime(value.externalMonthlyTimerTime) ? value.externalMonthlyTimerTime : d.externalMonthlyTimerTime,
     anonymizeExternalReports:
       typeof value.anonymizeExternalReports === 'boolean' ? value.anonymizeExternalReports : d.anonymizeExternalReports,
+    weeklySourceMode: normalizeWeeklySourceMode(value.weeklySourceMode),
+    monthlySourceMode: normalizeMonthlySourceMode(value.monthlySourceMode),
+    externalWeeklySourceMode: normalizeWeeklySourceMode(value.externalWeeklySourceMode),
+    externalMonthlySourceMode: normalizeMonthlySourceMode(value.externalMonthlySourceMode),
     timeoutSeconds,
     onboardingDismissed:
       typeof value.onboardingDismissed === 'boolean' ? value.onboardingDismissed : d.onboardingDismissed,

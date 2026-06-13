@@ -3,7 +3,7 @@ import {
   AppBehaviorSettings,
   ObsidianTemplateSettings,
 } from '../../shared/appSettings';
-import { SyncPreview } from '../../shared/obsidianTemplates';
+import type { SyncPreview } from '../../shared/obsidianTemplates';
 import { CaptureItem, CompanionSettings } from '../../shared/obsidianCompanion';
 
 const STORE_KEY = 'tasks';

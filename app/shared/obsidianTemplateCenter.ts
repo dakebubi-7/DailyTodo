@@ -1,4 +1,5 @@
 import type { ObsidianTemplateSettings } from './appSettings';
+import type { DailyTemplate } from './aiReview/sectionConfig';
 
 export type ObsidianTemplatePresetId = 'simple' | 'work-review' | 'knowledge' | 'custom';
 export type ObsidianTemplateModuleId = 'work' | 'inspiration' | 'tasks' | 'review' | 'tomorrow' | 'knowledge';
@@ -21,8 +22,6 @@ export interface ObsidianTemplatePreset {
     en: string;
   };
   modules: ObsidianTemplateModules;
-  taskLineTemplate: string;
-  completionReviewTemplate: string;
 }
 
 export const OBSIDIAN_TEMPLATE_MODULE_IDS: ObsidianTemplateModuleId[] = [
@@ -55,11 +54,11 @@ export const DEFAULT_COMPLETION_REVIEW_TEMPLATE = [
 export function createDefaultModules(): ObsidianTemplateModules {
   return {
     work: { enabled: true, title: '今日工作' },
-    inspiration: { enabled: false, title: '灵感闪念' },
+    inspiration: { enabled: true, title: '灵感随笔' },
     tasks: { enabled: true, title: '每日任务' },
     review: { enabled: true, title: '复盘' },
-    tomorrow: { enabled: false, title: '明日待办' },
-    knowledge: { enabled: false, title: '可复用知识' },
+    tomorrow: { enabled: true, title: '明日待办' },
+    knowledge: { enabled: true, title: '可复用知识' },
   };
 }
 
@@ -69,8 +68,6 @@ function createSimplePreset(): ObsidianTemplatePreset {
     label: { zh: '简洁日记', en: 'Simple daily note' },
     description: { zh: '保留工作、任务和复盘的默认结构。', en: 'Keep the default work, task, and review sections.' },
     modules: createDefaultModules(),
-    taskLineTemplate: DEFAULT_TASK_LINE_TEMPLATE,
-    completionReviewTemplate: DEFAULT_COMPLETION_REVIEW_TEMPLATE,
   };
 }
 
@@ -82,14 +79,12 @@ function createWorkReviewPreset(): ObsidianTemplatePreset {
     modules: {
       ...createDefaultModules(),
       work: { enabled: true, title: '今日推进' },
-      inspiration: { enabled: false, title: '灵感闪念' },
+      inspiration: { enabled: true, title: '灵感随笔' },
       tasks: { enabled: true, title: '任务与完成记录' },
       review: { enabled: true, title: '复盘' },
       tomorrow: { enabled: true, title: '明日待办' },
       knowledge: { enabled: false, title: '可复用知识' },
     },
-    taskLineTemplate: DEFAULT_TASK_LINE_TEMPLATE,
-    completionReviewTemplate: DEFAULT_COMPLETION_REVIEW_TEMPLATE,
   };
 }
 
@@ -100,15 +95,13 @@ function createKnowledgePreset(): ObsidianTemplatePreset {
     description: { zh: '聚焦灵感、任务、复盘和可复用知识沉淀。', en: 'Focus on inspiration, tasks, review, and reusable knowledge.' },
     modules: {
       ...createDefaultModules(),
-      work: { enabled: false, title: '今日工作' },
-      inspiration: { enabled: true, title: '灵感闪念' },
+      work: { enabled: true, title: '今日工作' },
+      inspiration: { enabled: true, title: '灵感随笔' },
       tasks: { enabled: true, title: '每日任务' },
       review: { enabled: true, title: '复盘' },
       tomorrow: { enabled: false, title: '明日待办' },
       knowledge: { enabled: true, title: '可复用知识' },
     },
-    taskLineTemplate: DEFAULT_TASK_LINE_TEMPLATE,
-    completionReviewTemplate: DEFAULT_COMPLETION_REVIEW_TEMPLATE,
   };
 }
 
@@ -118,23 +111,8 @@ export const OBSIDIAN_TEMPLATE_PRESETS: ObsidianTemplatePreset[] = [
   createKnowledgePreset(),
 ];
 
-const SECTION_TITLE_KEYS = {
-  work: 'workSectionTitle',
-  inspiration: 'inspirationSectionTitle',
-  tasks: 'taskSectionTitle',
-  review: 'reviewSectionTitle',
-  tomorrow: 'tomorrowTaskSectionTitle',
-  knowledge: 'reusableKnowledgeSectionTitle',
-} as const satisfies Record<ObsidianTemplateModuleId, keyof ObsidianTemplateSettings>;
-
-export type ObsidianTemplateSectionTitleKey = (typeof SECTION_TITLE_KEYS)[ObsidianTemplateModuleId];
-
 export function getObsidianTemplatePreset(id: unknown): ObsidianTemplatePreset {
   return OBSIDIAN_TEMPLATE_PRESETS.find((preset) => preset.id === id) ?? OBSIDIAN_TEMPLATE_PRESETS[0];
-}
-
-export function moduleTitleKey(moduleId: ObsidianTemplateModuleId): ObsidianTemplateSectionTitleKey {
-  return SECTION_TITLE_KEYS[moduleId];
 }
 
 export function normalizeTemplatePresetId(value: unknown): ObsidianTemplatePresetId {
@@ -149,36 +127,55 @@ function text(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim() ? value : fallback;
 }
 
-export function normalizeTemplateModules(
-  value: unknown,
-  legacyTitles: Partial<Record<ObsidianTemplateModuleId, string>> = {},
-): ObsidianTemplateModules {
+export function normalizeTemplateModules(value: unknown): ObsidianTemplateModules {
   const defaults = createDefaultModules();
   const rawModules = isObject(value) ? value : {};
 
   return OBSIDIAN_TEMPLATE_MODULE_IDS.reduce((modules, moduleId) => {
     const defaultModule = defaults[moduleId];
     const rawModule = rawModules[moduleId];
-    const legacyTitle = legacyTitles[moduleId];
 
     modules[moduleId] = {
       enabled: isObject(rawModule) && typeof rawModule.enabled === 'boolean' ? rawModule.enabled : defaultModule.enabled,
-      title: text(legacyTitle, isObject(rawModule) ? text(rawModule.title, defaultModule.title) : defaultModule.title),
+      title: isObject(rawModule) ? text(rawModule.title, defaultModule.title) : defaultModule.title,
     };
 
     return modules;
   }, {} as ObsidianTemplateModules);
 }
 
-export function syncTemplateTitlesFromModules(settings: ObsidianTemplateSettings): ObsidianTemplateSettings {
-  const synced = { ...settings };
-
-  for (const moduleId of OBSIDIAN_TEMPLATE_MODULE_IDS) {
-    const titleKey = moduleTitleKey(moduleId);
-    synced[titleKey] = settings.modules[moduleId].title;
+export function modulesFromDailyTemplate(template: DailyTemplate): ObsidianTemplateModules {
+  const modules = createDefaultModules();
+  for (const block of template.fixedBlocks) {
+    if (block.id === 'work') modules.work.title = block.displayName;
+    if (block.id === 'inspire') modules.inspiration.title = block.displayName;
+    if (block.id === 'tasks') modules.tasks.title = block.displayName;
   }
+  const [review, tomorrow, knowledge] = template.customBlocks;
+  if (review) modules.review = { enabled: review.aiGenerate, title: review.name };
+  if (tomorrow) modules.tomorrow = { enabled: tomorrow.aiGenerate, title: tomorrow.name };
+  if (knowledge) modules.knowledge = { enabled: knowledge.aiGenerate, title: knowledge.name };
+  return modules;
+}
 
-  return synced;
+function applyModulesToDailyTemplate(template: DailyTemplate, modules: ObsidianTemplateModules): DailyTemplate {
+  return {
+    fixedBlocks: template.fixedBlocks.map((block) => {
+      if (block.id === 'work') return { ...block, displayName: modules.work.title };
+      if (block.id === 'inspire') return { ...block, displayName: modules.inspiration.title };
+      return { ...block, displayName: modules.tasks.title };
+    }),
+    customBlocks: template.customBlocks.map((block, index) => {
+      const moduleId = index === 0 ? 'review' : index === 1 ? 'tomorrow' : index === 2 ? 'knowledge' : null;
+      if (!moduleId) return block;
+      return {
+        ...block,
+        name: modules[moduleId].title,
+        aiGenerate: modules[moduleId].enabled,
+      };
+    }),
+    blockOrder: template.blockOrder,
+  };
 }
 
 export function applyObsidianTemplatePreset(
@@ -186,14 +183,10 @@ export function applyObsidianTemplatePreset(
   presetId: ObsidianTemplatePresetId,
 ): ObsidianTemplateSettings {
   const preset = getObsidianTemplatePreset(presetId);
-
-  return syncTemplateTitlesFromModules({
+  return {
     ...settings,
-    presetId: preset.id,
-    modules: normalizeTemplateModules(preset.modules),
-    taskLineTemplate: preset.taskLineTemplate,
-    completionReviewTemplate: preset.completionReviewTemplate,
-  });
+    dailyTemplate: applyModulesToDailyTemplate(settings.dailyTemplate, normalizeTemplateModules(preset.modules)),
+  };
 }
 
 export function updateTemplateModule(
@@ -201,18 +194,17 @@ export function updateTemplateModule(
   moduleId: ObsidianTemplateModuleId,
   patch: Partial<ObsidianTemplateModuleSettings>,
 ): ObsidianTemplateSettings {
-  const nextModules = normalizeTemplateModules(settings.modules);
+  const nextModules = modulesFromDailyTemplate(settings.dailyTemplate);
   nextModules[moduleId] = {
     ...nextModules[moduleId],
     ...patch,
     title: text(patch.title, nextModules[moduleId].title),
   };
 
-  return syncTemplateTitlesFromModules({
+  return {
     ...settings,
-    presetId: 'custom',
-    modules: nextModules,
-  });
+    dailyTemplate: applyModulesToDailyTemplate(settings.dailyTemplate, nextModules),
+  };
 }
 
 export function updateAdvancedTemplateField<K extends keyof ObsidianTemplateSettings>(
@@ -220,25 +212,8 @@ export function updateAdvancedTemplateField<K extends keyof ObsidianTemplateSett
   key: K,
   value: ObsidianTemplateSettings[K],
 ): ObsidianTemplateSettings {
-  const next: ObsidianTemplateSettings = {
+  return {
     ...settings,
     [key]: value,
-    presetId: 'custom',
-  };
-
-  const moduleId = OBSIDIAN_TEMPLATE_MODULE_IDS.find((id) => moduleTitleKey(id) === key);
-  if (!moduleId || typeof value !== 'string') {
-    return next;
-  }
-
-  return {
-    ...next,
-    modules: {
-      ...next.modules,
-      [moduleId]: {
-        ...next.modules[moduleId],
-        title: value,
-      },
-    },
   };
 }

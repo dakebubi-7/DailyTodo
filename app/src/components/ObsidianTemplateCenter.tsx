@@ -5,7 +5,7 @@ import {
   OBSIDIAN_TEMPLATE_MODULE_LABELS,
   OBSIDIAN_TEMPLATE_PRESETS,
   applyObsidianTemplatePreset,
-  updateAdvancedTemplateField,
+  modulesFromDailyTemplate,
   updateTemplateModule,
   type ObsidianTemplateModuleId,
 } from '../../shared/obsidianTemplateCenter';
@@ -53,19 +53,12 @@ function Field({
 }
 
 function draftToSettings(current: ObsidianTemplateSettings, draft: RecognizedObsidianTemplateDraft): ObsidianTemplateSettings {
-  const next: ObsidianTemplateSettings = {
-    ...current,
-    presetId: draft.presetId,
-    dailyNotePath: draft.dailyNotePath || current.dailyNotePath,
-    dailyMarkdownTemplate: draft.dailyMarkdownTemplate || current.dailyMarkdownTemplate,
-    modules: draft.modules,
-    taskLineTemplate: draft.taskLineTemplate || current.taskLineTemplate,
-    completionReviewTemplate: draft.completionReviewTemplate || current.completionReviewTemplate,
-  };
-
   return OBSIDIAN_TEMPLATE_MODULE_IDS.reduce(
-    (settings, moduleId) => updateTemplateModule(settings, moduleId, settings.modules[moduleId]),
-    next,
+    (settings, moduleId) => updateTemplateModule(settings, moduleId, draft.modules[moduleId]),
+    {
+      ...current,
+      dailyPath: draft.dailyNotePath || current.dailyPath,
+    },
   );
 }
 
@@ -83,6 +76,7 @@ export function ObsidianTemplateCenter({
   const [recognizing, setRecognizing] = useState(false);
   const [status, setStatus] = useState('');
   const [recognizedDraft, setRecognizedDraft] = useState<RecognizedObsidianTemplateDraft | null>(null);
+  const modules = modulesFromDailyTemplate(templates.dailyTemplate);
 
   const chooseFile = async () => {
     try {
@@ -131,10 +125,6 @@ export function ObsidianTemplateCenter({
     setStatus(zh ? '已应用到设置。' : 'Applied to settings.');
   };
 
-  const setAdvanced = <K extends keyof ObsidianTemplateSettings>(key: K, value: ObsidianTemplateSettings[K]) => {
-    onChange(updateAdvancedTemplateField(templates, key, value));
-  };
-
   return (
     <div className="obsidian-template-center">
       <section className="settings-section">
@@ -142,47 +132,25 @@ export function ObsidianTemplateCenter({
         <Field
           label={text.dailyNotePath}
           hint={text.dailyNotePathHint}
-          value={templates.dailyNotePath}
-          onChange={(value) => {
-            const nextRules = templates.dailySourceRules.map((rule) =>
-              rule.id === 'daily-note-path' ? { ...rule, path: value } : rule,
-            );
-            onChange({ ...templates, dailyNotePath: value, dailySourceRules: nextRules });
-          }}
-        />
-        <Field
-          label={text.dailyMarkdownTemplate}
-          hint={text.dailyMarkdownTemplateHint}
-          value={templates.dailyMarkdownTemplate}
-          onChange={(value) => setAdvanced('dailyMarkdownTemplate', value)}
-          multiline
+          value={templates.dailyPath}
+          onChange={(value) => onChange({ ...templates, dailyPath: value })}
         />
       </section>
 
       <section className="settings-section">
         <h3>{zh ? '模板风格' : 'Template Style'}</h3>
         <div className="template-preset-grid">
-          {OBSIDIAN_TEMPLATE_PRESETS.map((preset) => {
-            const active = templates.presetId === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                className={`template-preset-card ${active ? 'template-preset-card-active' : ''}`}
-                onClick={() => onChange(applyObsidianTemplatePreset(templates, preset.id))}
-                aria-pressed={active}
-              >
-                <strong>{zh ? preset.label.zh : preset.label.en}</strong>
-                <small>{zh ? preset.description.zh : preset.description.en}</small>
-              </button>
-            );
-          })}
-          {templates.presetId === 'custom' && (
-            <div className="template-preset-card template-preset-card-active" aria-live="polite">
-              <strong>{zh ? '自定义' : 'Custom'}</strong>
-              <small>{zh ? '你已手动调整模板。' : 'You have manually adjusted this template.'}</small>
-            </div>
-          )}
+          {OBSIDIAN_TEMPLATE_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className="template-preset-card"
+              onClick={() => onChange(applyObsidianTemplatePreset(templates, preset.id))}
+            >
+              <strong>{zh ? preset.label.zh : preset.label.en}</strong>
+              <small>{zh ? preset.description.zh : preset.description.en}</small>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -190,14 +158,16 @@ export function ObsidianTemplateCenter({
         <h3>{zh ? '记录模块' : 'Sections'}</h3>
         <div className="template-module-list">
           {OBSIDIAN_TEMPLATE_MODULE_IDS.map((moduleId: ObsidianTemplateModuleId) => {
-            const module = templates.modules[moduleId];
+            const module = modules[moduleId];
             const label = OBSIDIAN_TEMPLATE_MODULE_LABELS[moduleId];
+            const fixed = moduleId === 'work' || moduleId === 'inspiration' || moduleId === 'tasks';
             return (
               <div key={moduleId} className="template-module-row">
                 <label className="toggle-row compact-toggle-row">
                   <input
                     type="checkbox"
-                    checked={module.enabled}
+                    checked={fixed || module.enabled}
+                    disabled={fixed}
                     onChange={(event) => onChange(updateTemplateModule(templates, moduleId, { enabled: event.target.checked }))}
                   />
                   <span>{zh ? label.zh : label.en}</span>
@@ -244,7 +214,7 @@ export function ObsidianTemplateCenter({
             <ul>
               {OBSIDIAN_TEMPLATE_MODULE_IDS.map((moduleId) => (
                 <li key={moduleId}>
-                  {recognizedDraft.modules[moduleId].enabled ? '✅' : '—'} {recognizedDraft.modules[moduleId].title}
+                  {recognizedDraft.modules[moduleId].enabled ? '启用' : '关闭'} {recognizedDraft.modules[moduleId].title}
                 </li>
               ))}
             </ul>
@@ -289,19 +259,23 @@ export function ObsidianTemplateCenter({
         </button>
         {advancedOpen && (
           <div className="template-advanced-fields">
-            <Field
-              label={text.taskExportPath}
-              value={templates.taskExportPath}
-              onChange={(value) => setAdvanced('taskExportPath', value)}
-            />
-            <Field label={text.workSectionTitle} value={templates.workSectionTitle} onChange={(value) => setAdvanced('workSectionTitle', value)} />
-            <Field label={text.inspirationSectionTitle} value={templates.inspirationSectionTitle} onChange={(value) => setAdvanced('inspirationSectionTitle', value)} />
-            <Field label={text.taskSectionTitle} value={templates.taskSectionTitle} onChange={(value) => setAdvanced('taskSectionTitle', value)} />
-            <Field label={text.reviewSectionTitle} value={templates.reviewSectionTitle} onChange={(value) => setAdvanced('reviewSectionTitle', value)} />
-            <Field label={text.tomorrowSectionTitle} value={templates.tomorrowTaskSectionTitle} onChange={(value) => setAdvanced('tomorrowTaskSectionTitle', value)} />
-            <Field label={text.knowledgeSectionTitle} value={templates.reusableKnowledgeSectionTitle} onChange={(value) => setAdvanced('reusableKnowledgeSectionTitle', value)} />
-            <Field label={text.taskLineTemplate} value={templates.taskLineTemplate} onChange={(value) => setAdvanced('taskLineTemplate', value)} />
-            <Field label={text.completionReviewTemplate} value={templates.completionReviewTemplate} onChange={(value) => setAdvanced('completionReviewTemplate', value)} multiline />
+            {templates.dailyTemplate.customBlocks.map((block) => (
+              <Field
+                key={block.id}
+                label={block.name}
+                value={block.prompt}
+                onChange={(value) => onChange({
+                  ...templates,
+                  dailyTemplate: {
+                    ...templates.dailyTemplate,
+                    customBlocks: templates.dailyTemplate.customBlocks.map((item) =>
+                      item.id === block.id ? { ...item, prompt: value } : item,
+                    ),
+                  },
+                })}
+                multiline
+              />
+            ))}
           </div>
         )}
         <div className="settings-action-row">

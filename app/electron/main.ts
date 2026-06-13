@@ -151,6 +151,7 @@ type Task = {
     nextStep: string;
     reviewedAt: string;
   }[];
+  subtasks?: Task[];
 };
 
 type WindowState = {
@@ -172,6 +173,11 @@ const DEFAULT_WINDOW_WIDTH = 240;
 const DEFAULT_WINDOW_HEIGHT = 480;
 const RESET_WINDOW_WIDTH = 240;
 const RESET_WINDOW_HEIGHT = 480;
+const SETTINGS_WINDOW_WIDTH = 720;
+
+function getSettingsWindowWidth(workAreaWidth: number) {
+  return Math.min(SETTINGS_WINDOW_WIDTH, Math.max(MIN_WINDOW_WIDTH, workAreaWidth - 40));
+}
 const APP_ICON_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABiklEQVR4nO3bQRKCMAwFUM7BHbgCB0Dv4PW8ijdx6ca1rpxhFCFpkv6kDTPZgc1/QumCDgPxmJb5FamouZoLrgaBbhwKgW4WioBuEoqAbg6KgG4KjoBuCAqAbgaOgG4ECoBuAl3qAM/H3bRcA1iHt0BQA6gVXhtBBaB2eE0EMQAqvBZCAiRAAiSAGcC0zBetSoAECAjQ/RyQAAmQAOoBQwFMy3wqrb1wXQBQx2wVgDymawCrSa1rgFCToHX4pgBKx2kCQDJGeADpGO4AtJvXAKwGwAmhdXeFAOCcRwl/u543yzXA+tzS8P+CSyCqAkj+eWp4LoL5JFg7/DiOLAST1yAy/KeoCGbrgNoA6/AuADgIVuEpCOYrQcn1R8/4Vnh3ANwF0h7Ad0hKeBcAWwiUa45udUp4cwAOArcoz/tR+CoAVgilkx4EAIUgXRG6/1CSsxByAWBRVuGnSN8Lm4WPAsBBoP5e2D0D0uA/4aMBaFTX+4a63jm2G751BFL4VhFY4VuCKA4eHYKa6w3BqOZexsuoaQAAAABJRU5ErkJggg==';
 
@@ -208,6 +214,8 @@ let tray: Tray | null = null;
 let taskMenuWindow: BrowserWindow | null = null;
 let persistTimer: NodeJS.Timeout | null = null;
 let isQuitting = false;
+let settingsModeOpen = false;
+let settingsModeRestoreWidth = RESET_WINDOW_WIDTH;
 // 当前窗口模式的进程内真相源（normal / onTop / desktop）。createWindow 时从存储解析。
 let windowMode: WindowMode = 'onTop';
 
@@ -414,11 +422,17 @@ let lastDesktopGuardSnapshot = '';
 // 应用前台后短暂重复 app-background 动作，吸收 Win+D 恢复窗口时的原生 Z 序延迟。
 let appBackgroundSettleUntil = 0;
 let lastAppForegroundClass = '';
+let lastAppBackgroundSinkAt = 0;
 
 function applyDesktopWidgetState(win: BrowserWindow, nextState: DesktopWidgetState, force = false) {
   if (win.isDestroyed() || windowMode !== 'desktop') return;
   if (!win32) return;
-  if (!force && desktopWidgetState === nextState) return;
+  if (!force && desktopWidgetState === nextState && nextState !== 'app-background') return;
+  if (!force && desktopWidgetState === nextState && nextState === 'app-background') {
+    const now = Date.now();
+    if (now - lastAppBackgroundSinkAt < 250) return;
+    lastAppBackgroundSinkAt = now;
+  }
 
   const handle = win.getNativeWindowHandle();
   if (!handle) return;
@@ -426,12 +440,13 @@ function applyDesktopWidgetState(win: BrowserWindow, nextState: DesktopWidgetSta
   desktopWidgetState = nextState;
 
   if (nextState === 'desktop-visible') {
+    lastAppBackgroundSinkAt = 0;
     applyDesktopOwner(win);
     try {
       if (!userHidden && !win.isVisible()) {
         win.showInactive();
       }
-      win.setAlwaysOnTop(true, 'screen-saver');
+      win.setAlwaysOnTop(true, 'normal');
       win32.setTopmost(handle);
     } catch (error) {
       diag(`desktop state desktop-visible failed: ${String(error)}`);
@@ -440,6 +455,7 @@ function applyDesktopWidgetState(win: BrowserWindow, nextState: DesktopWidgetSta
   }
 
   if (nextState === 'dt-active') {
+    lastAppBackgroundSinkAt = 0;
     clearDesktopOwner(win);
     try {
       win.setAlwaysOnTop(false, 'normal');
@@ -562,6 +578,14 @@ function getAiReviewSettings() {
 function getReviewSections() {
   return normalizeSections(store.get(AI_REVIEW_SECTIONS_KEY));
 }
+function buildDailySourceRules(dailyPath: string) {
+  return [{ id: 'daily-note-path', label: 'Daily', path: dailyPath, enabled: Boolean(dailyPath.trim()) }];
+}
+
+function getDailySourceRules() {
+  return buildDailySourceRules(getObsidianTemplateSettings().dailyPath);
+}
+
 function getLlmCaller() {
   const s = getAiReviewSettings();
   const p = resolveActiveProfile(s);
@@ -584,11 +608,14 @@ async function runReviewForDate(date: string, tasks: Task[]) {
   const settings = getAiReviewSettings();
   if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', filledMarkers: [], skippedMarkers: [] };
   const filePath = getDailyFilePath(date);
+  const templateSettings = getObsidianTemplateSettings();
+  const customBlocks = templateSettings.dailyTemplate.customBlocks.filter((block) => block.aiGenerate);
   return runReviewForFile({
     filePath,
     date,
     tasks: tasks as StatTask[],
     sections: getReviewSections(),
+    customBlocks,
     callLlm: getLlmCaller(),
   });
 }
@@ -675,7 +702,9 @@ function scheduleExternalMonthlyTimer(win: BrowserWindow) {
 }
 
 function getDailyFilePath(date?: string) {
-  return resolveTemplatePath(getVaultPath(), getObsidianTemplateSettings().dailyNotePath, getDateKey(date));
+  const t = getObsidianTemplateSettings();
+  const dailyPath = t.dailyPath || (t as any).dailyNotePath || 'logs/daily/{{date}}.md';
+  return resolveTemplatePath(getVaultPath(), dailyPath, getDateKey(date));
 }
 
 /**
@@ -702,7 +731,10 @@ function triggerOverviewUpdate(filePath: string) {
 }
 
 function getTaskExportFilePath(date?: string) {
-  return resolveTemplatePath(getVaultPath(), getObsidianTemplateSettings().taskExportPath, getDateKey(date));
+  const t = getObsidianTemplateSettings() as any;
+  const exportPath = t.taskExportPath || '';
+  if (!exportPath) return '';
+  return resolveTemplatePath(getVaultPath(), exportPath, getDateKey(date));
 }
 
 
@@ -833,26 +865,30 @@ function buildBlogDraft(date: string, tasks: Task[], obsidianContent = '') {
 
 function syncOneDailyNote(tasks: Task[], selected: string, dailyWork = '', inspiration = '', useProvidedDailySections = false) {
   const templates = getObsidianTemplateSettings();
+  const tm = templates as any;
+  const workEnabled        = tm.modules?.work?.enabled        ?? true;
+  const inspirationEnabled = tm.modules?.inspiration?.enabled ?? true;
+  const tasksEnabled       = tm.modules?.tasks?.enabled       ?? true;
   const filePath = getDailyFilePath(selected);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const existing = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : buildDailyTemplate(selected, dailyWork, inspiration, templates);
   let nextContent = existing;
 
-  if (templates.modules.work.enabled) {
+  if (workEnabled) {
     nextContent = migrateLegacyWorkSection(nextContent, dailyWork);
     const existingWork = readMarkedBlockBody(nextContent, WORK_START_MARKER, WORK_END_MARKER);
     const nextWork = useProvidedDailySections ? dailyWork : existingWork;
     nextContent = upsertMarkedBlock(nextContent, WORK_START_MARKER, WORK_END_MARKER, buildWorkBlock(nextWork, templates));
   }
 
-  if (templates.modules.inspiration.enabled) {
+  if (inspirationEnabled) {
     nextContent = migrateLegacyInspirationSection(nextContent, inspiration);
     const existingInspiration = readMarkedBlockBody(nextContent, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER);
     const nextInspiration = useProvidedDailySections ? (inspiration.trim() || existingInspiration) : existingInspiration;
     nextContent = upsertMarkedBlock(nextContent, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER, buildInspirationBlock(nextInspiration, templates));
   }
 
-  if (templates.modules.tasks.enabled) {
+  if (tasksEnabled) {
     nextContent = upsertMarkedBlock(nextContent, TASK_START_MARKER, TASK_END_MARKER, buildTaskBlock(selected, tasks, templates));
   }
 
@@ -862,15 +898,17 @@ function syncOneDailyNote(tasks: Task[], selected: string, dailyWork = '', inspi
 
 function getDatesAffectedBySync(tasks: Task[], selected: string) {
   const dates = new Set([selected]);
-
-  tasks.forEach((task) => {
+  const visit = (task: Task) => {
     const taskDate = getTaskDate(task);
     const hasRecordOnSelected = getCompletionReviews(task).some((review) => getReviewDate(review) === selected);
 
     if (taskDate === selected || hasRecordOnSelected) {
       dates.add(taskDate);
     }
-  });
+    (task.subtasks || []).forEach(visit);
+  };
+
+  tasks.forEach(visit);
 
   return Array.from(dates);
 }
@@ -994,7 +1032,11 @@ function applyDesktopTopmost(win: BrowserWindow) {
   } else if (fgClass && !ownForeground) {
     desktopShellSeenAt = 0;
   }
-  const withinDesktopGrace = fgClass === '' && desktopShellSeenAt > 0 && now - desktopShellSeenAt < 700;
+  const withinDesktopGrace =
+    fgClass === '' &&
+    desktopWidgetState === 'desktop-visible' &&
+    desktopShellSeenAt > 0 &&
+    now - desktopShellSeenAt < 120;
 
   const nextState: DesktopWidgetState = ownForeground
     ? 'dt-active'
@@ -1010,7 +1052,11 @@ function applyDesktopTopmost(win: BrowserWindow) {
     lastAppForegroundClass = '';
     appBackgroundSettleUntil = 0;
   }
-  const shouldForceAppBackground = nextState === 'app-background' && now < appBackgroundSettleUntil;
+  const shouldForceAppBackground =
+    nextState === 'app-background' &&
+    Boolean(fgClass) &&
+    !ownForeground &&
+    !shellForeground;
 
   const snapshot = `fg=${fgClass || '(none)'} own=${ownForeground} shell=${shellForeground} grace=${withinDesktopGrace} state=${desktopWidgetState}->${nextState} force=${shouldForceAppBackground} owner=${desktopOwnerApplied}`;
   if (snapshot !== lastDesktopGuardSnapshot) {
@@ -1349,8 +1395,12 @@ function createWindow() {
   // （无 JS 异常、无 minidump，进程直接消失——已由 diag.log 确认）。层级只在创建/显示时设一次。
   win.on('close', (event) => {
     if (isQuitting) return;
-    event.preventDefault();
-    hideMainWindow();
+    if (getAppSettings().minimizeToTrayOnClose) {
+      event.preventDefault();
+      hideMainWindow();
+      return;
+    }
+    isQuitting = true;
   });
 
   ipcMain.handle('window:minimize', hideMainWindow);
@@ -1379,9 +1429,42 @@ function createWindow() {
       x: workArea.x + workArea.width - RESET_WINDOW_WIDTH - 30,
       y: workArea.y + 48,
     };
+    win.setMinimumSize(MIN_WINDOW_WIDTH, RESET_WINDOW_HEIGHT);
     win.setBounds(bounds);
+    settingsModeOpen = false;
+    settingsModeRestoreWidth = RESET_WINDOW_WIDTH;
     persistWindowState(win);
     return bounds;
+  });
+
+  ipcMain.handle('window:setSettingsMode', (_event, open: boolean) => {
+    const bounds = win.getBounds();
+    const { workArea } = screen.getDisplayMatching(bounds);
+
+    if (open) {
+      if (!settingsModeOpen) {
+        settingsModeRestoreWidth = Math.max(MIN_WINDOW_WIDTH, bounds.width || RESET_WINDOW_WIDTH);
+      }
+      settingsModeOpen = true;
+      const width = getSettingsWindowWidth(workArea.width);
+      const x = Math.min(Math.max(bounds.x, workArea.x), workArea.x + workArea.width - width);
+      win.setMinimumSize(width, RESET_WINDOW_HEIGHT);
+      win.setBounds({ ...bounds, x, width });
+      persistWindowState(win);
+      return { ok: true, width };
+    }
+
+    if (!settingsModeOpen) {
+      return { ok: true, width: bounds.width };
+    }
+
+    settingsModeOpen = false;
+    win.setMinimumSize(MIN_WINDOW_WIDTH, RESET_WINDOW_HEIGHT);
+    const width = Math.min(settingsModeRestoreWidth, Math.max(MIN_WINDOW_WIDTH, workArea.width - 40));
+    const x = Math.min(Math.max(bounds.x, workArea.x), workArea.x + workArea.width - width);
+    win.setBounds({ ...bounds, x, width });
+    persistWindowState(win);
+    return { ok: true, width };
   });
 
   ipcMain.handle('window:getLockWindowPosition', () => getAppSettings().lockWindowPosition);
@@ -1473,6 +1556,7 @@ function createWindow() {
       resolveFilePath: (d) => getDailyFilePath(d),
       tasksForDate: () => tasks as StatTask[],
       sections: getReviewSections(),
+      customBlocks: getObsidianTemplateSettings().dailyTemplate.customBlocks.filter((block) => block.aiGenerate),
       callLlm: getLlmCaller(),
       fileExists: (p) => fs.existsSync(p),
     });
@@ -1488,11 +1572,13 @@ function createWindow() {
     const dayNr = (d.getDay() + 6) % 7;
     const monday = shiftDateKey(selected, -dayNr);
     const weekDates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
-    const dailyContents = collectDailySourcesForDates({
-      vaultPath: vaultStatus.vaultPath,
-      dates: weekDates,
-      rules: getObsidianTemplateSettings().dailySourceRules,
-    }).map((source) => ({ date: source.date, content: source.content }));
+    const dailyContents = (settings.weeklySourceMode === 'manual-files'
+      ? []
+      : collectDailySourcesForDates({
+        vaultPath: vaultStatus.vaultPath,
+        dates: weekDates,
+        rules: getDailySourceRules(),
+      }).map((source) => ({ date: source.date, content: source.content })));
     if (!hasSourceMaterials(dailyContents)) return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh };
     const stats = computeRangeStats(tasks as StatTask[], monday, weekDates[6]);
     return generatePersonalWeekly({
@@ -1516,7 +1602,7 @@ function createWindow() {
       vaultPath: vaultStatus.vaultPath,
       month,
       weeklyDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
-      dailyRules: getObsidianTemplateSettings().dailySourceRules,
+      dailyRules: getDailySourceRules(),
       mode: settings.monthlySourceMode,
     }).map((source) => ({ label: source.label, content: source.content }));
     if (!hasSourceMaterials(sources)) return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh };
@@ -1545,11 +1631,13 @@ function createWindow() {
       const monday = shiftDateKey(selected, -((d.getDay() + 6) % 7));
       dates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
       periodKey = isoWeekKey(selected);
-      rawDailyContents = collectDailySourcesForDates({
-        vaultPath: vaultStatus.vaultPath,
-        dates,
-        rules: getObsidianTemplateSettings().dailySourceRules,
-      }).map((source) => source.content);
+      rawDailyContents = settings.externalWeeklySourceMode === 'manual-files'
+        ? []
+        : collectDailySourcesForDates({
+          vaultPath: vaultStatus.vaultPath,
+          dates,
+          rules: getDailySourceRules(),
+        }).map((source) => source.content);
     } else {
       const month = monthKey(selected);
       const { first, last } = monthRange(month);
@@ -1559,7 +1647,7 @@ function createWindow() {
         vaultPath: vaultStatus.vaultPath,
         month,
         weeklyDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
-        dailyRules: getObsidianTemplateSettings().dailySourceRules,
+        dailyRules: getDailySourceRules(),
         mode: settings.externalMonthlySourceMode,
       }).map((source) => source.content);
     }
@@ -1599,7 +1687,11 @@ function createWindow() {
       const dayNr = (d.getDay() + 6) % 7;
       const monday = shiftDateKey(selected, -dayNr);
       const weekDates = Array.from({ length: 7 }, (_, i) => shiftDateKey(monday, i));
-      const sources = collectDailySourcesForDates({ vaultPath: vaultStatus.vaultPath, dates: weekDates, rules: templateSettings.dailySourceRules });
+      const sources = collectDailySourcesForDates({
+        vaultPath: vaultStatus.vaultPath,
+        dates: weekDates,
+        rules: buildDailySourceRules(templateSettings.dailyPath),
+      });
       return { ok: true, sources: sources.map((source) => ({ label: source.label, filePath: source.filePath })) };
     }
     const month = monthKey(selected);
@@ -1607,7 +1699,7 @@ function createWindow() {
       vaultPath: vaultStatus.vaultPath,
       month,
       weeklyDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
-      dailyRules: templateSettings.dailySourceRules,
+      dailyRules: buildDailySourceRules(templateSettings.dailyPath),
       mode: settings.monthlySourceMode,
     });
     return { ok: true, sources: sources.map((source) => ({ label: source.label, filePath: source.filePath })) };

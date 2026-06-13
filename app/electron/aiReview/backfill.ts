@@ -5,6 +5,7 @@ export interface BackfillParams {
   resolveFilePath: (date: string) => string;
   tasksForDate: (date: string) => RunParams['tasks'];
   sections: RunParams['sections'];
+  customBlocks?: RunParams['customBlocks'];
   callLlm: RunParams['callLlm'];
   fileExists: (filePath: string) => boolean;
 }
@@ -26,6 +27,7 @@ export async function backfillReviews(params: BackfillParams): Promise<BackfillR
       filePath, date,
       tasks: params.tasksForDate(date),
       sections: params.sections,
+      customBlocks: params.customBlocks,
       callLlm: params.callLlm,
     });
     if (!r.ok && r.error) report.errors.push({ date, error: r.error });

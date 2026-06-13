@@ -1,29 +1,20 @@
-// app/shared/templateRenderer.ts
-//
-// 模板渲染层:把 5 套模板之一渲染为 Obsidian 文件骨架。
-//
-// 严格职责:
-//   - 写固定块(产品数据直接写入)
-//   - 写 aiGenerate=false 块的内容(取自产品数据)
-//   - 写 aiGenerate=true 块对应的**空 marker**(DAILYTODO:REVIEW:START/END 等)
-//   - **不**调 LLM,**不**写任何 AI 内容(由 runner.ts 负责)
-
 import {
   REVIEW_MARKERS,
+  customBlockMarker,
 } from './aiReview/markers';
 import type { DailyTemplate, ReportTemplate, CustomBlock } from './aiReview/sectionConfig';
+import { getDailyBlockOrder } from './aiReview/sectionConfig';
 
 export interface RenderDailyParams {
   template: DailyTemplate;
   work: string;
   inspiration: string;
   tasks: string;
-  date: string; // YYYY-MM-DD
+  date: string;
 }
 
 export interface RenderReportParams {
   template: ReportTemplate;
-  /** AI-generated content per block, joined with '<!--NEXT_BLOCK-->' in template.customBlocks order */
   content: string;
 }
 
@@ -46,44 +37,33 @@ function getMarker(key: 'REVIEW' | 'TOMORROW' | 'KNOWLEDGE') {
   return REVIEW_MARKERS.KNOWLEDGE;
 }
 
-/**
- * Render a daily template into Obsidian file skeleton.
- *
- * Output format:
- *   # 2026-06-11
- *   ## 今日工作
- *   (work content)
- *   ## 灵感随笔
- *   (inspiration content)
- *   ## 每日任务
- *   - [x] 任务A
- *   ## 复盘
- *   <!-- DAILYTODO:REVIEW:START -->
- *   <!-- DAILYTODO:REVIEW:END -->
- */
 export function renderDailyTemplate(params: RenderDailyParams): string {
   const { template, work, inspiration, tasks, date } = params;
   const lines: string[] = [`# ${date}`, ''];
+  const fixedById = new Map(template.fixedBlocks.map((block) => [block.id, block]));
+  const customById = new Map(template.customBlocks.map((block) => [block.id, block]));
 
-  for (const fixed of template.fixedBlocks) {
-    if (fixed.id === 'work') {
-      lines.push(`## ${fixed.displayName}`, work || '', '');
-    } else if (fixed.id === 'inspire') {
-      lines.push(`## ${fixed.displayName}`, inspiration || '', '');
-    } else if (fixed.id === 'tasks') {
-      lines.push(`## ${fixed.displayName}`, tasks || '', '');
+  for (const item of getDailyBlockOrder(template)) {
+    if (item.type === 'fixed') {
+      const fixed = fixedById.get(item.id);
+      if (!fixed) continue;
+      if (fixed.id === 'work') {
+        lines.push(`## ${fixed.displayName}`, work || '', '');
+      } else if (fixed.id === 'inspire') {
+        lines.push(`## ${fixed.displayName}`, inspiration || '', '');
+      } else if (fixed.id === 'tasks') {
+        lines.push(`## ${fixed.displayName}`, tasks || '', '');
+      }
+      continue;
     }
-  }
 
-  for (const block of template.customBlocks) {
+    const block = customById.get(item.id);
+    if (!block) continue;
     lines.push(`## ${block.name}`);
     if (block.aiGenerate) {
-      const key = inferBlockMarkerKey(block);
-      const marker = getMarker(key);
-      // Write EMPTY marker pair. AI fill layer (runner.ts) writes content here later.
+      const marker = customBlockMarker(block.id);
       lines.push(marker.start, marker.end);
     } else {
-      // Manual block: leave empty for now (future: accept user-provided content)
       lines.push('');
     }
     lines.push('');
@@ -92,12 +72,6 @@ export function renderDailyTemplate(params: RenderDailyParams): string {
   return lines.join('\n');
 }
 
-/**
- * Render a report template (weekly/monthly) into Obsidian file skeleton.
- *
- * @param content AI-generated content for each block, joined with `<!--NEXT_BLOCK-->`.
- *   Index i corresponds to template.customBlocks[i]. Empty string = no content for that block.
- */
 export function renderReportTemplate(params: RenderReportParams): string {
   const { template, content } = params;
   const lines: string[] = [];

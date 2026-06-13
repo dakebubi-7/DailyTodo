@@ -39,7 +39,6 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return Boolean(v && typeof v === 'object' && !Array.isArray(v));
 }
 
-/** 用户配置覆盖默认；非法项回落默认。 */
 export function normalizeSections(value: unknown): SectionConfig[] {
   if (!Array.isArray(value)) return createDefaultSections();
   const defaults = createDefaultSections();
@@ -59,9 +58,8 @@ export function normalizeSections(value: unknown): SectionConfig[] {
   return defaults.map((s) => byKey.get(s.markerKey)!);
 }
 
-// === New unified block model (added by template hub rewrite) ===
-
 export type RenderType = 'text' | 'list' | 'table' | 'callout' | 'dataview';
+export type FixedBlockId = 'work' | 'inspire' | 'tasks';
 
 export interface CustomBlock {
   id: string;
@@ -72,13 +70,18 @@ export interface CustomBlock {
 }
 
 export interface FixedBlock {
-  id: 'work' | 'inspire' | 'tasks';
+  id: FixedBlockId;
   displayName: string;
 }
+
+export type DailyBlockOrderItem =
+  | { type: 'fixed'; id: FixedBlockId }
+  | { type: 'custom'; id: string };
 
 export interface DailyTemplate {
   fixedBlocks: FixedBlock[];
   customBlocks: CustomBlock[];
+  blockOrder: DailyBlockOrderItem[];
 }
 
 export interface ReportTemplate {
@@ -86,17 +89,20 @@ export interface ReportTemplate {
 }
 
 export function createDefaultDailyTemplate(): DailyTemplate {
+  const fixedBlocks: FixedBlock[] = [
+    { id: 'work', displayName: '今日工作' },
+    { id: 'inspire', displayName: '灵感随笔' },
+    { id: 'tasks', displayName: '每日任务' },
+  ];
+  const customBlocks: CustomBlock[] = [
+    { id: crypto.randomUUID(), name: '复盘', aiGenerate: true, renderType: 'text', prompt: '' },
+    { id: crypto.randomUUID(), name: '明日待办', aiGenerate: true, renderType: 'list', prompt: '' },
+    { id: crypto.randomUUID(), name: '可复用知识', aiGenerate: true, renderType: 'text', prompt: '' },
+  ];
   return {
-    fixedBlocks: [
-      { id: 'work', displayName: '今日工作' },
-      { id: 'inspire', displayName: '灵感随笔' },
-      { id: 'tasks', displayName: '每日任务' },
-    ],
-    customBlocks: [
-      { id: crypto.randomUUID(), name: '复盘', aiGenerate: true, renderType: 'text', prompt: '' },
-      { id: crypto.randomUUID(), name: '明日待办', aiGenerate: true, renderType: 'list', prompt: '' },
-      { id: crypto.randomUUID(), name: '可复用知识', aiGenerate: true, renderType: 'text', prompt: '' },
-    ],
+    fixedBlocks,
+    customBlocks,
+    blockOrder: createDailyBlockOrder(fixedBlocks, customBlocks),
   };
 }
 
@@ -133,7 +139,6 @@ export function createDefaultReportTemplate(
       ],
     };
   }
-  // externalMonthly
   return {
     customBlocks: [
       { id: crypto.randomUUID(), name: '本月工作概览', aiGenerate: true, renderType: 'text', prompt: '请用正式书面语。' },
@@ -143,20 +148,30 @@ export function createDefaultReportTemplate(
   };
 }
 
+export function createDailyBlockOrder(fixedBlocks: FixedBlock[], customBlocks: CustomBlock[]): DailyBlockOrderItem[] {
+  return [
+    ...fixedBlocks.map((block) => ({ type: 'fixed' as const, id: block.id })),
+    ...customBlocks.map((block) => ({ type: 'custom' as const, id: block.id })),
+  ];
+}
+
+export function getDailyBlockOrder(template: DailyTemplate): DailyBlockOrderItem[] {
+  return normalizeDailyBlockOrder(template.blockOrder, template.fixedBlocks, template.customBlocks);
+}
+
 export function normalizeDailyTemplate(value: unknown): DailyTemplate {
   const defaults = createDefaultDailyTemplate();
   if (!value || typeof value !== 'object') return defaults;
   const v = value as Partial<DailyTemplate>;
+  const fixedBlocks = normalizeFixedBlocks((v as any).fixedBlocks, defaults.fixedBlocks);
+  const customBlocks = Array.isArray(v.customBlocks) && v.customBlocks.length > 0
+    ? v.customBlocks.map((b) => normalizeCustomBlock(b, defaults))
+    : defaults.customBlocks;
+
   return {
-    fixedBlocks: Array.isArray(v.fixedBlocks) && v.fixedBlocks.length === 3
-      ? v.fixedBlocks.map((b, i) => ({
-          id: defaults.fixedBlocks[i].id,
-          displayName: typeof (b as any)?.displayName === 'string' ? (b as any).displayName : defaults.fixedBlocks[i].displayName,
-        }))
-      : defaults.fixedBlocks,
-    customBlocks: Array.isArray(v.customBlocks) && v.customBlocks.length > 0
-      ? v.customBlocks.map((b) => normalizeCustomBlock(b, defaults))
-      : defaults.customBlocks,
+    fixedBlocks,
+    customBlocks,
+    blockOrder: normalizeDailyBlockOrder((v as any).blockOrder, fixedBlocks, customBlocks),
   };
 }
 
@@ -172,6 +187,67 @@ export function normalizeReportTemplate(
       ? v.customBlocks.map((b) => normalizeCustomBlock(b, defaults))
       : defaults.customBlocks,
   };
+}
+
+function normalizeFixedBlocks(value: unknown, defaults: FixedBlock[]): FixedBlock[] {
+  if (!Array.isArray(value)) return defaults;
+  const byDefault = new Map(defaults.map((block) => [block.id, block]));
+  const seen = new Set<FixedBlockId>();
+  const blocks: FixedBlock[] = [];
+
+  value.forEach((raw, index) => {
+    if (!raw || typeof raw !== 'object') return;
+    const candidate = (raw as Partial<FixedBlock>).id;
+    const id = candidate === 'work' || candidate === 'inspire' || candidate === 'tasks'
+      ? candidate
+      : defaults[index]?.id;
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    blocks.push({
+      id,
+      displayName: typeof (raw as any).displayName === 'string' && (raw as any).displayName.trim()
+        ? (raw as any).displayName
+        : byDefault.get(id)!.displayName,
+    });
+  });
+
+  defaults.forEach((block) => {
+    if (!seen.has(block.id)) blocks.push(block);
+  });
+
+  return blocks;
+}
+
+function normalizeDailyBlockOrder(value: unknown, fixedBlocks: FixedBlock[], customBlocks: CustomBlock[]): DailyBlockOrderItem[] {
+  const fixedIds = new Set(fixedBlocks.map((block) => block.id));
+  const customIds = new Set(customBlocks.map((block) => block.id));
+  const usedFixed = new Set<FixedBlockId>();
+  const usedCustom = new Set<string>();
+  const order: DailyBlockOrderItem[] = [];
+
+  if (Array.isArray(value)) {
+    value.forEach((raw) => {
+      if (!raw || typeof raw !== 'object') return;
+      const item = raw as DailyBlockOrderItem;
+      if (item.type === 'fixed' && fixedIds.has(item.id) && !usedFixed.has(item.id)) {
+        usedFixed.add(item.id);
+        order.push({ type: 'fixed', id: item.id });
+      }
+      if (item.type === 'custom' && customIds.has(item.id) && !usedCustom.has(item.id)) {
+        usedCustom.add(item.id);
+        order.push({ type: 'custom', id: item.id });
+      }
+    });
+  }
+
+  fixedBlocks.forEach((block) => {
+    if (!usedFixed.has(block.id)) order.push({ type: 'fixed', id: block.id });
+  });
+  customBlocks.forEach((block) => {
+    if (!usedCustom.has(block.id)) order.push({ type: 'custom', id: block.id });
+  });
+
+  return order;
 }
 
 function normalizeCustomBlock(b: any, defaults: { customBlocks: CustomBlock[] }): CustomBlock {

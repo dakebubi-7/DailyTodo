@@ -77,13 +77,13 @@ export function TaskReviewDialog({ task, onClose, onAddRecord, onDeleteRecord }:
               onClose();
               onAddRecord(task);
             }}
-            className="rounded-xl border border-white/60 bg-white/55 px-3 py-2 text-[0.78rem] font-semibold text-zinc-500 transition-colors hover:text-forest dark:border-white/10 dark:bg-white/10 dark:text-zinc-300 dark:hover:text-gold"
+            className="rounded-xl border border-white/60 bg-white/55 px-3 py-2 text-[0.78rem] font-semibold text-zinc-500 transition-colors hover:text-forest dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-white"
           >
             追加记录
           </button>
           <button
             onClick={onClose}
-            className="rounded-xl bg-forest px-3 py-2 text-[0.78rem] font-semibold text-white shadow-card transition-transform hover:-translate-y-0.5 dark:bg-gold dark:text-zinc-950"
+            className="rounded-xl bg-forest px-3 py-2 text-[0.78rem] font-semibold text-white shadow-card transition-colors hover:bg-forest/90 dark:bg-zinc-100 dark:text-zinc-950 dark:shadow-none dark:hover:bg-white"
           >
             关闭
           </button>

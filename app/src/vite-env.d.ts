@@ -10,6 +10,7 @@ interface Window {
     setWindowMode: (mode: import('../shared/windowMode').WindowMode) => Promise<import('../shared/windowMode').WindowMode>;
     onWindowModeChanged: (callback: (mode: import('../shared/windowMode').WindowMode) => void) => () => void;
     resetPosition: () => Promise<void>;
+    setSettingsMode: (open: boolean) => Promise<{ ok: boolean; width?: number }>;
     getLockWindowPosition: () => Promise<boolean>;
     setLockWindowPosition: (locked: boolean) => Promise<boolean>;
     getStore: (key: string) => Promise<unknown>;

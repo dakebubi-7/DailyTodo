@@ -1,24 +1,40 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Task } from '../types/task';
+import { Task, TaskSource } from '../types/task';
 import { PriorityPicker } from './PriorityPicker';
 
 interface AddTaskInputProps {
-  onAdd: (text: string, priority: Task['priority']) => void;
+  onAdd: (text: string, priority: Task['priority'], source: TaskSource) => void;
 }
 
 // 高 → 中 → 低，↑ 提高一级、↓ 降低一级。
 const PRIORITY_ORDER: Task['priority'][] = ['high', 'medium', 'low'];
 
+const sourceLabels: Record<TaskSource, string> = {
+  personal: '个人',
+  external: '外部',
+};
+
+const sourceTitles: Record<TaskSource, string> = {
+  personal: '个人任务',
+  external: '外部任务',
+};
+
 export function AddTaskInput({ onAdd }: AddTaskInputProps) {
   const [text, setText] = useState('');
   const [priority, setPriority] = useState<Task['priority']>('medium');
+  const [source, setSource] = useState<TaskSource>('personal');
+
+  const toggleSource = () => {
+    setSource((prev) => (prev === 'personal' ? 'external' : 'personal'));
+  };
 
   const handleSubmit = () => {
     if (text.trim()) {
-      onAdd(text.trim(), priority);
+      onAdd(text.trim(), priority, source);
       setText('');
       setPriority('medium');
+      setSource('personal');
     }
   };
 
@@ -26,6 +42,12 @@ export function AddTaskInput({ onAdd }: AddTaskInputProps) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSubmit();
+      return;
+    }
+
+    if (event.altKey && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      toggleSource();
       return;
     }
 
@@ -60,9 +82,20 @@ export function AddTaskInput({ onAdd }: AddTaskInputProps) {
           onKeyDown={handleKeyDown}
           placeholder="添加一个要推进的小任务..."
           className="add-task-input"
-          aria-label="添加新任务（↑↓ 或 Alt+1/2/3 调整优先级）"
-          title="回车添加；↑↓ 或 Alt+1/2/3 调整优先级（高/中/低）"
+          aria-label="添加新任务（Alt+S 切换个人/外部，↑↓ 或 Alt+1/2/3 调整优先级）"
+          title="回车添加；Alt+S 切换个人/外部；↑↓ 或 Alt+1/2/3 调整优先级"
         />
+
+        <button
+          type="button"
+          onClick={toggleSource}
+          className="source-toggle-button"
+          data-source={source}
+          aria-label={`当前来源：${sourceTitles[source]}，点击切换`}
+          title="Alt+S 切换个人 / 外部"
+        >
+          {sourceLabels[source]}
+        </button>
 
         <PriorityPicker value={priority} onChange={setPriority} title="选择新任务优先级" />
 

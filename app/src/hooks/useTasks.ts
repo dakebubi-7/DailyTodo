@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Task, TabType, TaskCompletionReview } from '../types/task';
+import { Task, TabType, TaskCompletionReview, TaskSource } from '../types/task';
 import {
   chooseObsidianPath,
   getAppSettings,
@@ -51,6 +51,7 @@ function buildCarryoverTask(task: Task, targetDate: string): Task {
     text: baseText,
     completed: false,
     priority: task.priority,
+    source: task.source,
     createdAt: new Date().toISOString(),
     taskDate: targetDate,
     isToday: true,
@@ -127,6 +128,27 @@ export function deleteReviewFromTask(task: Task, reviewId: string): Task {
     completionReviews: reviews,
     completionReview: latestReview,
   };
+}
+
+function mapTaskTree(tasks: Task[], targetId: string, updater: (task: Task) => Task): Task[] {
+  return tasks.map((task) => {
+    if (task.id === targetId) return updater(task);
+    if (!task.subtasks?.length) return task;
+    return {
+      ...task,
+      subtasks: mapTaskTree(task.subtasks, targetId, updater),
+    };
+  });
+}
+
+function removeTaskFromTree(tasks: Task[], targetId: string): Task[] {
+  return tasks
+    .filter((task) => task.id !== targetId)
+    .map((task) => (
+      task.subtasks?.length
+        ? { ...task, subtasks: removeTaskFromTree(task.subtasks, targetId) }
+        : task
+    ));
 }
 
 export function useTasks() {
@@ -292,12 +314,13 @@ export function useTasks() {
     }));
   }, [selectedDate]);
 
-  const addTask = useCallback((text: string, priority: Task['priority'] = 'medium', taskDate = selectedDate) => {
+  const addTask = useCallback((text: string, priority: Task['priority'] = 'medium', source: TaskSource = 'personal', taskDate = selectedDate) => {
     const newTask: Task = {
       id: uuidv4(),
       text,
       completed: false,
       priority,
+      source,
       createdAt: new Date().toISOString(),
       taskDate,
       isToday: taskDate === currentDate,
@@ -306,43 +329,31 @@ export function useTasks() {
   }, [currentDate, selectedDate]);
 
   const toggleTask = useCallback((id: string) => {
-    setAllTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              completed: !task.completed,
-              completedAt: !task.completed ? new Date().toISOString() : undefined,
-            }
-          : task
-      )
-    );
+    setAllTasks((prev) => mapTaskTree(prev, id, (task) => ({
+      ...task,
+      completed: !task.completed,
+      completedAt: !task.completed ? new Date().toISOString() : undefined,
+    })));
   }, []);
 
   const completeTaskWithReview = useCallback((id: string, review: Omit<TaskCompletionReview, 'reviewedAt'>) => {
     const reviewedAt = new Date().toISOString();
-    setAllTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? (() => {
-              const nextReview: TaskCompletionReview = {
-                ...review,
-                id: uuidv4(),
-                reviewedAt,
-              };
-              const completionReviews = [...(task.completionReviews || (task.completionReview ? [task.completionReview] : [])), nextReview];
+    setAllTasks((prev) => mapTaskTree(prev, id, (task) => {
+      const nextReview: TaskCompletionReview = {
+        ...review,
+        id: uuidv4(),
+        reviewedAt,
+      };
+      const completionReviews = [...(task.completionReviews || (task.completionReview ? [task.completionReview] : [])), nextReview];
 
-              return {
-                ...task,
-                completed: true,
-                completedAt: task.completedAt || reviewedAt,
-                completionReview: nextReview,
-                completionReviews,
-              };
-            })()
-          : task
-      )
-    );
+      return {
+        ...task,
+        completed: true,
+        completedAt: task.completedAt || reviewedAt,
+        completionReview: nextReview,
+        completionReviews,
+      };
+    }));
   }, []);
 
   const deleteTaskReview = useCallback((taskId: string, reviewId: string) => {
@@ -357,51 +368,114 @@ export function useTasks() {
       return;
     }
 
-    setAllTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== taskId) return task;
+    setAllTasks((prev) => mapTaskTree(prev, taskId, (task) => {
+      const existingReviews = task.completionReviews || (task.completionReview ? [task.completionReview] : []);
+      const deletedReview = existingReviews.find((review) => getReviewIdentity(review) === reviewId);
+      if (deletedReview && !appSettings.syncDeletedReviewsToObsidian) {
+        setRetainedObsidianReviews((previous) => {
+          const next = retainDeletedReview(previous, task, deletedReview);
+          if (next === previous) return previous;
+          window.electronAPI?.setStore(RETAINED_OBSIDIAN_REVIEWS_KEY, next);
+          return next;
+        });
+      }
 
-        const existingReviews = task.completionReviews || (task.completionReview ? [task.completionReview] : []);
-        const deletedReview = existingReviews.find((review) => getReviewIdentity(review) === reviewId);
-        if (deletedReview && !appSettings.syncDeletedReviewsToObsidian) {
-          setRetainedObsidianReviews((previous) => {
-            const next = retainDeletedReview(previous, task, deletedReview);
-            if (next === previous) return previous;
-            window.electronAPI?.setStore(RETAINED_OBSIDIAN_REVIEWS_KEY, next);
-            return next;
-          });
-        }
-
-        return deleteReviewFromTask(task, reviewId);
-      })
-    );
+      return deleteReviewFromTask(task, reviewId);
+    }));
   }, [appSettings.confirmBeforeDeletingReview, appSettings.syncDeletedReviewsToObsidian]);
 
   const deleteTask = useCallback((id: string) => {
-    setAllTasks((prev) => prev.filter((task) => task.id !== id));
+    setAllTasks((prev) => removeTaskFromTree(prev, id));
   }, []);
 
   const editTask = useCallback((id: string, text: string) => {
-    setAllTasks((prev) => prev.map((task) => (task.id === id ? { ...task, text } : task)));
+    setAllTasks((prev) => mapTaskTree(prev, id, (task) => ({ ...task, text })));
+  }, []);
+
+  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
+    setAllTasks((prev) => mapTaskTree(prev, id, (task) => ({ ...task, ...updates })));
+  }, []);
+
+  const addSubtask = useCallback((parentId: string, text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setAllTasks((prev) => mapTaskTree(prev, parentId, (task) => {
+      const subtask: Task = {
+        id: uuidv4(),
+        text: trimmed,
+        completed: false,
+        priority: task.priority,
+        source: task.source,
+        createdAt: new Date().toISOString(),
+        taskDate: task.taskDate,
+        isToday: task.isToday,
+        parentTaskId: task.id,
+      };
+      return {
+        ...task,
+        collapsed: false,
+        subtasks: [...(task.subtasks || []), subtask],
+      };
+    }));
+  }, []);
+
+  const toggleSubtask = useCallback((subtaskId: string) => {
+    setAllTasks((prev) => mapTaskTree(prev, subtaskId, (task) => ({
+      ...task,
+      completed: !task.completed,
+      completedAt: !task.completed ? new Date().toISOString() : undefined,
+    })));
+  }, []);
+
+  const deleteSubtask = useCallback((subtaskId: string) => {
+    setAllTasks((prev) => removeTaskFromTree(prev, subtaskId));
+  }, []);
+
+  const toggleTaskCollapse = useCallback((taskId: string) => {
+    setAllTasks((prev) => mapTaskTree(prev, taskId, (task) => ({ ...task, collapsed: !task.collapsed })));
+  }, []);
+
+  const updateSubtaskReview = useCallback((subtaskId: string, review: Omit<TaskCompletionReview, 'reviewedAt' | 'id'>) => {
+    const reviewedAt = new Date().toISOString();
+    setAllTasks((prev) => mapTaskTree(prev, subtaskId, (task) => {
+      const nextReview: TaskCompletionReview = {
+        ...review,
+        id: uuidv4(),
+        reviewedAt,
+      };
+      const completionReviews = [...(task.completionReviews || (task.completionReview ? [task.completionReview] : [])), nextReview];
+      return {
+        ...task,
+        completed: true,
+        completedAt: task.completedAt || reviewedAt,
+        completionReview: nextReview,
+        completionReviews,
+      };
+    }));
+  }, []);
+
+  const markSubtaskDoneWithoutReview = useCallback((subtaskId: string) => {
+    setAllTasks((prev) => mapTaskTree(prev, subtaskId, (task) => ({
+      ...task,
+      completed: true,
+      completedAt: task.completedAt || new Date().toISOString(),
+    })));
   }, []);
 
   const editTaskReview = useCallback((taskId: string, reviewId: string, updates: Partial<Pick<TaskCompletionReview, 'status' | 'percent' | 'summary' | 'unknowns' | 'nextStep'>>) => {
-    setAllTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== taskId) return task;
-        const reviews = [...(task.completionReviews?.length
-          ? task.completionReviews
-          : task.completionReview ? [task.completionReview] : [])];
-        const idx = reviews.findIndex((r) => getReviewIdentity(r) === reviewId);
-        if (idx === -1) return task;
-        reviews[idx] = { ...reviews[idx], ...updates };
-        return {
-          ...task,
-          completionReviews: reviews,
-          completionReview: reviews[reviews.length - 1],
-        };
-      }),
-    );
+    setAllTasks((prev) => mapTaskTree(prev, taskId, (task) => {
+      const reviews = [...(task.completionReviews?.length
+        ? task.completionReviews
+        : task.completionReview ? [task.completionReview] : [])];
+      const idx = reviews.findIndex((r) => getReviewIdentity(r) === reviewId);
+      if (idx === -1) return task;
+      reviews[idx] = { ...reviews[idx], ...updates };
+      return {
+        ...task,
+        completionReviews: reviews,
+        completionReview: reviews[reviews.length - 1],
+      };
+    }));
   }, []);
 
   const changePriority = useCallback((id: string, priority: Task['priority']) => {
@@ -428,11 +502,13 @@ export function useTasks() {
       if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
 
       const taskDate = getTaskDate(task, currentDate);
+      const scheduled = task.scheduledDates || [];
+      const matchesDate = (date: string) => taskDate === date || scheduled.includes(date);
       switch (activeTab) {
         case 'today':
-          return taskDate === selectedDate;
+          return matchesDate(selectedDate);
         case 'completed':
-          return taskDate === selectedDate && task.completed;
+          return matchesDate(selectedDate) && task.completed;
         case 'all':
         default:
           return true;
@@ -532,6 +608,13 @@ export function useTasks() {
     editTaskReview,
     deleteTask,
     editTask,
+    updateTask,
+    addSubtask,
+    toggleSubtask,
+    deleteSubtask,
+    toggleTaskCollapse,
+    updateSubtaskReview,
+    markSubtaskDoneWithoutReview,
     changePriority,
     clearCompleted,
     completedCount,

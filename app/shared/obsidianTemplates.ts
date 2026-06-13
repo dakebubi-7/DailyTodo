@@ -1,7 +1,46 @@
 import path from 'path';
 import { ObsidianTemplateSettings } from './appSettings';
 import type { Task } from '../src/types/task';
-import { REVIEW_MARKERS } from './aiReview/markers';
+import { customBlockMarker } from './aiReview/markers';
+import { getDailyBlockOrder } from './aiReview/sectionConfig';
+import type { CustomBlock, FixedBlockId } from './aiReview/sectionConfig';
+
+// ── 新旧 schema 兼容层 ──────────────────────────────────────────
+// T5 重构后 ObsidianTemplateSettings 删除了 modules / sectionTitles /
+// taskLineTemplate / completionReviewTemplate 等字段。
+// 以下 helper 在运行时优先读取新字段,找不到时退回老字段或默认值,
+// 确保 main.ts / obsidianTemplates.ts 里的现有调用不因字段缺失而崩溃。
+function compat(t: ObsidianTemplateSettings) {
+  const a = t as any;
+  const fb = t.dailyTemplate?.fixedBlocks ?? [];
+  const cb = t.dailyTemplate?.customBlocks ?? [];
+  const defaultCompletionReviewTemplate = [
+    '  - 完成记录 {{index}}: {{status}} {{percent}}% @ {{reviewedAt}}',
+    '    - 完成情况: {{summary}}',
+    '    - 卡点/未知: {{unknowns}}',
+    '    - 下一步: {{nextStep}}',
+  ].join('\n');
+  return {
+    dailyPath:   t.dailyPath   || a.dailyNotePath || 'logs/daily/{{date}}.md',
+    taskExportPath: a.taskExportPath || '',
+    workEnabled:        a.modules?.work?.enabled        ?? true,
+    inspirationEnabled: a.modules?.inspiration?.enabled ?? true,
+    tasksEnabled:       a.modules?.tasks?.enabled       ?? true,
+    reviewEnabled:      a.modules?.review?.enabled      ?? true,
+    tomorrowEnabled:    a.modules?.tomorrow?.enabled    ?? true,
+    knowledgeEnabled:   a.modules?.knowledge?.enabled   ?? true,
+    workSectionTitle:      a.workSectionTitle        ?? fb.find((b: any) => b.id === 'work')?.displayName    ?? '今日工作',
+    inspirationSectionTitle: a.inspirationSectionTitle ?? fb.find((b: any) => b.id === 'inspire')?.displayName ?? '灵感随笔',
+    tasksSectionTitle:     a.tasksSectionTitle       ?? fb.find((b: any) => b.id === 'tasks')?.displayName   ?? '每日任务',
+    reviewSectionTitle:    a.reviewSectionTitle      ?? cb.find((b: any) => /复盘|review/i.test(b.name))?.name ?? '复盘',
+    tomorrowTaskSectionTitle: a.tomorrowTaskSectionTitle ?? cb.find((b: any) => /明日|待办|tomorrow/i.test(b.name))?.name ?? '明日待办',
+    reusableKnowledgeSectionTitle: a.reusableKnowledgeSectionTitle ?? cb.find((b: any) => /知识|knowledge/i.test(b.name))?.name ?? '可复用知识',
+    taskLineTemplate:   a.taskLineTemplate   ?? '- [{checked}] {text}',
+    completionReviewTemplate: a.completionReviewTemplate || defaultCompletionReviewTemplate,
+    dailyMarkdownTemplate: a.dailyMarkdownTemplate ?? '',
+  };
+}
+// ────────────────────────────────────────────────────────────────
 
 export const TASK_START_MARKER = '<!-- DAILYTODO:TASKS:START -->';
 export const TASK_END_MARKER = '<!-- DAILYTODO:TASKS:END -->';
@@ -62,6 +101,14 @@ function escapeReviewText(text = '') {
   return trimmed.replace(/\r?\n/g, '\n      ');
 }
 
+function formatTaskTags(tags: string[] = []) {
+  return tags
+    .map((tag) => tag.trim().replace(/\s+/g, '-'))
+    .filter(Boolean)
+    .map((tag) => (tag.startsWith('#') ? tag : `#${tag}`))
+    .join(' ');
+}
+
 function formatDateTime(value?: string) {
   if (!value) return '-';
   const date = new Date(value);
@@ -77,105 +124,148 @@ export { getCompletionReviews } from './completionReviews';
 import { getCompletionReviews } from './completionReviews';
 
 function renderTemplate(template: string, replacements: Record<string, string | number>) {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => String(replacements[key] ?? ''));
+  return template
+    .replace(/\{\{(\w+)\}\}/g, (_, key: string) => String(replacements[key] ?? ''))
+    .replace(/\{(\w+)\}/g, (_, key: string) => String(replacements[key] ?? ''));
 }
 
 export function buildTaskLines(tasks: Task[], date: string, templates: ObsidianTemplateSettings) {
-  const priorityLabel = { high: '高', medium: '中', low: '低' };
+  const c = compat(templates);
+  const priorityLabel = { high: 'high', medium: 'medium', low: 'low' };
   const statusLabel = { done: '全部完成', partial: '部分完成', blocked: '有卡点' };
-
-  return tasks
-    .filter((task) => getTaskDate(task) === date || getCompletionReviews(task).some((review) => getReviewDate(review) === date))
-    .sort((a, b) => {
+  const taskAppliesToDate = (task: Task) =>
+    getTaskDate(task) === date ||
+    getCompletionReviews(task).some((review) => getReviewDate(review) === date) ||
+    (task.subtasks || []).some(taskAppliesToDate);
+  const sortTasks = (items: Task[]) =>
+    [...items].sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       const order = { high: 0, medium: 1, low: 2 };
       return order[a.priority] - order[b.priority];
-    })
-    .flatMap((task) => {
-      const taskDate = getTaskDate(task);
-      const lines = [
-        renderTemplate(templates.taskLineTemplate, {
-          checked: task.completed ? 'x' : ' ',
-          text: escapeTaskText(task.text),
-          priority: priorityLabel[task.priority],
-          dateNote: taskDate && taskDate !== date ? ` (任务日期：${taskDate})` : '',
-        }),
-      ];
+    });
+  const indentLines = (value: string, depth: number) =>
+    value
+      .split('\n')
+      .map((line) => `${'  '.repeat(depth)}${line}`)
+      .join('\n');
 
-      if (task.completedAt) {
-        lines.push(`  - 任务完成时间：${formatDateTime(task.completedAt)}`);
+  const renderTask = (task: Task, depth: number): string[] => {
+    const taskDate = getTaskDate(task);
+    const tags = formatTaskTags(task.tags);
+    const taskText = [escapeTaskText(task.text), c.taskLineTemplate.includes('tags') ? '' : tags]
+      .filter(Boolean)
+      .join(' ');
+    const lines = [
+      indentLines(renderTemplate(c.taskLineTemplate, {
+        checked: task.completed ? 'x' : ' ',
+        text: taskText,
+        priority: priorityLabel[task.priority],
+        tags,
+        dateNote: taskDate && taskDate !== date ? ` (任务日期: ${taskDate})` : '',
+      }), depth),
+    ];
+
+    if (task.completedAt) {
+      lines.push(indentLines(`  - 任务完成时间: ${formatDateTime(task.completedAt)}`, depth));
+    }
+
+    const visibleReviews =
+      taskDate === date
+        ? getCompletionReviews(task)
+        : getCompletionReviews(task).filter((review) => getReviewDate(review) === date);
+
+    visibleReviews.forEach((review, index) => {
+      const rawDetails: Record<string, string> = {
+        summary: review.summary,
+        unknowns: review.unknowns,
+        nextStep: review.nextStep,
+      };
+      const replacements = {
+        index: index + 1,
+        status: statusLabel[review.status],
+        percent: review.percent,
+        reviewedAt: formatDateTime(review.reviewedAt),
+        summary: escapeReviewText(review.summary),
+        unknowns: escapeReviewText(review.unknowns),
+        nextStep: escapeReviewText(review.nextStep),
+      };
+      const renderedLines = String(c.completionReviewTemplate)
+        .split('\n')
+        .filter((lineTemplate) => {
+          const referenced = Object.keys(rawDetails).filter((token) => lineTemplate.includes(`{{${token}}}`));
+          if (!referenced.length) return true;
+          return referenced.some((token) => escapeTaskText(rawDetails[token]) !== '');
+        })
+        .map((lineTemplate) => renderTemplate(lineTemplate, replacements));
+
+      if (renderedLines.length) {
+        lines.push(indentLines(renderedLines.join('\n'), depth));
       }
+    });
 
-      const visibleReviews =
-        taskDate === date
-          ? getCompletionReviews(task)
-          : getCompletionReviews(task).filter((review) => getReviewDate(review) === date);
-
-      visibleReviews.forEach((review, index) => {
-        // 明细字段以「原始值 trim 后是否为空」判空，空字段所在行整行跳过，不写入 Obsidian。
-        const rawDetails: Record<string, string> = {
-          summary: review.summary,
-          unknowns: review.unknowns,
-          nextStep: review.nextStep,
-        };
-        const replacements = {
-          index: index + 1,
-          status: statusLabel[review.status],
-          percent: review.percent,
-          reviewedAt: formatDateTime(review.reviewedAt),
-          summary: escapeReviewText(review.summary),
-          unknowns: escapeReviewText(review.unknowns),
-          nextStep: escapeReviewText(review.nextStep),
-        };
-        const renderedLines = templates.completionReviewTemplate
-          .split('\n')
-          .filter((lineTemplate) => {
-            // 该行引用到的明细字段（summary / unknowns / nextStep）。
-            const referenced = Object.keys(rawDetails).filter((token) => lineTemplate.includes(`{{${token}}}`));
-            // 非明细行（首行：序号/状态/完成度/时间）恒保留。
-            if (!referenced.length) return true;
-            // 行内引用的明细字段全部为空 → 跳过此行；只要有一个非空就保留。
-            return referenced.some((token) => escapeTaskText(rawDetails[token]) !== '');
-          })
-          .map((lineTemplate) => renderTemplate(lineTemplate, replacements));
-
-        if (renderedLines.length) {
-          lines.push(renderedLines.join('\n'));
-        }
+    sortTasks(task.subtasks || [])
+      .filter(taskAppliesToDate)
+      .forEach((subtask) => {
+        lines.push(...renderTask(subtask, depth + 1));
       });
 
-      return lines;
-    });
+    return lines;
+  };
+
+  return sortTasks(tasks)
+    .filter(taskAppliesToDate)
+    .flatMap((task) => renderTask(task, 0));
 }
 
 export function buildWorkBlock(dailyWork: string, templates: ObsidianTemplateSettings) {
+  const c = compat(templates);
   return [
     WORK_START_MARKER,
-    `## ${templates.workSectionTitle}`,
+    `## ${c.workSectionTitle}`,
     dailyWork.trim() || '-',
     WORK_END_MARKER,
   ].join('\n');
 }
 
 export function buildInspirationBlock(dailyInspiration: string, templates: ObsidianTemplateSettings) {
+  const c = compat(templates);
   return [
     INSPIRATION_START_MARKER,
-    `## ${templates.inspirationSectionTitle}`,
+    `## ${c.inspirationSectionTitle}`,
     dailyInspiration.trim() || '-',
     INSPIRATION_END_MARKER,
   ].join('\n');
 }
 
 export function buildTaskBlock(date: string, tasks: Task[], templates: ObsidianTemplateSettings) {
+  const c = compat(templates);
   const taskLines = buildTaskLines(tasks, date, templates);
   return [
     TASK_START_MARKER,
-    `## ${templates.taskSectionTitle}`,
+    `## ${c.tasksSectionTitle}`,
     taskLines.length ? taskLines.join('\n') : '- [ ] 今天还没有记录任务',
     '',
     `同步时间：${new Date().toLocaleString('zh-CN')}`,
     TASK_END_MARKER,
   ].join('\n');
+}
+
+function buildCustomAiBlock(block: CustomBlock) {
+  if (!block.aiGenerate) return [`## ${block.name}`, ''].join('\n');
+  const marker = customBlockMarker(block.id);
+  return [`## ${block.name}`, marker.start, marker.end].join('\n');
+}
+
+function buildFixedBlock(id: FixedBlockId, params: {
+  date: string;
+  tasks: Task[];
+  dailyWork: string;
+  dailyInspiration: string;
+  templates: ObsidianTemplateSettings;
+}) {
+  if (id === 'work') return buildWorkBlock(params.dailyWork, params.templates);
+  if (id === 'inspire') return buildInspirationBlock(params.dailyInspiration, params.templates);
+  return buildTaskBlock(params.date, params.tasks, params.templates);
 }
 
 export function buildDailyNoteContent(params: {
@@ -185,59 +275,31 @@ export function buildDailyNoteContent(params: {
   dailyInspiration: string;
   templates: ObsidianTemplateSettings;
 }) {
-  const { date, tasks, dailyWork, dailyInspiration, templates } = params;
+  const { date, templates } = params;
   const content = [
     '---',
-    `title: "DailyTodo ${date}"`,
+    `title: "${date} 每日记录"`,
     `date: "${date}"`,
-    'tags: [daily-todo, daily-review, knowledge-base]',
+    'tags: [每日记录, 每日复盘, 知识沉淀]',
     '---',
     '',
     `# ${date} 每日记录`,
     '',
   ];
+  const customById = new Map(templates.dailyTemplate.customBlocks.map((block) => [block.id, block]));
 
-  if (templates.modules.work.enabled) {
-    content.push(buildWorkBlock(dailyWork, templates), '');
-  }
-
-  if (templates.modules.inspiration.enabled) {
-    content.push(buildInspirationBlock(dailyInspiration, templates), '');
-  }
-
-  if (templates.modules.tasks.enabled) {
-    content.push(buildTaskBlock(date, tasks, templates), '');
-  }
-
-  // 标题在 marker 块外，块内只放 AI 托管内容并默认留空，
-  // 这样补偿扫描会把空块判为 Unprocessed 并填充，标题始终可见。
-  if (templates.modules.review.enabled) {
-    content.push(`## ${templates.reviewSectionTitle}`, REVIEW_MARKERS.REVIEW.start, REVIEW_MARKERS.REVIEW.end, '');
-  }
-
-  if (templates.modules.tomorrow.enabled) {
-    content.push(`## ${templates.tomorrowTaskSectionTitle}`, REVIEW_MARKERS.TOMORROW.start, REVIEW_MARKERS.TOMORROW.end, '');
-  }
-
-  if (templates.modules.knowledge.enabled) {
-    content.push(`## ${templates.reusableKnowledgeSectionTitle}`, REVIEW_MARKERS.KNOWLEDGE.start, REVIEW_MARKERS.KNOWLEDGE.end, '');
+  for (const item of getDailyBlockOrder(templates.dailyTemplate)) {
+    if (item.type === 'fixed') {
+      content.push(buildFixedBlock(item.id, params), '');
+      continue;
+    }
+    const block = customById.get(item.id);
+    if (block) content.push(buildCustomAiBlock(block), '');
   }
 
   return content.join('\n');
 }
 
-/**
- * 用用户自定义的日报 Markdown 模板生成新日报文档。
- * 核心占位符（{{work}}/{{inspiration}}/{{tasks}}）展开为「自带标题的 marker 块」，
- * 与增量同步使用的块结构完全一致，因此模板布局自由但同步逻辑无需改动。
- * review/tomorrow/knowledge 占位符展开为对应 AI 托管空块（标题在块外）。
- * 模板缺失某个核心占位符时，仍把该块追加到文末，保证同步能定位到 marker。
- * 模板为空时回退到基于模块的 buildDailyNoteContent。
- *
- * 注意：本函数**只**写出空的 AI 标记（DAILYTODO:REVIEW:START/END 等）。
- * AI 内容由 runner.ts / scanReviewTargets 等在后续步骤填充到标记内，
- * 避免此处写一次、Runner 再写一次的双重生成 bug。
- */
 export function buildDailyNoteFromTemplate(params: {
   date: string;
   tasks: Task[];
@@ -245,53 +307,7 @@ export function buildDailyNoteFromTemplate(params: {
   dailyInspiration: string;
   templates: ObsidianTemplateSettings;
 }) {
-  const { date, tasks, dailyWork, dailyInspiration, templates } = params;
-  const template = templates.dailyMarkdownTemplate?.trim();
-  if (!template) {
-    return buildDailyNoteContent(params);
-  }
-
-  const coreBlocks: Record<'work' | 'inspiration' | 'tasks', { token: RegExp; block: string; present: boolean }> = {
-    work: { token: /\{\{\s*work\s*\}\}/g, block: buildWorkBlock(dailyWork, templates), present: false },
-    inspiration: { token: /\{\{\s*inspiration\s*\}\}/g, block: buildInspirationBlock(dailyInspiration, templates), present: false },
-    tasks: { token: /\{\{\s*tasks\s*\}\}/g, block: buildTaskBlock(date, tasks, templates), present: false },
-  };
-
-  // review/tomorrow/knowledge 的占位符只渲染为「空 marker」+ 块外标题。
-  // AI 内容**永远**不写在这里，由 runner.ts / scanReviewTargets 等 AI fill 层负责填充。
-  let rendered = template.replace(/\{\{\s*date\s*\}\}/g, date);
-
-  for (const key of ['work', 'inspiration', 'tasks'] as const) {
-    const entry = coreBlocks[key];
-    if (entry.token.test(rendered)) {
-      entry.present = true;
-      rendered = rendered.replace(entry.token, () => entry.block);
-    }
-  }
-
-  // {{review}}/{{tomorrow}}/{{knowledge}} 占位符 → 替换为对应空标记段（标题在块外，块内仅空 marker）。
-  rendered = rendered.replace(/\{\{\s*review\s*\}\}/g, () => {
-    const m = REVIEW_MARKERS.REVIEW;
-    return `## ${templates.reviewSectionTitle}\n${m.start}\n${m.end}`;
-  });
-  rendered = rendered.replace(/\{\{\s*tomorrow\s*\}\}/g, () => {
-    const m = REVIEW_MARKERS.TOMORROW;
-    return `## ${templates.tomorrowTaskSectionTitle}\n${m.start}\n${m.end}`;
-  });
-  rendered = rendered.replace(/\{\{\s*knowledge\s*\}\}/g, () => {
-    const m = REVIEW_MARKERS.KNOWLEDGE;
-    return `## ${templates.reusableKnowledgeSectionTitle}\n${m.start}\n${m.end}`;
-  });
-
-  // 缺失的核心块追加到文末，保证后续增量同步能定位 marker。
-  const missing = (['work', 'inspiration', 'tasks'] as const)
-    .filter((key) => !coreBlocks[key].present)
-    .map((key) => coreBlocks[key].block);
-  if (missing.length) {
-    rendered = `${rendered.trimEnd()}\n\n${missing.join('\n\n')}`;
-  }
-
-  return `${rendered.trimEnd()}\n`;
+  return buildDailyNoteContent(params);
 }
 
 
@@ -320,13 +336,17 @@ export function readMarkedBlockBody(existing: string, startMarker: string, endMa
   return content === '-' ? '' : content;
 }
 
+function flattenTasks(tasks: Task[]): Task[] {
+  return tasks.flatMap((task) => [task, ...flattenTasks(task.subtasks || [])]);
+}
+
 function countCompletionRecords(tasks: Task[]) {
-  return tasks.reduce((total, task) => total + getCompletionReviews(task).length, 0);
+  return flattenTasks(tasks).reduce((total, task) => total + getCompletionReviews(task).length, 0);
 }
 
 function reviewKeys(tasks: Task[]) {
   return new Set(
-    tasks.flatMap((task) =>
+    flattenTasks(tasks).flatMap((task) =>
       getCompletionReviews(task).map((review) => `${task.id}:${review.id || review.reviewedAt}`),
     ),
   );
@@ -346,16 +366,17 @@ export function buildSyncPreview(params: {
   const beforeReviewKeys = reviewKeys(params.tasksBeforeDelete || params.tasksAfterDelete);
   const afterReviewKeys = reviewKeys(params.tasksAfterDelete);
   const deletedReviewWillDisappear = [...beforeReviewKeys].some((key) => !afterReviewKeys.has(key));
-  const dailyPath = resolveTemplatePath(params.vaultPath, params.templates.dailyNotePath, params.date);
+  const cc = compat(params.templates);
+  const dailyPath = resolveTemplatePath(params.vaultPath, cc.dailyPath, params.date);
 
   const managedBlocks: SyncPreviewBlock[] = [];
-  if (params.templates.modules.work.enabled) {
+  if (cc.workEnabled) {
     managedBlocks.push({ marker: 'DAILYTODO:WORK', action: existingDailyNote.includes(WORK_START_MARKER) ? 'replace' : 'insert' });
   }
-  if (params.templates.modules.inspiration.enabled) {
+  if (cc.inspirationEnabled) {
     managedBlocks.push({ marker: 'DAILYTODO:INSPIRATION', action: existingDailyNote.includes(INSPIRATION_START_MARKER) ? 'replace' : 'insert' });
   }
-  if (params.templates.modules.tasks.enabled) {
+  if (cc.tasksEnabled) {
     managedBlocks.push({ marker: 'DAILYTODO:TASKS', action: existingDailyNote.includes(TASK_START_MARKER) ? 'replace' : 'insert' });
   }
 
@@ -364,7 +385,7 @@ export function buildSyncPreview(params: {
       { filePath: dailyPath, action: existingDailyNote ? 'update' : 'create' },
     ],
     managedBlocks,
-    taskCount: params.tasksAfterDelete.filter((task) => getTaskDate(task) === params.date).length,
+    taskCount: flattenTasks(params.tasksAfterDelete).filter((task) => getTaskDate(task) === params.date).length,
     completionRecordCount: countCompletionRecords(params.tasksAfterDelete),
     deletedReviewWillDisappear,
   } satisfies SyncPreview;

@@ -1,10 +1,11 @@
 import {
+  createDailyBlockOrder,
   createDefaultDailyTemplate,
   createDefaultReportTemplate,
   normalizeDailyTemplate,
   normalizeReportTemplate,
 } from './aiReview/sectionConfig';
-import type { DailyTemplate, ReportTemplate } from './aiReview/sectionConfig';
+import type { DailyBlockOrderItem, DailyTemplate, FixedBlockId, ReportTemplate } from './aiReview/sectionConfig';
 
 export type AppLanguage = 'zh-CN' | 'en-US';
 
@@ -15,6 +16,7 @@ export interface AppBehaviorSettings {
   syncDeletedReviewsToObsidian: boolean;
   confirmBeforeDeletingReview: boolean;
   lockWindowPosition: boolean;
+  minimizeToTrayOnClose: boolean;
 }
 
 export interface ObsidianTemplateSettings {
@@ -55,6 +57,7 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
     syncDeletedReviewsToObsidian: true,
     confirmBeforeDeletingReview: false,
     lockWindowPosition: false,
+    minimizeToTrayOnClose: true,
   };
 }
 
@@ -106,6 +109,8 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
         : defaults.confirmBeforeDeletingReview,
     lockWindowPosition:
       typeof value.lockWindowPosition === 'boolean' ? value.lockWindowPosition : defaults.lockWindowPosition,
+    minimizeToTrayOnClose:
+      typeof value.minimizeToTrayOnClose === 'boolean' ? value.minimizeToTrayOnClose : defaults.minimizeToTrayOnClose,
   };
 }
 
@@ -127,40 +132,61 @@ function migrateReportDir(
   return `${old.replace(/\/$/, '')}/${tmpl}`;
 }
 
+const TEMPLATE_CUSTOM_TOKENS = ['review', 'tomorrow', 'knowledge'] as const;
+type TemplateCustomToken = (typeof TEMPLATE_CUSTOM_TOKENS)[number];
+
+function isTemplateCustomToken(token: string): token is TemplateCustomToken {
+  return (TEMPLATE_CUSTOM_TOKENS as readonly string[]).includes(token);
+}
+
 function migrateDailyMarkdownTemplate(old: string): DailyTemplate {
   const defaults = createDefaultDailyTemplate();
   if (!old || typeof old !== 'string' || !old.includes('{{')) {
     return defaults;
   }
-  // Parse token presence to determine block order
-  const has = (t: string) => old.includes(`{{${t}}}`);
-  const fixedOrder: Array<'work' | 'inspire' | 'tasks'> = [];
-  if (has('work')) fixedOrder.push('work');
-  if (has('inspire')) fixedOrder.push('inspire');
-  if (has('tasks')) fixedOrder.push('tasks');
-  // Fill in any missing in default order
-  for (const id of ['work', 'inspire', 'tasks'] as const) {
-    if (!fixedOrder.includes(id)) fixedOrder.push(id);
+
+  const fixedBlocks = defaults.fixedBlocks;
+  const markerToDefault = new Map(defaults.customBlocks.map((block) => {
+    if (/明日|待办|tomorrow/i.test(block.name)) return ['tomorrow', block] as const;
+    if (/知识|knowledge/i.test(block.name)) return ['knowledge', block] as const;
+    return ['review', block] as const;
+  }));
+  const customBlocks = defaults.customBlocks;
+  const blockOrder: DailyBlockOrderItem[] = [];
+  const usedFixed = new Set<FixedBlockId>();
+  const usedCustom = new Set<string>();
+  const tokenPattern = /\{\{\s*(work|inspire|inspiration|tasks|review|tomorrow|knowledge)\s*\}\}/gi;
+  const fixedTokenMap: Record<string, FixedBlockId> = {
+    work: 'work',
+    inspire: 'inspire',
+    inspiration: 'inspire',
+    tasks: 'tasks',
+  };
+
+  for (const match of old.matchAll(tokenPattern)) {
+    const token = match[1].toLowerCase();
+    const fixedId = fixedTokenMap[token];
+    if (fixedId) {
+      if (!usedFixed.has(fixedId)) {
+        usedFixed.add(fixedId);
+        blockOrder.push({ type: 'fixed', id: fixedId });
+      }
+      continue;
+    }
+
+    if (!isTemplateCustomToken(token)) continue;
+    const custom = markerToDefault.get(token);
+    if (custom && !usedCustom.has(custom.id)) {
+      usedCustom.add(custom.id);
+      blockOrder.push({ type: 'custom', id: custom.id });
+    }
   }
-  const fixedBlocks = fixedOrder.map((id) => defaults.fixedBlocks.find((f) => f.id === id)!);
 
-  // Parse custom blocks
-  const customOrder: Array<{ marker: 'REVIEW' | 'TOMORROW' | 'KNOWLEDGE'; name: string; renderType: DailyTemplate['customBlocks'][number]['renderType'] }> = [];
-  if (has('review')) customOrder.push({ marker: 'REVIEW', name: '复盘', renderType: 'text' });
-  if (has('tomorrow')) customOrder.push({ marker: 'TOMORROW', name: '明日待办', renderType: 'list' });
-  if (has('knowledge')) customOrder.push({ marker: 'KNOWLEDGE', name: '可复用知识', renderType: 'text' });
-
-  const customBlocks = customOrder.length > 0
-    ? customOrder.map((c) => ({
-        id: crypto.randomUUID(),
-        name: c.name,
-        aiGenerate: true,
-        renderType: c.renderType,
-        prompt: '',
-      }))
-    : defaults.customBlocks;
-
-  return { fixedBlocks, customBlocks };
+  return {
+    fixedBlocks,
+    customBlocks,
+    blockOrder: blockOrder.length ? blockOrder : createDailyBlockOrder(fixedBlocks, customBlocks),
+  };
 }
 
 export function normalizeObsidianTemplateSettings(value: unknown): ObsidianTemplateSettings {

@@ -1,4 +1,4 @@
-export type RendererView = 'main';
+export type RendererView = 'main' | 'task-menu';
 
 export type RendererRoute = {
   view: RendererView;
@@ -6,7 +6,7 @@ export type RendererRoute = {
 };
 
 function isRendererView(value: string): value is RendererView {
-  return value === 'main';
+  return value === 'main' || value === 'task-menu';
 }
 
 export function buildRendererQuery(route: RendererRoute): Record<string, string> {

@@ -1,14 +1,13 @@
-// app/src/components/TemplateRecognitionModal.tsx
 import React, { useState, useRef } from 'react';
 import type { CustomBlock, RenderType } from '../../shared/aiReview/sectionConfig';
 import { parseRecognizedBlocks } from '../../shared/recognizeTemplateBlocks';
 
 const RENDER_TYPE_LABELS: Record<RenderType, string> = {
-  text: '纯文本', list: '列表', table: '表格', callout: 'Callout', dataview: 'Dataview',
+  text: '纯文本', list: '列表', table: '表格', callout: '引用框', dataview: '数据视图',
 };
 
 interface Props {
-  existingBlocks: CustomBlock[]; // current custom blocks (used as fallback)
+  existingBlocks: CustomBlock[];
   onApply: (blocks: CustomBlock[], mode: 'replace' | 'append') => void;
   onCancel: () => void;
 }
@@ -20,6 +19,7 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [recognized, setRecognized] = useState<CustomBlock[]>([]);
+  const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(() => new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +52,15 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
 
   const updateRecognized = (id: string, patch: Partial<CustomBlock>) => {
     setRecognized((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  };
+
+  const togglePrompt = (id: string) => {
+    setExpandedPromptIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   return (
@@ -90,30 +99,54 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
         {step === 'preview' && (
           <>
             <p className="recognition-hint">识别结果(可调整后应用):</p>
-            {recognized.map((block) => (
-              <div key={block.id} className="recognition-block-row">
-                <input
-                  value={block.name}
-                  onChange={(e) => updateRecognized(block.id, { name: e.target.value })}
-                />
-                <label>
+            {recognized.map((block) => {
+              const promptExpanded = expandedPromptIds.has(block.id);
+
+              return (
+                <div key={block.id} className="recognition-block-row">
                   <input
-                    type="checkbox"
-                    checked={block.aiGenerate}
-                    onChange={(e) => updateRecognized(block.id, { aiGenerate: e.target.checked })}
+                    value={block.name}
+                    onChange={(e) => updateRecognized(block.id, { name: e.target.value })}
                   />
-                  AI生成
-                </label>
-                <select
-                  value={block.renderType}
-                  onChange={(e) => updateRecognized(block.id, { renderType: e.target.value as RenderType })}
-                >
-                  {(Object.entries(RENDER_TYPE_LABELS) as [RenderType, string][]).map(([v, label]) => (
-                    <option key={v} value={v}>{label}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={block.aiGenerate}
+                      onChange={(e) => updateRecognized(block.id, { aiGenerate: e.target.checked })}
+                    />
+                    AI生成
+                  </label>
+                  <select
+                    value={block.renderType}
+                    disabled={!block.aiGenerate}
+                    onChange={(e) => updateRecognized(block.id, { renderType: e.target.value as RenderType })}
+                  >
+                    {(Object.entries(RENDER_TYPE_LABELS) as [RenderType, string][]).map(([v, label]) => (
+                      <option key={v} value={v}>{label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="recognition-prompt-toggle"
+                    disabled={!block.aiGenerate}
+                    aria-expanded={promptExpanded}
+                    onClick={() => togglePrompt(block.id)}
+                  >
+                    {promptExpanded ? '收起提示词' : '提示词'}
+                  </button>
+                  {promptExpanded && (
+                    <textarea
+                      className="recognition-prompt-input"
+                      rows={2}
+                      value={block.prompt}
+                      disabled={!block.aiGenerate}
+                      onChange={(e) => updateRecognized(block.id, { prompt: e.target.value })}
+                      placeholder="自定义提示词，留空则使用默认提示词"
+                    />
+                  )}
+                </div>
+              );
+            })}
             {error && <p className="recognition-error">{error}</p>}
             <div className="recognition-footer">
               <button onClick={() => setStep('input')}>重新识别</button>

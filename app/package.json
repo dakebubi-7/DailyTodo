@@ -2,6 +2,7 @@
   "name": "daily-todo",
   "version": "1.0.0",
   "description": "A beautiful transparent daily todo desktop app",
+  "author": "DailyTodo",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -58,7 +59,9 @@
     "verify:daily-template-markers": "tsx scripts/verify-daily-template-markers.ts",
     "verify:source-materials": "tsx scripts/verify-source-materials.ts",
     "verify:unified-template-recognition": "tsx scripts/verify-unified-template-recognition.ts",
-    "verify:template-source-i18n": "tsx scripts/verify-template-source-i18n.ts"
+    "verify:template-source-i18n": "tsx scripts/verify-template-source-i18n.ts",
+    "verify:settings-v2-ai-account": "tsx scripts/verify-settings-v2-ai-account.ts",
+    "verify:settings-v2-window-mode": "tsx scripts/verify-settings-v2-window-mode.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",

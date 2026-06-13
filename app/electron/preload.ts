@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('window:modeChanged', listener);
   },
   resetPosition: () => ipcRenderer.invoke('window:resetPosition'),
+  setSettingsMode: (open: boolean) => ipcRenderer.invoke('window:setSettingsMode', open),
   getLockWindowPosition: () => ipcRenderer.invoke('window:getLockWindowPosition'),
   setLockWindowPosition: (locked: boolean) => ipcRenderer.invoke('window:setLockWindowPosition', locked),
   getStore: (key: string) => ipcRenderer.invoke('store:get', key),

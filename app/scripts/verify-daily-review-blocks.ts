@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { buildDailyNoteContent } from '../shared/obsidianTemplates';
 import { createDefaultObsidianTemplateSettings } from '../shared/appSettings';
-import { REVIEW_MARKERS, hasBlock, readBlockBody } from '../shared/aiReview/markers';
+import { REVIEW_MARKERS, customBlockMarker, hasBlock, readBlockBody } from '../shared/aiReview/markers';
 
 const templates = createDefaultObsidianTemplateSettings();
 const content = buildDailyNoteContent({
@@ -12,18 +12,31 @@ const content = buildDailyNoteContent({
   templates,
 });
 
-// 仅断言默认启用的模块块（默认：work/tasks/review 开，inspiration/tomorrow/knowledge 关）。
-// 启用某模块时其 marker 块才会出现，未启用模块不应强制存在。
-assert.ok(templates.modules.review.enabled, 'review module enabled by default');
-assert.ok(hasBlock(content, REVIEW_MARKERS.REVIEW), 'REVIEW block present when enabled');
+const aiBlocks = templates.dailyTemplate.customBlocks.filter((block) => block.aiGenerate);
+assert.ok(aiBlocks.length > 0, 'default daily template should include AI custom blocks');
+
+for (const block of aiBlocks) {
+  const marker = customBlockMarker(block.id);
+  assert.ok(hasBlock(content, marker), `custom block marker present for ${block.name}`);
+  assert.ok(content.includes(`## ${block.name}`), `custom block heading present for ${block.name}`);
+  assert.ok(
+    content.indexOf(`## ${block.name}`) < content.indexOf(marker.start),
+    `custom block heading must precede the START marker for ${block.name}`,
+  );
+  assert.equal(readBlockBody(content, marker), '', `custom block body starts empty for ${block.name}`);
+}
+
+assert.ok(content.includes('<!-- DAILYTODO:TASKS:START -->'), 'task block marker present');
+assert.ok(content.includes('<!-- DAILYTODO:WORK:START -->'), 'work block marker present');
+assert.ok(!hasBlock(content, REVIEW_MARKERS.REVIEW), 'fixed REVIEW block is no longer emitted in daily template');
 
 // 启用全部 review 系模块后，TOMORROW / KNOWLEDGE 块也应正确产出。
 const allOn = {
   ...templates,
   modules: {
-    ...templates.modules,
-    tomorrow: { ...templates.modules.tomorrow, enabled: true },
-    knowledge: { ...templates.modules.knowledge, enabled: true },
+    ...((templates as any).modules ?? {}),
+    tomorrow: { ...((templates as any).modules?.tomorrow ?? {}), enabled: true },
+    knowledge: { ...((templates as any).modules?.knowledge ?? {}), enabled: true },
   },
 };
 const contentAllOn = buildDailyNoteContent({
@@ -33,21 +46,12 @@ const contentAllOn = buildDailyNoteContent({
   dailyInspiration: '',
   templates: allOn,
 });
-assert.ok(hasBlock(contentAllOn, REVIEW_MARKERS.TOMORROW), 'TOMORROW block present when enabled');
-assert.ok(hasBlock(contentAllOn, REVIEW_MARKERS.KNOWLEDGE), 'KNOWLEDGE block present when enabled');
-// 既有任务/工作标记仍在
-assert.ok(content.includes('<!-- DAILYTODO:TASKS:START -->'));
-assert.ok(content.includes('<!-- DAILYTODO:WORK:START -->'));
-
-// 契约：标题在 marker 块外（在 START 之前），块内默认为空，
-// 这样补偿扫描判为 Unprocessed 才会填充。
-assert.ok(
-  content.indexOf(`## ${templates.reviewSectionTitle}`) < content.indexOf(REVIEW_MARKERS.REVIEW.start),
-  'review heading must precede the START marker (heading outside block)',
-);
-assert.equal(readBlockBody(content, REVIEW_MARKERS.REVIEW), '', 'REVIEW block starts empty');
-assert.equal(readBlockBody(contentAllOn, REVIEW_MARKERS.TOMORROW), '', 'TOMORROW block starts empty');
-assert.equal(readBlockBody(contentAllOn, REVIEW_MARKERS.KNOWLEDGE), '', 'KNOWLEDGE block starts empty');
+const tomorrowBlock = customBlockMarker(templates.dailyTemplate.customBlocks[1]!.id);
+const knowledgeBlock = customBlockMarker(templates.dailyTemplate.customBlocks[2]!.id);
+assert.ok(hasBlock(contentAllOn, tomorrowBlock), 'TOMORROW custom block present when enabled');
+assert.ok(hasBlock(contentAllOn, knowledgeBlock), 'KNOWLEDGE custom block present when enabled');
+assert.equal(readBlockBody(contentAllOn, tomorrowBlock), '', 'TOMORROW block starts empty');
+assert.equal(readBlockBody(contentAllOn, knowledgeBlock), '', 'KNOWLEDGE block starts empty');
 
 console.log('Daily review blocks verification passed');
 

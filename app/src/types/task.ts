@@ -1,8 +1,11 @@
+export type TaskSource = 'personal' | 'external';
+
 export interface Task {
   id: string;
   text: string;
   completed: boolean;
   priority: 'high' | 'medium' | 'low';
+  source?: TaskSource;
   createdAt: string;
   taskDate: string;
   isToday: boolean;
@@ -16,6 +19,11 @@ export interface Task {
    * 被清理的任务仍保留在本地存储并继续同步到 Obsidian,所以 Obsidian 记录不受影响。
    */
   cleared?: boolean;
+  scheduledDates?: string[];
+  tags?: string[];
+  subtasks?: Task[];
+  parentTaskId?: string;
+  collapsed?: boolean;
 }
 
 export interface TaskCompletionReview {
