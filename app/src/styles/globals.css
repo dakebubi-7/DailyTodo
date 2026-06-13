@@ -5447,7 +5447,6 @@ html {
 }
 
 .task-card {
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto auto !important;
   gap: 0.45rem !important;
   min-height: 3.55rem !important;
   max-height: 3.75rem;
@@ -7814,25 +7813,21 @@ html {
 
 /* Task row order and compact priority marker */
 .task-card {
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto !important;
   align-items: center !important;
   padding-left: 0.65rem !important;
 }
 
-.task-card-has-children.task-card-has-review-action {
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto !important;
+/* Grid columns map ONLY to in-flow children: drag handle, optional tree
+   toggle, complete button, priority dot, then the growing text (minmax(0,1fr)
+   so it absorbs free space and ellipsizes). The review + delete buttons live in
+   an absolutely-positioned .task-action-layer, so they take NO column — their
+   room is reserved with --task-action-safe-space (padding-right). */
+.task-card-has-children {
+  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
 }
 
-.task-card-has-children.task-card-no-review-action {
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto auto !important;
-}
-
-.task-card-no-children.task-card-has-review-action {
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto !important;
-}
-
-.task-card-no-children.task-card-no-review-action {
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto !important;
+.task-card-no-children {
+  grid-template-columns: auto auto auto minmax(0, 1fr) !important;
 }
 
 .task-priority-rail,
@@ -7908,6 +7903,15 @@ html {
   transition: border-color 0.16s ease, background 0.16s ease, opacity 0.16s ease;
 }
 
+/* The completion checkbox is a leading affordance, not a primary action — keep
+   it a touch smaller than the trailing icon buttons so it doesn't crowd the
+   text. */
+.task-complete-action {
+  height: 1.45rem !important;
+  width: 1.45rem !important;
+  min-width: 1.45rem !important;
+}
+
 .task-review-action {
   opacity: 0.28;
   pointer-events: none;
@@ -7920,11 +7924,6 @@ html {
 
 .task-delete-action {
   opacity: 0;
-}
-
-.task-card:hover .task-delete-action,
-.task-card:focus-within .task-delete-action {
-  opacity: 1;
 }
 
 .task-complete-action:hover {
@@ -7947,20 +7946,12 @@ html {
 }
 
 @media (max-height: 560px), (max-width: 420px) {
-  .task-card {
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto !important;
+  .task-card-has-children {
+    grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
   }
 
-  .task-card-has-children.task-card-has-review-action {
-    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto !important;
-  }
-
-  .task-card-has-children.task-card-no-review-action {
-    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto !important;
-  }
-
-  .task-card-no-children.task-card-has-review-action {
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto auto !important;
+  .task-card-no-children {
+    grid-template-columns: auto auto auto minmax(0, 1fr) !important;
   }
 }
 
@@ -8425,4 +8416,194 @@ html {
 
 .template-recognition-preview ul {
   padding-left: 18px;
+}
+
+
+/* ===== Task list interaction stability ===== */
+.task-card {
+  --task-action-safe-space: 4.85rem;
+  padding-right: var(--task-action-safe-space) !important;
+  max-height: none;
+  overflow: visible;
+}
+
+.task-drag-handle,
+.source-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  color: #a1a1aa;
+  opacity: 0.42;
+  transition: opacity 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.task-drag-handle {
+  width: 1.25rem;
+  height: 1.8rem;
+  border-radius: 0.42rem;
+  cursor: grab;
+}
+
+.source-drag-handle {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.4rem;
+  cursor: grab;
+}
+
+.task-drag-handle:active,
+.source-drag-handle:active {
+  cursor: grabbing;
+}
+
+.task-card:hover .task-drag-handle:not(:disabled),
+.task-drag-handle:focus-visible,
+.task-source-group-title:hover .source-drag-handle:not(:disabled),
+.source-drag-handle:focus-visible {
+  background: rgba(39, 39, 42, 0.06);
+  color: var(--personal-accent);
+  opacity: 1;
+}
+
+.task-drag-handle:disabled,
+.source-drag-handle:disabled,
+.task-drag-disabled .task-drag-handle,
+.task-drag-disabled .source-drag-handle {
+  cursor: default;
+  opacity: 0.12;
+}
+
+.task-sortable-dragging .task-card,
+.task-source-group-dragging {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(31, 41, 55, 0.14) !important;
+}
+
+.task-action-layer {
+  position: absolute;
+  right: 0.42rem;
+  top: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.06rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.task-action-layer .task-icon-action,
+.task-delete-zone {
+  pointer-events: auto;
+}
+
+.task-delete-zone {
+  display: grid;
+  width: 1.95rem;
+  height: 44px;
+  place-items: center;
+}
+
+.task-delete-action {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.task-delete-zone:hover .task-delete-action,
+.task-delete-zone:focus-within .task-delete-action {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.task-review-action-visible {
+  opacity: 1;
+}
+
+.task-text-wrap,
+.task-text-row,
+.task-text,
+.task-edit-input {
+  min-width: 0;
+}
+
+.dark .task-drag-handle,
+.dark .source-drag-handle {
+  color: #d4d4d8;
+}
+
+.dark .task-card:hover .task-drag-handle:not(:disabled),
+.dark .task-drag-handle:focus-visible,
+.dark .task-source-group-title:hover .source-drag-handle:not(:disabled),
+.dark .source-drag-handle:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--personal-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-drag-handle,
+  .source-drag-handle,
+  .task-delete-action {
+    transition: none;
+  }
+}
+
+
+/* ===== Task interaction feedback fixes ===== */
+.task-subtask-delete {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.task-subtask-row:hover .task-subtask-delete,
+.task-subtask-row:focus-within .task-subtask-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.task-sortable-dragging,
+.task-source-group-dragging {
+  transition-timing-function: cubic-bezier(0.22, 1.35, 0.36, 1) !important;
+}
+
+
+/* Bouncier reorder feedback requested during validation */
+.task-sortable-dragging,
+.task-source-group-dragging {
+  transition-timing-function: cubic-bezier(0.22, 1.45, 0.32, 1) !important;
+}
+
+
+/* Source group title is the drag activator, not just the tiny icon */
+.task-source-group-title[role='button'] {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.task-source-group-title[role='button']:active {
+  cursor: grabbing;
+}
+
+.task-drag-disabled .task-source-group-title[role='button'],
+.task-source-group-title[aria-disabled='true'] {
+  cursor: default;
+}
+
+
+/* Stable sortable shells keep space reserved while dnd-kit transforms items. */
+.task-sortable-shell {
+  min-height: 3.55rem;
+  will-change: transform;
+}
+
+.task-source-group-shell {
+  min-height: 3.8rem;
+  will-change: transform;
+}
+
+.task-sortable-dragging,
+.task-source-group-dragging {
+  pointer-events: none;
 }

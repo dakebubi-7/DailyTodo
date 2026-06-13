@@ -61,7 +61,8 @@
     "verify:unified-template-recognition": "tsx scripts/verify-unified-template-recognition.ts",
     "verify:template-source-i18n": "tsx scripts/verify-template-source-i18n.ts",
     "verify:settings-v2-ai-account": "tsx scripts/verify-settings-v2-ai-account.ts",
-    "verify:settings-v2-window-mode": "tsx scripts/verify-settings-v2-window-mode.ts"
+    "verify:settings-v2-window-mode": "tsx scripts/verify-settings-v2-window-mode.ts",
+    "verify:task-list-interactions": "tsx scripts/verify-task-list-interactions.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",

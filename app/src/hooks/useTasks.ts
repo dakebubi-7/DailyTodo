@@ -2,6 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Task, TabType, TaskCompletionReview, TaskSource } from '../types/task';
 import {
+  TASK_LIST_ORDER_KEY,
+  TaskListOrderByDate,
+  buildTaskOrderAfterMove,
+  getSourceOrderForDate,
+  getTaskSource,
+  moveSourceInOrder,
+  removeTaskIdFromOrder,
+  sortTasksForDisplay,
+} from '../utils/taskOrdering';
+import {
   chooseObsidianPath,
   getAppSettings,
   getObsidianPath,
@@ -39,6 +49,11 @@ const DEFAULT_APP_SETTINGS = createDefaultAppSettings();
 
 function getTaskDate(task: Task, fallbackDate = getBusinessDateKey()) {
   return task.taskDate || task.createdAt?.slice(0, 10) || fallbackDate;
+}
+
+function taskMatchesDate(task: Task, date: string, fallbackDate = getBusinessDateKey()) {
+  const taskDate = getTaskDate(task, fallbackDate);
+  return taskDate === date || Boolean(task.scheduledDates?.includes(date));
 }
 
 function buildCarryoverTask(task: Task, targetDate: string): Task {
@@ -165,6 +180,7 @@ export function useTasks() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [obsidianPath, setObsidianPath] = useState('');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'synced' | 'needs-path' | 'error'>('idle');
+  const [taskListOrderByDate, setTaskListOrderByDate] = useState<TaskListOrderByDate>({});
   // 收到其它窗口广播的任务变更后，跳过下一次保存副作用，避免主窗口 ↔ 桌面组件来回写形成回声循环。
   const skipNextTaskPersistRef = useRef(false);
 
@@ -180,6 +196,7 @@ export function useTasks() {
       const savedActiveTab = (await window.electronAPI?.getStore(ACTIVE_TAB_KEY)) as TabType | undefined;
       const savedCarryoverLedger = (await window.electronAPI?.getStore(TASK_CARRYOVER_LEDGER_KEY)) as Record<string, string[]> | undefined;
       const savedRetainedReviews = (await window.electronAPI?.getStore(RETAINED_OBSIDIAN_REVIEWS_KEY)) as RetainedObsidianReview[] | undefined;
+      const savedTaskListOrder = (await window.electronAPI?.getStore(TASK_LIST_ORDER_KEY)) as TaskListOrderByDate | undefined;
       const savedObsidianPath = await getObsidianPath();
       const shouldStartToday = !savedSelectedDate || savedLastActiveDay !== today;
       const carryoverResult = carryForwardTasks(savedTasks, today, savedCarryoverLedger || {}, savedSettings);
@@ -189,6 +206,7 @@ export function useTasks() {
       setDailyWorkNotes(savedWorkNotes || {});
       setDailyInspirationNotes(savedInspirationNotes || {});
       setRetainedObsidianReviews(Array.isArray(savedRetainedReviews) ? savedRetainedReviews : []);
+      setTaskListOrderByDate(savedTaskListOrder && typeof savedTaskListOrder === 'object' ? savedTaskListOrder : {});
       setCurrentDate(today);
       setSelectedDate(shouldStartToday ? today : savedSelectedDate || today);
       if (savedActiveTab) setActiveTab(savedActiveTab);
@@ -253,6 +271,7 @@ export function useTasks() {
     window.electronAPI?.setStore(SELECTED_DATE_KEY, selectedDate);
     window.electronAPI?.setStore(LAST_ACTIVE_DAY_KEY, currentDate);
     window.electronAPI?.setStore(ACTIVE_TAB_KEY, activeTab);
+    window.electronAPI?.setStore(TASK_LIST_ORDER_KEY, taskListOrderByDate);
 
     if (!obsidianPath) {
       setSyncStatus('needs-path');
@@ -270,7 +289,7 @@ export function useTasks() {
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [activeTab, allTasks, appSettings.syncDeletedReviewsToObsidian, currentDate, dailyInspirationNotes, dailyWorkNotes, isLoaded, obsidianPath, retainedObsidianReviews, selectedDate]);
+  }, [activeTab, allTasks, appSettings.syncDeletedReviewsToObsidian, currentDate, dailyInspirationNotes, dailyWorkNotes, isLoaded, obsidianPath, retainedObsidianReviews, selectedDate, taskListOrderByDate]);
 
   // 订阅其它窗口的任务变更广播，实现主窗口 ↔ 桌面组件双向实时同步。
   useEffect(() => {
@@ -386,6 +405,7 @@ export function useTasks() {
 
   const deleteTask = useCallback((id: string) => {
     setAllTasks((prev) => removeTaskFromTree(prev, id));
+    setTaskListOrderByDate((prev) => removeTaskIdFromOrder(prev, id));
   }, []);
 
   const editTask = useCallback((id: string, text: string) => {
@@ -484,12 +504,53 @@ export function useTasks() {
     );
   }, []);
 
+  const reorderSourceGroups = useCallback((date: string, activeSource: TaskSource, overSource: TaskSource) => {
+    setTaskListOrderByDate((prev) => {
+      const currentOrder = getSourceOrderForDate(prev, date);
+      const nextSourceOrder = moveSourceInOrder(currentOrder, activeSource, overSource);
+      return {
+        ...prev,
+        [date]: {
+          ...(prev[date] || {}),
+          sourceOrder: nextSourceOrder,
+        },
+      };
+    });
+  }, []);
+
+  const reorderTasksWithinSource = useCallback((date: string, source: TaskSource, completed: boolean, activeId: string, overId: string) => {
+    setTaskListOrderByDate((prev) => {
+      const dateOrder = prev[date] || {};
+      const sourceTasks = allTasks.filter((task) => (
+        !task.cleared &&
+        taskMatchesDate(task, date, currentDate) &&
+        getTaskSource(task) === source
+      ));
+      const bucketTasks = sourceTasks.filter((task) => task.completed === completed);
+      const bucketIds = new Set(bucketTasks.map((task) => task.id));
+      const sourceTaskIds = new Set(sourceTasks.map((task) => task.id));
+      const previousOrder = dateOrder.taskOrderBySource?.[source] || [];
+      const nextBucketOrder = buildTaskOrderAfterMove(bucketTasks, previousOrder, activeId, overId);
+      const preservedOtherBucketOrder = previousOrder.filter((id) => sourceTaskIds.has(id) && !bucketIds.has(id));
+      return {
+        ...prev,
+        [date]: {
+          ...dateOrder,
+          taskOrderBySource: {
+            ...(dateOrder.taskOrderBySource || {}),
+            [source]: [...nextBucketOrder, ...preservedOtherBucketOrder],
+          },
+        },
+      };
+    });
+  }, [allTasks, currentDate]);
+
   const clearCompleted = useCallback(() => {
     // 只标记为 cleared(隐藏),不从数据中删除:Obsidian 同步用的是包含全部任务的 allTasks,
     // 所以已完成记录仍会保留在 Obsidian。
     setAllTasks((prev) =>
       prev.map((task) =>
-        getTaskDate(task, currentDate) === selectedDate && task.completed && !task.cleared
+        taskMatchesDate(task, selectedDate, currentDate) && task.completed && !task.cleared
           ? { ...task, cleared: true }
           : task
       )
@@ -501,9 +562,7 @@ export function useTasks() {
       if (task.cleared) return false; // 已清理的任务不在应用内显示
       if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
 
-      const taskDate = getTaskDate(task, currentDate);
-      const scheduled = task.scheduledDates || [];
-      const matchesDate = (date: string) => taskDate === date || scheduled.includes(date);
+      const matchesDate = (date: string) => taskMatchesDate(task, date, currentDate);
       switch (activeTab) {
         case 'today':
           return matchesDate(selectedDate);
@@ -516,13 +575,9 @@ export function useTasks() {
     });
   }, [activeTab, allTasks, currentDate, priorityFilter, selectedDate]);
 
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
-  });
+  const sortedTasks = sortTasksForDisplay(filteredTasks, selectedDate, taskListOrderByDate);
 
-  const selectedDateTasks = allTasks.filter((task) => getTaskDate(task, currentDate) === selectedDate && !task.cleared);
+  const selectedDateTasks = allTasks.filter((task) => taskMatchesDate(task, selectedDate, currentDate) && !task.cleared);
   const selectedDateTaskCommands = [...selectedDateTasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -530,13 +585,14 @@ export function useTasks() {
   });
   const completedCount = selectedDateTasks.filter((task) => task.completed).length;
   const totalCount = selectedDateTasks.length;
-  const todayCount = allTasks.filter((task) => getTaskDate(task, currentDate) === currentDate && !task.cleared).length;
+  const todayCount = allTasks.filter((task) => taskMatchesDate(task, currentDate, currentDate) && !task.cleared).length;
   const allDates = Array.from(
     new Set([...allTasks.map((task) => getTaskDate(task, currentDate)), currentDate])
   ).sort((a, b) => b.localeCompare(a));
   const obsidianSyncTasks = appSettings.syncDeletedReviewsToObsidian
     ? allTasks
     : mergeRetainedReviewsForObsidian(allTasks, retainedObsidianReviews);
+  const sourceOrderForSelectedDate = getSourceOrderForDate(taskListOrderByDate, selectedDate);
 
   const toggleDarkMode = useCallback(() => {
     setIsDark((prev) => !prev);
@@ -581,6 +637,10 @@ export function useTasks() {
   return {
     tasks: sortedTasks,
     allTasks,
+    taskListOrderByDate,
+    sourceOrderForSelectedDate,
+    reorderSourceGroups,
+    reorderTasksWithinSource,
     selectedDateTaskCommands,
     obsidianSyncTasks,
     activeTab,

@@ -1,10 +1,18 @@
-import { useState, useEffect, type CSSProperties } from 'react';
+import { useState, useEffect, type ButtonHTMLAttributes, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { Task } from '../types/task';
 import { PriorityPicker } from './PriorityPicker';
 
+export interface TaskDragHandleProps {
+  attributes: ButtonHTMLAttributes<HTMLButtonElement>;
+  listeners?: ButtonHTMLAttributes<HTMLButtonElement>;
+  setActivatorNodeRef: (element: HTMLButtonElement | null) => void;
+  disabled: boolean;
+}
+
 interface TaskItemProps {
   task: Task;
+  dragHandleProps?: TaskDragHandleProps;
   onToggle: () => void;
   onDelete: () => void;
   onEdit: (text: string) => void;
@@ -36,6 +44,7 @@ const sourceTitles: Record<NonNullable<Task['source']>, string> = {
 
 export function TaskItem({
   task,
+  dragHandleProps,
   onToggle,
   onDelete,
   onEdit,
@@ -50,7 +59,6 @@ export function TaskItem({
 }: TaskItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
-  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     if (editTrigger && !task.completed) {
@@ -74,18 +82,16 @@ export function TaskItem({
 
   const taskSource = task.source || 'personal';
   const hasChildren = Boolean(task.subtasks?.length);
-  const hasReviewAction = hasTaskReview(task);
+  const hasReview = hasTaskReview(task);
+  const canOpenReviewAction = task.completed || hasReview;
 
   return (
     <span className="task-tree-node">
       <motion.div
-        layout
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, x: 48 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
         onContextMenu={(e) => {
           e.preventDefault();
           const viewport = document.querySelector('.app-viewport');
@@ -114,9 +120,22 @@ export function TaskItem({
             },
           });
         }}
-        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
+        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
         data-priority={task.priority}
       >
+        <button
+          type="button"
+          ref={dragHandleProps?.setActivatorNodeRef}
+          className="task-drag-handle"
+          disabled={dragHandleProps?.disabled ?? true}
+          aria-label="拖动调整任务顺序"
+          {...(dragHandleProps?.attributes || {})}
+          {...(dragHandleProps?.listeners || {})}
+          aria-disabled={dragHandleProps?.disabled ?? true}
+        >
+          <DragDotsIcon />
+        </button>
+
         {hasChildren && (
           <button
             type="button"
@@ -189,26 +208,28 @@ export function TaskItem({
           </span>
         )}
 
-        {hasReviewAction && (
-          <ReviewActionButton
-            hasReview
-            label="查看完成情况"
-            onClick={onViewReview}
-          />
-        )}
+        <span className="task-action-layer" aria-hidden={false}>
+          {canOpenReviewAction && (
+            <ReviewActionButton
+              hasReview={hasReview}
+              label={hasReview ? '查看完成情况' : '补写完成情况'}
+              onClick={onViewReview}
+            />
+          )}
 
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isHovered ? 1 : 0 }}
-          whileHover={{ scale: 1.06 }}
-          whileTap={{ scale: 0.94 }}
-          onClick={onDelete}
-          className="task-icon-action task-delete-action"
-          aria-label="删除任务"
-          title="删除任务"
-        >
-          <TrashIcon />
-        </motion.button>
+          <span className="task-delete-zone">
+            <motion.button
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.94 }}
+              onClick={onDelete}
+              className="task-icon-action task-delete-action"
+              aria-label="删除任务"
+              title="删除任务"
+            >
+              <TrashIcon />
+            </motion.button>
+          </span>
+        </span>
       </motion.div>
       {task.subtasks && task.subtasks.length > 0 && !task.collapsed && (
         <span className="task-subtasks task-subtasks-nested" aria-label="子任务">
@@ -339,6 +360,19 @@ function ReviewIcon({ hasReview }: { hasReview: boolean }) {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <path d="M14 2v6h6M9 15h6M9 11h3" />
+    </svg>
+  );
+}
+
+function DragDotsIcon() {
+  return (
+    <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor" aria-hidden="true">
+      <circle cx="3" cy="3" r="1.15" />
+      <circle cx="9" cy="3" r="1.15" />
+      <circle cx="3" cy="7" r="1.15" />
+      <circle cx="9" cy="7" r="1.15" />
+      <circle cx="3" cy="11" r="1.15" />
+      <circle cx="9" cy="11" r="1.15" />
     </svg>
   );
 }

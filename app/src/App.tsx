@@ -24,6 +24,7 @@ import {
   extractOpacityOverride,
 } from './types/personalization';
 import { THEME_PRESETS, ThemePreset, matchThemePreset } from './types/themePresets';
+import { isTaskDragDisabled } from './utils/taskOrdering';
 import { Task, TaskCompletionReview } from './types/task';
 import { CaptureItem, CompanionSettings, SyncPlan } from '../shared/obsidianCompanion';
 import {
@@ -87,6 +88,9 @@ export default function App() {
   const {
     tasks,
     allTasks,
+    sourceOrderForSelectedDate,
+    reorderSourceGroups,
+    reorderTasksWithinSource,
     selectedDateTaskCommands,
     obsidianSyncTasks,
     activeTab,
@@ -363,6 +367,7 @@ export default function App() {
     if (searchQuery.trim() && !task.text.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
     return true;
   });
+  const dragDisabled = isTaskDragDisabled({ activeTab, searchQuery, showOpenOnly, priorityFilter });
   const selectedDateTasksForCommands = selectedDateTaskCommands;
   const currentReviewTask = reviewTask ? findTaskInTree(allTasks, reviewTask.id) : null;
   const shellText = getShellText(appSettings.language).app;
@@ -724,6 +729,11 @@ export default function App() {
             ) : (
               <TaskList
                 tasks={visibleTasks}
+                selectedDate={selectedDate}
+                sourceOrder={sourceOrderForSelectedDate}
+                dragDisabled={dragDisabled}
+                onReorderSources={reorderSourceGroups}
+                onReorderTasks={reorderTasksWithinSource}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 searchOpen={searchOpen}
