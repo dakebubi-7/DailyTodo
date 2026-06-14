@@ -5,7 +5,7 @@ import {
   AppLanguage,
   ObsidianTemplateSettings,
 } from '../../shared/appSettings';
-import { PersonalizationSettings, OPACITY_AREAS, OpacityKey } from '../types/personalization';
+import { PersonalizationSettings, OPACITY_KEYS, OpacityKey } from '../types/personalization';
 import { Task } from '../types/task';
 import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
 import { getShellText } from '../i18n';
@@ -105,72 +105,26 @@ function getThemeRecommendation(settings: PersonalizationSettings): Personalizat
   return preset?.settings || settings;
 }
 
-/** 读取某个区域的透明度值，按计划回退到兼容字段。 */
+/** 读取某个透明度字段，按旧数据兼容规则回退到 control/panel。 */
 function opacityValue(settings: PersonalizationSettings, key: OpacityKey): number {
   return settings[key] ?? settings.controlOpacity ?? settings.panelOpacity;
 }
 
+/** 全局玻璃透明度以窗口透明度为主，缺失时回退到内容透明度。 */
+function glassOpacityValue(settings: PersonalizationSettings): number {
+  return settings.windowOpacity ?? settings.panelOpacity;
+}
+
+function withUnifiedGlassOpacity(settings: PersonalizationSettings, value: number): PersonalizationSettings {
+  const next = { ...settings };
+  for (const key of OPACITY_KEYS) {
+    next[key] = value;
+  }
+  return next;
+}
+
 const OPACITY_SLIDER_MIN = 20;
 const OPACITY_SLIDER_MAX = 100;
-const OPACITY_RECOMMENDATION_SPREAD = 8;
-
-function getRecommendedOpacityRange(recommended: number, min = OPACITY_SLIDER_MIN, max = OPACITY_SLIDER_MAX) {
-  const clamped = Math.min(max, Math.max(min, recommended));
-  return {
-    start: Math.max(min, clamped - OPACITY_RECOMMENDATION_SPREAD),
-    end: Math.min(max, clamped + OPACITY_RECOMMENDATION_SPREAD),
-  };
-}
-
-function OpacityAreaControl({
-  label,
-  hint,
-  value,
-  recommended,
-  resetTitle,
-  onChange,
-  onReset,
-}: {
-  label: string;
-  hint: string;
-  value: number;
-  recommended: number;
-  resetTitle: string;
-  onChange: (value: number) => void;
-  onReset: () => void;
-}) {
-  const range = getRecommendedOpacityRange(recommended);
-  const rangeStyle = {
-    '--recommended-start': `${((range.start - OPACITY_SLIDER_MIN) / (OPACITY_SLIDER_MAX - OPACITY_SLIDER_MIN)) * 100}%`,
-    '--recommended-end': `${((range.end - OPACITY_SLIDER_MIN) / (OPACITY_SLIDER_MAX - OPACITY_SLIDER_MIN)) * 100}%`,
-  } as CSSProperties;
-
-  return (
-    <label className="settings-control settings-opacity-area-control" onDoubleClick={onReset} title={resetTitle}>
-      <span>
-        <strong>{label}</strong>
-        <small>{hint}</small>
-      </span>
-      <div className="settings-range-row">
-        <input
-          className="settings-range-input settings-opacity-range-input"
-          type="range"
-          min={OPACITY_SLIDER_MIN}
-          max={OPACITY_SLIDER_MAX}
-          value={value}
-          style={rangeStyle}
-          onDoubleClick={onReset}
-          onChange={(event) => onChange(Number(event.target.value))}
-          title={resetTitle}
-        />
-        <b>{value}%</b>
-        <button type="button" className="settings-mini-reset" title={resetTitle} onClick={onReset}>
-          {recommended}%
-        </button>
-      </div>
-    </label>
-  );
-}
 
 function Field({
   label,
@@ -661,7 +615,6 @@ export function SettingsPanel({
   const [generationStatus, setGenerationStatus] = useState('');
   const [generatingAction, setGeneratingAction] = useState<GenerationAction | null>(null);
   const [section, setSection] = useState<SettingsSection>('appearance');
-  const [opacityExpanded, setOpacityExpanded] = useState(false);
   const text = getShellText(appSettings.language).settings;
   const zh = appSettings.language === 'zh-CN';
   const sectionEntries: SectionEntry[] = [
@@ -879,6 +832,28 @@ export function SettingsPanel({
                 onChange={(value) => updatePersonalization('fontScale', value)}
               />
               <RangeControl
+                label={appSettings.language === 'zh-CN' ? '玻璃透明度' : 'Glass opacity'}
+                hint={appSettings.language === 'zh-CN' ? '统一调整窗口、卡片、输入框、菜单和弹窗透明度；双击恢复当前主题默认值' : 'Adjust windows, cards, inputs, menus, and dialogs together; double-click to reset to the current theme default'}
+                value={glassOpacityValue(settings)}
+                min={OPACITY_SLIDER_MIN}
+                max={OPACITY_SLIDER_MAX}
+                unit="%"
+                defaultValue={opacityValue(recommendation, 'windowOpacity')}
+                resetTitle={resetToThemeDefaultTitle}
+                onChange={(value) => onChange(withUnifiedGlassOpacity(settings, value))}
+              />
+              <RangeControl
+                label={appSettings.language === 'zh-CN' ? '模糊强度' : 'Blur strength'}
+                hint={appSettings.language === 'zh-CN' ? '调整毛玻璃背景的模糊程度；双击恢复当前主题默认值' : 'Adjust frosted-glass blur strength; double-click to reset to the current theme default'}
+                value={settings.blurStrength}
+                min={0}
+                max={48}
+                unit="px"
+                defaultValue={recommendation.blurStrength}
+                resetTitle={resetToThemeDefaultTitle}
+                onChange={(value) => updatePersonalization('blurStrength', value)}
+              />
+              <RangeControl
                 label={text.radius}
                 hint={resetToThemeDefaultTitle}
                 value={settings.radius}
@@ -890,38 +865,6 @@ export function SettingsPanel({
                 onChange={(value) => updatePersonalization('radius', value)}
               />
             </div>
-          </section>
-
-          <section className="settings-section settings-highlight-section">
-            <button type="button" className="settings-collapsible-head" onClick={() => setOpacityExpanded((value) => !value)}>
-              <span>
-                <h3>{text.areaFineTuning}</h3>
-                <small>{text.areaFineTuningHint}</small>
-              </span>
-              <span className="settings-collapsible-caret">{opacityExpanded ? '收起' : '展开'}</span>
-            </button>
-            {opacityExpanded && (
-              <div className="settings-collapsible-body">
-                <div className="settings-grid">
-                  {OPACITY_AREAS.map((area) => {
-                    const settingKey = area.settingKey as OpacityKey;
-                    const reco = opacityValue(recommendation, settingKey);
-                    return (
-                      <OpacityAreaControl
-                        key={area.key}
-                        label={appSettings.language === 'zh-CN' ? area.labelZh : area.labelEn}
-                        hint={text.opacityAreaHints[area.key]}
-                        value={opacityValue(settings, settingKey)}
-                        recommended={reco}
-                        resetTitle={text.resetToRecommendation}
-                        onChange={(value) => updatePersonalization(settingKey, value)}
-                        onReset={() => updatePersonalization(settingKey, reco)}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </section>
 
           <section className="settings-section">

@@ -140,24 +140,48 @@ assertBlockIncludes(rangeControl, /if \(typeof defaultValue === 'number'\) onCha
 
 assert.match(
   settingsPanel,
-  /function getRecommendedOpacityRange\(recommended: number, min = OPACITY_SLIDER_MIN, max = OPACITY_SLIDER_MAX\)/,
-  'SettingsPanel should define a deterministic recommended opacity range helper.'
+  /function withUnifiedGlassOpacity\(settings: PersonalizationSettings, value: number\): PersonalizationSettings/,
+  'SettingsPanel should define a helper that writes one opacity value into every glass opacity field.'
 );
+assertBlockIncludes(
+  extractFunction(settingsPanel, 'function withUnifiedGlassOpacity('),
+  'for (const key of OPACITY_KEYS)',
+  'Unified opacity helper should iterate over OPACITY_KEYS.'
+);
+assertBlockIncludes(
+  extractFunction(settingsPanel, 'function withUnifiedGlassOpacity('),
+  'next[key] = value;',
+  'Unified opacity helper should write the slider value to every opacity key.'
+);
+assert.doesNotMatch(settingsPanel, /OPACITY_AREAS\.map/, 'SettingsPanel should not render per-area opacity controls.');
+assert.doesNotMatch(settingsPanel, /function OpacityAreaControl\(/, 'SettingsPanel should remove the per-area opacity control component.');
+assert.doesNotMatch(settingsPanel, /settings-opacity-range-input/, 'SettingsPanel should remove the recommended-range opacity slider UI.');
 
 const fontControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', 'value={settings.fontScale ?? 100}');
 assertBlockIncludes(fontControl, "onChange={(value) => updatePersonalization('fontScale', value)}", 'Global font control should update the fontScale personalization setting.');
 assertBlockIncludes(fontControl, 'defaultValue={recommendation.fontScale ?? 100}', 'Global font reset should use the current theme font scale or 100.');
 assertBlockIncludes(fontControl, 'resetTitle={resetToThemeDefaultTitle}', 'Global font control should use the theme-default reset tooltip.');
 
+const glassOpacityControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', "value={glassOpacityValue(settings)}");
+assertBlockIncludes(glassOpacityControl, "label={appSettings.language === 'zh-CN' ? '玻璃透明度' : 'Glass opacity'}", 'Appearance should expose one user-facing glass opacity control.');
+assertBlockIncludes(glassOpacityControl, 'min={OPACITY_SLIDER_MIN}', 'Glass opacity control should use the shared opacity minimum.');
+assertBlockIncludes(glassOpacityControl, 'max={OPACITY_SLIDER_MAX}', 'Glass opacity control should use the shared opacity maximum.');
+assertBlockIncludes(glassOpacityControl, 'defaultValue={opacityValue(recommendation, \'windowOpacity\')}', 'Glass opacity reset should use the current theme window opacity recommendation.');
+assertBlockIncludes(glassOpacityControl, 'resetTitle={resetToThemeDefaultTitle}', 'Glass opacity control should use the theme-default reset tooltip.');
+assertBlockIncludes(glassOpacityControl, 'onChange={(value) => onChange(withUnifiedGlassOpacity(settings, value))}', 'Glass opacity control should update all opacity fields together.');
+
+const blurStrengthControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', 'value={settings.blurStrength}');
+assertBlockIncludes(blurStrengthControl, "label={appSettings.language === 'zh-CN' ? '模糊强度' : 'Blur strength'}", 'Appearance should expose a blur strength control.');
+assertBlockIncludes(blurStrengthControl, 'min={0}', 'Blur strength control should start at zero.');
+assertBlockIncludes(blurStrengthControl, 'max={48}', 'Blur strength control should cap at 48.');
+assertBlockIncludes(blurStrengthControl, 'defaultValue={recommendation.blurStrength}', 'Blur strength reset should use the current theme blur recommendation.');
+assertBlockIncludes(blurStrengthControl, 'resetTitle={resetToThemeDefaultTitle}', 'Blur strength control should use the theme-default reset tooltip.');
+assertBlockIncludes(blurStrengthControl, "onChange={(value) => updatePersonalization('blurStrength', value)}", 'Blur strength control should update blurStrength.');
+
 const radiusControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', 'label={text.radius}');
 assertBlockIncludes(radiusControl, "onChange={(value) => updatePersonalization('radius', value)}", 'Radius control should update the radius personalization setting.');
 assertBlockIncludes(radiusControl, 'defaultValue={recommendation.radius}', 'Radius reset should use the current theme radius.');
 assertBlockIncludes(radiusControl, 'resetTitle={resetToThemeDefaultTitle}', 'Radius control should use the theme-default reset tooltip.');
-
-const opacityAreaControl = extractFunction(settingsPanel, 'function OpacityAreaControl(');
-assertBlockIncludes(opacityAreaControl, '--recommended-start', 'Opacity controls should expose the recommended range start CSS variable.');
-assertBlockIncludes(opacityAreaControl, '--recommended-end', 'Opacity controls should expose the recommended range end CSS variable.');
-assertBlockIncludes(opacityAreaControl, 'settings-opacity-range-input', 'Opacity controls should use the recommended-range slider class.');
 assert.doesNotMatch(
   settingsPanel,
   /<h3>\{text\.opacityRecommendations\}<\/h3>/,
@@ -217,12 +241,6 @@ const meaningfulCssConsumers: Array<[string, RegExp, string]> = [
 for (const [selector, expected, message] of meaningfulCssConsumers) {
   assertSelectorUses(selector, expected, message);
 }
-
-assertSelectorUses(
-  '.settings-opacity-range-input::-webkit-slider-runnable-track',
-  /linear-gradient[\s\S]*var\(--recommended-start\)[\s\S]*var\(--recommended-end\)/,
-  'CSS should paint the recommended range directly on opacity slider tracks.'
-);
 
 assert.match(
   electronMain,
