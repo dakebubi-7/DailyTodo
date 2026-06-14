@@ -67,7 +67,7 @@ assert(app.includes('--settings-panel-opacity'), 'App should expose a settings p
 assert(app.includes('--glass-saturation'), 'App should expose a glass saturation CSS variable.');
 
 assert(settingsPanel.includes('text.globalAppearance'), 'Personalization should group font size and radius under Global appearance.');
-assert(settingsPanel.includes('text.opacityRecommendations'), 'Personalization should show theme opacity recommendations.');
+assert(settingsPanel.includes('settings-opacity-range-input'), 'Personalization should show theme opacity recommendations directly on sliders.');
 assert(settingsPanel.includes('text.areaFineTuning'), 'Personalization should expose collapsed area fine tuning.');
 assert(settingsPanel.includes('OPACITY_AREAS.map'), 'SettingsPanel should render all opacity areas from shared metadata.');
 assert(!settingsPanel.includes('setSection(`theme-${preset.id}`'), 'Theme cards should no longer open separate opacity pages.');

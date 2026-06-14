@@ -175,7 +175,8 @@ export function TaskList({
     return orderedSources.map((source) => ({ source, tasks: grouped.get(source) || [] }));
   }, [sourceOrder, tasks]);
 
-  const shouldGroupBySource = tasks.some((task) => getTaskSource(task) === 'external');
+  const externalTasks = tasks.filter((task) => getTaskSource(task) === 'external');
+  const shouldGroupBySource = externalTasks.length > 0;
 
   const clearFilters = () => {
     onSearchChange('');

@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { motion } from 'framer-motion';
 import { TemplateRecognitionModal } from './TemplateRecognitionModal';
+import { useSortableMotion } from '../hooks/useSortableMotion';
 import type {
   DailyTemplate,
   ReportTemplate,
@@ -56,15 +67,57 @@ function moveItem<T>(items: T[], from: number, to: number) {
   return next;
 }
 
+interface SortableBlockRowProps {
+  sortableId: string;
+  isDragActive: boolean;
+  children: (dragHandle: React.ReactNode) => React.ReactNode;
+}
+
+// One reorderable template block row. Mirrors the task list: spring-driven
+// make-room displacement during drag, instant jump-to-rest on release (no
+// bounce). The "≡" handle is the drag activator.
+function SortableBlockRow({ sortableId, isDragActive, children }: SortableBlockRowProps) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useSortable({
+    id: sortableId,
+    transition: null,
+  });
+  const { style } = useSortableMotion({ transform, isDragging, isDragActive });
+
+  const dragHandle = (
+    <span
+      {...attributes}
+      {...listeners}
+      ref={setActivatorNodeRef}
+      className="drag-handle"
+      role="button"
+      tabIndex={0}
+      aria-label="拖动调整区块顺序"
+    >
+      ≡
+    </span>
+  );
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      className={`template-block-row ${isDragging ? 'template-block-row-dragging' : ''}`}
+    >
+      {children(dragHandle)}
+    </motion.div>
+  );
+}
+
 export function TemplateEditorModal({ kind, initialTemplate, onSave, onCancel }: Props) {
   const [template, setTemplate] = useState<DailyTemplate | ReportTemplate>(() =>
     JSON.parse(JSON.stringify(initialTemplate))
   );
-  const [dragSrc, setDragSrc] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [recognitionOpen, setRecognitionOpen] = useState(false);
   const [expandedPromptIds, setExpandedPromptIds] = useState<Set<string>>(() => new Set());
   const [dirty, setDirty] = useState(false);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const markDirty = () => setDirty(true);
 
@@ -175,32 +228,23 @@ export function TemplateEditorModal({ kind, initialTemplate, onSave, onCancel }:
     setRecognitionOpen(false);
   };
 
-  const rowClassName = (index: number) => [
-    'template-block-row',
-    dragSrc === index ? 'template-block-row-dragging' : '',
-    dragSrc !== null && dragSrc !== index && dragOverIndex === index ? 'template-block-row-drop-target' : '',
-  ].filter(Boolean).join(' ');
+  const handleDragEnd = (event: DragEndEvent) => {
+    setIsDragActive(false);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  const handleDragStart = (index: number) => {
-    setDragSrc(index);
-    setDragOverIndex(index);
-  };
+    const ids = isDailyTemplate(template)
+      ? getDailyVisualBlocks().map(visualKey)
+      : getCustomBlocks().map((block) => block.id);
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from === -1 || to === -1) return;
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (dragSrc === null || dragOverIndex === index) return;
-    setDragOverIndex(index);
     if (isDailyTemplate(template)) {
-      moveDailyBlock(dragSrc, index);
+      moveDailyBlock(from, to);
     } else {
-      moveCustom(dragSrc, index);
+      moveCustom(from, to);
     }
-    setDragSrc(index);
-  };
-
-  const handleDragEnd = () => {
-    setDragSrc(null);
-    setDragOverIndex(null);
   };
 
   const handleReset = () => {
@@ -299,48 +343,44 @@ export function TemplateEditorModal({ kind, initialTemplate, onSave, onCancel }:
     ) : null
   );
 
-  const renderDailyRow = (item: VisualBlock, index: number) => (
-    <div
-      key={visualKey(item)}
-      className={rowClassName(index)}
-      draggable
-      onDragStart={() => handleDragStart(index)}
-      onDragOver={(e) => handleDragOver(e, index)}
-      onDragEnd={handleDragEnd}
-    >
-      <span className="drag-handle">≡</span>
-      <input
-        className="block-name-input"
-        value={item.type === 'fixed' ? item.block.displayName : item.block.name}
-        onChange={(e) => {
-          if (item.type === 'fixed') renameFixed(item.block.id, e.target.value);
-          else updateBlock(item.block.id, { name: e.target.value });
-        }}
-      />
-      {item.type === 'custom' && renderCustomControls(item.block)}
-      {item.type === 'custom' && renderPromptInput(item.block)}
-    </div>
+  const renderDailyRow = (item: VisualBlock) => (
+    <SortableBlockRow key={visualKey(item)} sortableId={visualKey(item)} isDragActive={isDragActive}>
+      {(dragHandle) => (
+        <>
+          {dragHandle}
+          <input
+            className="block-name-input"
+            value={item.type === 'fixed' ? item.block.displayName : item.block.name}
+            onChange={(e) => {
+              if (item.type === 'fixed') renameFixed(item.block.id, e.target.value);
+              else updateBlock(item.block.id, { name: e.target.value });
+            }}
+          />
+          {item.type === 'custom' && renderCustomControls(item.block)}
+          {item.type === 'custom' && renderPromptInput(item.block)}
+        </>
+      )}
+    </SortableBlockRow>
   );
 
-  const renderReportRow = (block: CustomBlock, index: number) => (
-    <div
-      key={block.id}
-      className={rowClassName(index)}
-      draggable
-      onDragStart={() => handleDragStart(index)}
-      onDragOver={(e) => handleDragOver(e, index)}
-      onDragEnd={handleDragEnd}
-    >
-      <span className="drag-handle">≡</span>
-      <input
-        className="block-name-input"
-        value={block.name}
-        onChange={(e) => updateBlock(block.id, { name: e.target.value })}
-      />
-      {renderCustomControls(block)}
-      {renderPromptInput(block)}
-    </div>
+  const renderReportRow = (block: CustomBlock) => (
+    <SortableBlockRow key={block.id} sortableId={block.id} isDragActive={isDragActive}>
+      {(dragHandle) => (
+        <>
+          {dragHandle}
+          <input
+            className="block-name-input"
+            value={block.name}
+            onChange={(e) => updateBlock(block.id, { name: e.target.value })}
+          />
+          {renderCustomControls(block)}
+          {renderPromptInput(block)}
+        </>
+      )}
+    </SortableBlockRow>
   );
+
+  const sortableIds = isDaily ? dailyVisualBlocks.map(visualKey) : customBlocks.map((block) => block.id);
 
   return (
     <div
@@ -363,7 +403,17 @@ export function TemplateEditorModal({ kind, initialTemplate, onSave, onCancel }:
         </h2>
 
         <section className="template-editor-block-list">
-          {(isDaily ? dailyVisualBlocks.map(renderDailyRow) : customBlocks.map(renderReportRow))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={() => setIsDragActive(true)}
+            onDragCancel={() => setIsDragActive(false)}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+              {(isDaily ? dailyVisualBlocks.map(renderDailyRow) : customBlocks.map(renderReportRow))}
+            </SortableContext>
+          </DndContext>
         </section>
 
         <div className="template-editor-actions-row">

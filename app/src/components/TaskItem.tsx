@@ -32,11 +32,6 @@ const priorityTitles: Record<Task['priority'], string> = {
   low: '低优先级',
 };
 
-const sourceLabels: Record<NonNullable<Task['source']>, string> = {
-  personal: '个人',
-  external: '外部',
-};
-
 const sourceTitles: Record<NonNullable<Task['source']>, string> = {
   personal: '个人任务',
   external: '外部任务',
@@ -80,10 +75,9 @@ export function TaskItem({
     }
   };
 
-  const taskSource = task.source || 'personal';
   const hasChildren = Boolean(task.subtasks?.length);
-  const hasReview = hasTaskReview(task);
-  const canOpenReviewAction = task.completed || hasReview;
+  const hasTags = Boolean(task.tags?.length);
+  const hasReviewAction = hasTaskReview(task);
 
   return (
     <span className="task-tree-node">
@@ -120,7 +114,7 @@ export function TaskItem({
             },
           });
         }}
-        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
+        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasTags ? 'task-card-has-tags' : 'task-card-no-tags'} ${hasReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
         data-priority={task.priority}
       >
         <button
@@ -179,43 +173,45 @@ export function TaskItem({
         ) : (
           <span className="task-text-wrap">
             <span className="task-text-row">
+              <span className="task-source-badge" data-source={task.source || 'personal'}>
+                {sourceTitles[task.source || 'personal']}
+              </span>
               <span
                 onDoubleClick={() => !task.completed && setIsEditing(true)}
                 className="task-text"
-                title={`${task.text} · ${priorityTitles[task.priority]} · ${sourceTitles[taskSource]}`}
+                title={`${task.text} · ${priorityTitles[task.priority]}`}
               >
                 {task.text}
               </span>
-              <span className="task-source-badge" data-source={taskSource} title={sourceTitles[taskSource]}>
-                {sourceLabels[taskSource]}
-              </span>
             </span>
 
-            {task.scheduledDates && task.scheduledDates.length > 0 && (
-              <span className="scheduled-dates">
-                📅 {task.scheduledDates.slice(0, 3).join(' · ')}
-                {task.scheduledDates.length > 3 && ` +${task.scheduledDates.length - 3}`}
-              </span>
-            )}
             {task.tags && task.tags.length > 0 && (
-              <span className="task-tags">
+              <span className="task-tags task-inline-tags">
                 {task.tags.slice(0, 2).map((tag) => (
                   <span key={tag} className="tag-pill-small">{tag}</span>
                 ))}
                 {task.tags.length > 2 && <span className="tag-more">+{task.tags.length - 2}</span>}
               </span>
             )}
+            {task.scheduledDates && task.scheduledDates.length > 0 && (
+              <span className="scheduled-dates">
+                📅 {task.scheduledDates.slice(0, 3).join(' · ')}
+                {task.scheduledDates.length > 3 && ` +${task.scheduledDates.length - 3}`}
+              </span>
+            )}
           </span>
         )}
 
         <span className="task-action-layer" aria-hidden={false}>
-          {canOpenReviewAction && (
-            <ReviewActionButton
-              hasReview={hasReview}
-              label={hasReview ? '查看完成情况' : '补写完成情况'}
-              onClick={onViewReview}
-            />
-          )}
+          <span className="task-review-zone">
+            {hasReviewAction && (
+              <ReviewActionButton
+                hasReview={hasReviewAction}
+                label="查看完成情况"
+                onClick={onViewReview}
+              />
+            )}
+          </span>
 
           <span className="task-delete-zone">
             <motion.button
@@ -289,25 +285,31 @@ function renderSubtaskTree(
             )}
           </button>
           <span className="task-subtask-text">{subtask.text}</span>
-          {hasTaskReview(subtask) && (
-            <button
-              type="button"
-              className="task-subtask-review task-subtask-review-active"
-              onClick={() => onViewSubtaskReview(subtask)}
-              aria-label="查看子任务完成情况"
-              title="查看子任务完成情况"
-            >
-              <ReviewIcon hasReview />
-            </button>
-          )}
-          <button
-            type="button"
-            className="task-subtask-delete"
-            onClick={() => onDeleteSubtask(subtask.id)}
-            aria-label="删除子任务"
-          >
-            <TrashIcon />
-          </button>
+          <span className="task-subtask-action-layer">
+            <span className="task-subtask-review-zone">
+              {hasTaskReview(subtask) && (
+                <button
+                  type="button"
+                  className="task-subtask-review task-subtask-review-active"
+                  onClick={() => onViewSubtaskReview(subtask)}
+                  aria-label="查看子任务完成情况"
+                  title="查看子任务完成情况"
+                >
+                  <ReviewIcon hasReview />
+                </button>
+              )}
+            </span>
+            <span className="task-subtask-delete-zone">
+              <button
+                type="button"
+                className="task-subtask-delete"
+                onClick={() => onDeleteSubtask(subtask.id)}
+                aria-label="删除子任务"
+              >
+                <TrashIcon />
+              </button>
+            </span>
+          </span>
         </span>
         {hasChildren && !subtask.collapsed && renderSubtaskTree(subtask.subtasks || [], {
           depth: depth + 1,

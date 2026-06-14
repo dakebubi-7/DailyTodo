@@ -47,7 +47,7 @@ interface SettingsPanelProps {
 
 type NavSection = SettingsSection;
 
-type SectionEntry = { key: NavSection; title: string; description: string };
+type SectionEntry = { key: NavSection; title: string; description: string; primary?: boolean };
 function RangeControl({
   label,
   hint,
@@ -56,6 +56,8 @@ function RangeControl({
   max,
   unit = '',
   onChange,
+  defaultValue,
+  resetTitle,
 }: {
   label: string;
   hint?: string;
@@ -64,20 +66,30 @@ function RangeControl({
   max: number;
   unit?: string;
   onChange: (value: number) => void;
+  defaultValue?: number;
+  resetTitle?: string;
 }) {
+  const handleReset = () => {
+    if (typeof defaultValue === 'number') onChange(defaultValue);
+  };
+  const title = typeof defaultValue === 'number' ? resetTitle : undefined;
+
   return (
-    <label className="settings-control">
+    <label className="settings-control" onDoubleClick={handleReset} title={title}>
       <span>
         <strong>{label}</strong>
         {hint && <small>{hint}</small>}
       </span>
       <div className="settings-range-row">
         <input
+          className="settings-range-input"
           type="range"
           min={min}
           max={max}
           value={value}
+          onDoubleClick={handleReset}
           onChange={(event) => onChange(Number(event.target.value))}
+          title={title}
         />
         <b>{value}{unit}</b>
       </div>
@@ -98,6 +110,18 @@ function opacityValue(settings: PersonalizationSettings, key: OpacityKey): numbe
   return settings[key] ?? settings.controlOpacity ?? settings.panelOpacity;
 }
 
+const OPACITY_SLIDER_MIN = 20;
+const OPACITY_SLIDER_MAX = 100;
+const OPACITY_RECOMMENDATION_SPREAD = 8;
+
+function getRecommendedOpacityRange(recommended: number, min = OPACITY_SLIDER_MIN, max = OPACITY_SLIDER_MAX) {
+  const clamped = Math.min(max, Math.max(min, recommended));
+  return {
+    start: Math.max(min, clamped - OPACITY_RECOMMENDATION_SPREAD),
+    end: Math.min(max, clamped + OPACITY_RECOMMENDATION_SPREAD),
+  };
+}
+
 function OpacityAreaControl({
   label,
   hint,
@@ -115,19 +139,29 @@ function OpacityAreaControl({
   onChange: (value: number) => void;
   onReset: () => void;
 }) {
+  const range = getRecommendedOpacityRange(recommended);
+  const rangeStyle = {
+    '--recommended-start': `${((range.start - OPACITY_SLIDER_MIN) / (OPACITY_SLIDER_MAX - OPACITY_SLIDER_MIN)) * 100}%`,
+    '--recommended-end': `${((range.end - OPACITY_SLIDER_MIN) / (OPACITY_SLIDER_MAX - OPACITY_SLIDER_MIN)) * 100}%`,
+  } as CSSProperties;
+
   return (
-    <label className="settings-control settings-opacity-area-control">
+    <label className="settings-control settings-opacity-area-control" onDoubleClick={onReset} title={resetTitle}>
       <span>
         <strong>{label}</strong>
         <small>{hint}</small>
       </span>
       <div className="settings-range-row">
         <input
+          className="settings-range-input settings-opacity-range-input"
           type="range"
-          min={20}
-          max={100}
+          min={OPACITY_SLIDER_MIN}
+          max={OPACITY_SLIDER_MAX}
           value={value}
+          style={rangeStyle}
+          onDoubleClick={onReset}
           onChange={(event) => onChange(Number(event.target.value))}
+          title={resetTitle}
         />
         <b>{value}%</b>
         <button type="button" className="settings-mini-reset" title={resetTitle} onClick={onReset}>
@@ -631,10 +665,10 @@ export function SettingsPanel({
   const text = getShellText(appSettings.language).settings;
   const zh = appSettings.language === 'zh-CN';
   const sectionEntries: SectionEntry[] = [
-    { key: 'appearance', title: zh ? '外观' : 'Appearance', description: zh ? '主题、透明度、圆角与字体' : 'Theme, opacity, radius, and font' },
-    { key: 'sync', title: zh ? '同步' : 'Sync', description: zh ? '仓库位置与日报/周报/月报路径' : 'Vault and note paths' },
-    { key: 'templates', title: zh ? '模板' : 'Templates', description: zh ? '日报、个人报告、对外报告模板' : 'Daily and report templates' },
-    { key: 'aiReview', title: zh ? 'AI 复盘' : 'AI Review', description: zh ? '账号、模型、立即生成与脱敏' : 'Accounts, models, generation, and anonymization' },
+    { key: 'appearance', title: zh ? '外观' : 'Appearance', description: zh ? '主题、透明度、圆角与字体' : 'Theme, opacity, radius, and font', primary: true },
+    { key: 'sync', title: zh ? '同步' : 'Sync', description: zh ? '仓库位置与日报/周报/月报路径' : 'Vault and note paths', primary: true },
+    { key: 'templates', title: zh ? '模板' : 'Templates', description: zh ? '日报、个人报告、对外报告模板' : 'Daily and report templates', primary: true },
+    { key: 'aiReview', title: zh ? 'AI 复盘' : 'AI Review', description: zh ? '账号、模型、立即生成与脱敏' : 'Accounts, models, generation, and anonymization', primary: true },
     { key: 'schedule', title: zh ? '日程' : 'Schedule', description: zh ? '结转时间、自动生成时间与清理' : 'Rollover, timers, and cleanup' },
     { key: 'general', title: zh ? '通用' : 'General', description: zh ? '语言、窗口与启动行为' : 'Language, window, and startup behavior' },
   ];
@@ -663,6 +697,7 @@ export function SettingsPanel({
   };
 
   const recommendation = getThemeRecommendation(settings);
+  const resetToThemeDefaultTitle = zh ? '双击恢复当前主题默认值' : 'Double-click to reset to the current theme default';
 
   const updateApp = <K extends keyof AppBehaviorSettings>(key: K, value: AppBehaviorSettings[K]) => {
     onAppSettingsChange({ ...appSettings, [key]: value });
@@ -757,7 +792,7 @@ export function SettingsPanel({
                     <button
                       key={entry.key}
                       type="button"
-                      className={`settings-nav-item ${section === entry.key ? 'settings-nav-active' : ''}`}
+                      className={`settings-nav-item ${entry.primary ? 'settings-nav-primary' : ''} ${section === entry.key ? 'settings-nav-active' : ''}`}
                       onClick={() => setSection(entry.key)}
                       aria-current={section === entry.key ? 'page' : undefined}
                     >
@@ -834,39 +869,26 @@ export function SettingsPanel({
             <div className="settings-grid">
               <RangeControl
                 label={appSettings.language === 'zh-CN' ? '全局字体' : 'Global Font'}
-                hint={appSettings.language === 'zh-CN' ? '整体放大或缩小文字，100 为默认' : 'Scale all text, 100 = default'}
+                hint={appSettings.language === 'zh-CN' ? '整体放大或缩小文字；双击恢复当前主题默认值' : 'Scale all text; double-click to reset to the current theme default'}
                 value={settings.fontScale ?? 100}
                 min={80}
                 max={130}
                 unit="%"
+                defaultValue={recommendation.fontScale ?? 100}
+                resetTitle={resetToThemeDefaultTitle}
                 onChange={(value) => updatePersonalization('fontScale', value)}
               />
               <RangeControl
                 label={text.radius}
+                hint={resetToThemeDefaultTitle}
                 value={settings.radius}
                 min={4}
                 max={36}
                 unit="px"
+                defaultValue={recommendation.radius}
+                resetTitle={resetToThemeDefaultTitle}
                 onChange={(value) => updatePersonalization('radius', value)}
               />
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{text.opacityRecommendations}</h3>
-            <div className="settings-preview-list">
-              <p>{text.opacityRecommendationsHint}</p>
-              <ul className="settings-opacity-reco-list">
-                {OPACITY_AREAS.map((area) => {
-                  const reco = opacityValue(recommendation, area.settingKey as OpacityKey);
-                  return (
-                    <li key={area.key}>
-                      <span>{appSettings.language === 'zh-CN' ? area.labelZh : area.labelEn}</span>
-                      <b>{reco}%</b>
-                    </li>
-                  );
-                })}
-              </ul>
             </div>
           </section>
 

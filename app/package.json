@@ -62,7 +62,8 @@
     "verify:template-source-i18n": "tsx scripts/verify-template-source-i18n.ts",
     "verify:settings-v2-ai-account": "tsx scripts/verify-settings-v2-ai-account.ts",
     "verify:settings-v2-window-mode": "tsx scripts/verify-settings-v2-window-mode.ts",
-    "verify:task-list-interactions": "tsx scripts/verify-task-list-interactions.ts"
+    "verify:task-list-interactions": "tsx scripts/verify-task-list-interactions.ts",
+    "verify:frosted-glass-opacity": "tsx scripts/verify-frosted-glass-opacity-controls.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
