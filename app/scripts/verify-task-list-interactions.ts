@@ -164,7 +164,13 @@ assert(!taskList.includes('IOS_BOUNCE_SORTABLE_TRANSITION') && !taskList.include
 assert(!taskList.includes('layout="position"'), 'Source groups should not run a layout animation on drop because it fights the displacement spring and causes a release bounce.');
 assert(addTaskInput.includes('source-toggle-button') && addTaskInput.includes('TaskSource'), 'AddTaskInput should keep the personal/external source toggle.');
 assert(globals.includes('.task-subtask-row:hover .task-subtask-delete') && globals.includes('pointer-events: none'), 'Subtask delete should keep its slot but hide visually until row hover/focus.');
-assert(globals.includes('.task-delete-zone') && globals.includes('44px'), 'CSS should give the delete hot zone at least a 44px hit area.');
+assert(globals.includes('.task-delete-zone') && globals.includes('height: 40px'), 'CSS should keep a tall delete hot zone while using a compact width so task text has room.');
+assert(globals.includes('--task-action-safe-space: 3.9rem'), 'Trailing source/review/delete controls should reserve a compact right-side safe space.');
+assert(taskItem.includes("personal: '个'") && taskItem.includes("external: '外'"), 'The source badge should use compact one-character labels in the trailing action cluster.');
+assert(taskItem.indexOf('task-source-badge') > taskItem.indexOf('task-action-layer') && taskItem.indexOf('task-source-badge') < taskItem.indexOf('ReviewActionButton'), 'Trailing action order should be source, review, then delete from left to right.');
+assert(!taskItem.includes('<span className="task-source-badge" data-source={taskSource} title={sourceTitles[taskSource]}>
+                {sourceLabels[taskSource]}
+              </span>'), 'The source badge should not sit inside the text row because it crowds the task title.');
 assert(!globals.includes('.task-card:hover .task-delete-action'), 'Delete visibility should be controlled by the right-side hot zone, not whole-card hover.');
 assert(globals.includes('position: absolute') && globals.includes('.task-action-layer'), 'Action buttons should be absolutely positioned outside text layout.');
 assert(globals.includes('padding-right') && globals.includes('--task-action-safe-space'), 'Task card text layout should reserve a stable right-side safe space.');
