@@ -8,6 +8,7 @@ const root = join(here, '..');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
 const globalsCss = readFileSync(join(root, 'src/styles/globals.css'), 'utf8');
 const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+const electronMain = readFileSync(join(root, 'electron/main.ts'), 'utf8');
 
 function extractAround(source: string, anchor: string, beforeChars: number, afterChars: number) {
   const index = source.indexOf(anchor);
@@ -119,6 +120,18 @@ function assertSelectorUses(selector: string, expected: RegExp, message: string)
   assert.ok(blocks.some((block) => expected.test(block)), message);
 }
 
+function assertSelectorDoesNotUse(selector: string, rejected: RegExp, message: string) {
+  const blocks = extractCssBlocksForSelector(globalsCss, selector);
+  assert.ok(blocks.length > 0, `Missing CSS selector: ${selector}`);
+  assert.ok(blocks.every((block) => !rejected.test(block)), message);
+}
+
+function assertSelectorBlockUses(selector: string, required: RegExp, message: string) {
+  const blocks = extractCssBlocksForSelector(globalsCss, selector);
+  assert.ok(blocks.length > 0, `Missing CSS selector: ${selector}`);
+  assert.ok(blocks.some((block) => required.test(block)), message);
+}
+
 const rangeControl = extractFunction(settingsPanel, 'function RangeControl({');
 assertBlockIncludes(rangeControl, 'onDoubleClick={handleReset}', 'RangeControl should support double-click reset on the wrapping control.');
 assertBlockIncludes(rangeControl, 'defaultValue', 'RangeControl should accept a reset default value.');
@@ -209,6 +222,73 @@ assertSelectorUses(
   '.settings-opacity-range-input::-webkit-slider-runnable-track',
   /linear-gradient[\s\S]*var\(--recommended-start\)[\s\S]*var\(--recommended-end\)/,
   'CSS should paint the recommended range directly on opacity slider tracks.'
+);
+
+assert.match(
+  electronMain,
+  /function applyNativeBackgroundMaterial\(win: BrowserWindow\)/,
+  'Electron main should define a native background material progressive enhancement helper.'
+);
+assert.match(
+  electronMain,
+  /setBackgroundMaterial/,
+  'Native material helper should attempt Electron setBackgroundMaterial when available.'
+);
+assert.match(
+  electronMain,
+  /for \(const material of \['acrylic', 'mica'/,
+  'Native material helper should prefer acrylic and fall back to mica-like materials.'
+);
+assert.match(
+  electronMain,
+  /try \{[\s\S]*setBackgroundMaterial[\s\S]*\} catch/s,
+  'Native material helper should guard unsupported platforms and APIs with try/catch.'
+);
+assert.match(
+  electronMain,
+  /applyNativeBackgroundMaterial\(win\);/,
+  'Main window creation should call the native material helper after BrowserWindow creation.'
+);
+assert.match(
+  electronMain,
+  /transparent: true,[\s\S]*backgroundColor: '#00000000'/,
+  'Main window should preserve transparent fallback settings.'
+);
+
+assertSelectorBlockUses(
+  '.task-card',
+  /backdrop-filter:\s*blur\(calc\(var\(--blur-strength\) \* 0\.22\)\)/,
+  'Task cards should use much less local blur than the app shell.'
+);
+assertSelectorBlockUses(
+  '.task-card',
+  /color-mix\(in srgb, rgba\(255, 255, 255, var\(--card-opacity\)\) 38%, transparent\)/,
+  'Light task cards should soften --card-opacity instead of using it as a full opaque card fill.'
+);
+assertSelectorBlockUses(
+  '.dark .task-card',
+  /color-mix\(in srgb, rgba\(32, 34, 37, var\(--card-opacity\)\) 42%, transparent\)/,
+  'Dark task cards should soften --card-opacity instead of using it as a full opaque card fill.'
+);
+assertSelectorDoesNotUse(
+  '.task-card:hover',
+  /background:\s*rgba\(255, 255, 255, var\(--card-opacity\)\)/,
+  'Light task card hover should not restore a full card-opacity white block.'
+);
+assertSelectorDoesNotUse(
+  '.dark .task-card:hover',
+  /background:\s*rgba\(38, 40, 43, var\(--card-opacity\)\)/,
+  'Dark task card hover should not restore a full card-opacity dark block.'
+);
+assertSelectorBlockUses(
+  '.theme-invisible.app-shell',
+  /var\(--window-opacity\)/,
+  'Invisible shell should keep using --window-opacity so the existing slider still controls the pane.'
+);
+assertSelectorBlockUses(
+  '.theme-invisible.app-shell',
+  /var\(--blur-strength\)/,
+  'Invisible shell should keep using --blur-strength so blur controls still affect the main pane.'
 );
 
 console.log('verify-frosted-glass-opacity-controls passed');

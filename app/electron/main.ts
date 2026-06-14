@@ -388,6 +388,31 @@ function applyToolWindowStyle(win: BrowserWindow): boolean {
   return false;
 }
 
+function applyNativeBackgroundMaterial(win: BrowserWindow): void {
+  if (process.platform !== 'win32') return;
+
+  const materialWindow = win as BrowserWindow & {
+    setBackgroundMaterial?: (material: 'auto' | 'none' | 'mica' | 'acrylic' | 'tabbed') => void;
+  };
+
+  if (typeof materialWindow.setBackgroundMaterial !== 'function') {
+    diag('native background material unavailable');
+    return;
+  }
+
+  for (const material of ['acrylic', 'mica', 'tabbed'] as const) {
+    try {
+      materialWindow.setBackgroundMaterial(material);
+      diag(`native background material enabled: ${material}`);
+      return;
+    } catch (error) {
+      diag(`native background material ${material} failed: ${String(error)}`);
+    }
+  }
+
+  diag('native background material fallback: transparent css glass');
+}
+
 const gotLock = app.requestSingleInstanceLock();
 diag(`singleInstanceLock gotLock=${gotLock}`);
 if (!gotLock) {
@@ -1328,6 +1353,7 @@ function createWindow() {
 
   mainWindow = win;
   diag('BrowserWindow created');
+  applyNativeBackgroundMaterial(win);
   scheduleAiTimer(win);
   scheduleWeeklyTimer(win);
   scheduleMonthlyTimer(win);
