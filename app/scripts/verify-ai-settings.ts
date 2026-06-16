@@ -17,25 +17,49 @@ const def = createDefaultAiReviewSettings();
 assert.equal(def.enabled, false, 'AI off by default (no key yet)');
 assert.equal(def.baseUrl, 'https://api.openai.com/v1');
 assert.equal(def.backfillDays, 7);
+assert.equal(def.startupBackfillEnabled, false, 'startup backfill off by default to avoid token spend');
 assert.equal(def.timerEnabled, false);
 assert.equal(def.timerTime, '23:00');
 assert.equal(def.timeoutSeconds, 90, 'default timeout 90s (DeepSeek/reports need >30s)');
 
 // normalize 容错
-const norm = normalizeAiReviewSettings({ enabled: 'yes', backfillDays: -5, timerTime: '99:99', model: '', timeoutSeconds: 0 });
+const norm = normalizeAiReviewSettings({ enabled: 'yes', backfillDays: -5, startupBackfillEnabled: 'yes', timerTime: '99:99', model: '', timeoutSeconds: 0 });
 assert.equal(norm.enabled, false, 'non-boolean → default');
 assert.equal(norm.backfillDays, 7, 'invalid number → default');
+assert.equal(norm.startupBackfillEnabled, false, 'non-boolean startup backfill → default off');
 assert.equal(norm.timerTime, '23:00', 'invalid time → default');
 assert.ok(norm.model.length > 0, 'empty model → default');
 assert.equal(norm.timeoutSeconds, 90, 'out-of-range timeout → default');
 
 // 合法值保留
-const ok = normalizeAiReviewSettings({ enabled: true, apiKey: 'sk-x', backfillDays: 14, timerTime: '07:30', timeoutSeconds: 180 });
+const ok = normalizeAiReviewSettings({ enabled: true, apiKey: 'sk-x', backfillDays: 14, startupBackfillEnabled: true, timerTime: '07:30', timeoutSeconds: 180 });
 assert.equal(ok.enabled, true);
 assert.equal(ok.apiKey, 'sk-x');
 assert.equal(ok.backfillDays, 14);
+assert.equal(ok.startupBackfillEnabled, true);
 assert.equal(ok.timerTime, '07:30');
 assert.equal(ok.timeoutSeconds, 180, 'valid timeout preserved');
+assert.equal(
+  normalizeAiReviewSettings({
+    profiles: [{ id: 'p1', name: 'A', provider: 'openai', baseUrl: 'https://x/v1', apiKey: 'k1', model: 'm1', timeoutSeconds: 60 }],
+    activeProfileId: 'p1',
+    dailyReviewProfileId: 'p1',
+    weeklyReportProfileId: '',
+    monthlyReportProfileId: 'deleted-profile',
+  }).dailyReviewProfileId,
+  'p1',
+  '日报账号路由字段合法值保留',
+);
+assert.equal(
+  normalizeAiReviewSettings({ weeklyReportProfileId: 123 }).weeklyReportProfileId,
+  '',
+  '账号路由字段非字符串清空',
+);
+assert.equal(
+  normalizeAiReviewSettings({ monthlyReportProfileId: 'deleted-profile' }).monthlyReportProfileId,
+  'deleted-profile',
+  '账号路由字段失效 id 留给运行时回退处理',
+);
 
 // === 报告路径 + 模板字段 ===
 assert.equal(def.weeklyDir, '', '路径默认空 = 用内置默认');
@@ -73,6 +97,9 @@ assert.ok(defProfile.id.length > 0, 'default profile has id');
 assert.equal(defProfile.provider, 'auto');
 assert.equal(defProfile.baseUrl, 'https://api.openai.com/v1');
 assert.equal(def.activeProfileId, '', '默认未显式选择 activeProfileId');
+assert.equal(def.dailyReviewProfileId, '', '日报账号默认跟随当前账号');
+assert.equal(def.weeklyReportProfileId, '', '周报账号默认跟随当前账号');
+assert.equal(def.monthlyReportProfileId, '', '月报账号默认跟随当前账号');
 assert.equal(def.profiles.length, 0, '新安装默认没有 profiles，迁移时再生成');
 
 // 旧版单配置自动迁移成 1 个默认 profile
@@ -134,20 +161,25 @@ assert.equal(def.monthlySourceMode, 'weekly-then-daily');
 assert.equal(def.externalWeeklySourceMode, 'daily-notes');
 assert.equal(def.externalMonthlySourceMode, 'weekly-then-daily');
 
-// === SettingsPanel UI references the new template/source i18n keys ===
+// === SettingsPanel UI references template/source/report account routing controls ===
 const settingsPanelSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/SettingsPanel.tsx'), 'utf-8');
-// `templateSources` 在组件内别名为 `ts`，断言匹配实际渲染用法。
-assert.ok(settingsPanelSrc.includes('const ts = templateSources'), 'SettingsPanel aliases templateSources copy');
-assert.ok(settingsPanelSrc.includes('ts.personalReportsTitle'));
-assert.ok(settingsPanelSrc.includes('ts.externalReportsTitle'));
-assert.ok(settingsPanelSrc.includes('ts.personalWeeklyTemplate'));
-assert.ok(settingsPanelSrc.includes('ts.externalMonthlyTemplate'));
-assert.ok(settingsPanelSrc.includes("'personalWeekly'"));
-assert.ok(settingsPanelSrc.includes("'externalMonthly'"));
-assert.ok(settingsPanelSrc.includes('ts.sourceTitle'));
-assert.ok(settingsPanelSrc.includes('weeklySourceMode'));
-assert.ok(settingsPanelSrc.includes('monthlySourceMode'));
-assert.ok(settingsPanelSrc.includes('testSourceMaterials'));
-assert.ok(settingsPanelSrc.includes('sourceFound'));
+assert.ok(settingsPanelSrc.includes("'personalWeekly'"), 'SettingsPanel exposes personal weekly template editor');
+assert.ok(settingsPanelSrc.includes("'externalMonthly'"), 'SettingsPanel exposes external monthly template editor');
+assert.ok(settingsPanelSrc.includes('weeklySourceMode'), 'SettingsPanel exposes weekly source mode');
+assert.ok(settingsPanelSrc.includes('monthlySourceMode'), 'SettingsPanel exposes monthly source mode');
+assert.ok(settingsPanelSrc.includes('externalWeeklySourceMode'), 'SettingsPanel exposes external weekly source mode');
+assert.ok(settingsPanelSrc.includes('externalMonthlySourceMode'), 'SettingsPanel exposes external monthly source mode');
+assert.ok(settingsPanelSrc.includes('startupBackfillEnabled'), 'SettingsPanel exposes startup backfill toggle');
+assert.ok(settingsPanelSrc.includes('startupBackfillEnable'));
+assert.ok(settingsPanelSrc.includes('backfillDays'));
+assert.ok(settingsPanelSrc.includes('dailyReviewProfileId'), 'SettingsPanel exposes daily report account routing');
+assert.ok(settingsPanelSrc.includes('weeklyReportProfileId'), 'SettingsPanel exposes weekly report account routing');
+assert.ok(settingsPanelSrc.includes('monthlyReportProfileId'), 'SettingsPanel exposes monthly report account routing');
+assert.ok(settingsPanelSrc.includes('followCurrentAccount'), 'SettingsPanel exposes follow-current account option');
+assert.ok(settingsPanelSrc.includes('reportAccountRouting'), 'SettingsPanel renders report account routing section');
+
+const appSrc = fs.readFileSync(path.join(process.cwd(), 'src/App.tsx'), 'utf-8');
+assert.ok(appSrc.includes('startupBackfillEnabled'), 'App gates startup daily-review backfill behind startupBackfillEnabled');
+assert.ok(!appSrc.includes('if (!isLoaded) return;\n    void window.electronAPI?.aiReview?.backfill'), 'App must not call backfill unconditionally on startup');
 
 console.log('AI settings verification passed');

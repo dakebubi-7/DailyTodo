@@ -21,8 +21,8 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
           onClick={() => onTabChange(tab.key)}
           className={`relative rounded-lg px-3 py-1.5 font-sans text-[0.84rem] transition-colors ${
             activeTab === tab.key
-              ? 'bg-white/50 font-semibold text-forest dark:bg-white/10 dark:text-white'
-              : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300'
+              ? 'bg-white/50 font-semibold text-black dark:bg-white/10 dark:text-white'
+              : 'text-black hover:text-black dark:text-white dark:hover:text-white'
           }`}
           whileTap={{ scale: 0.95 }}
         >

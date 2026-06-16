@@ -33,14 +33,16 @@
     "verify:scan-decision": "tsx scripts/verify-scan-decision.ts",
     "verify:ai-stats": "tsx scripts/verify-ai-stats.ts",
     "verify:ai-settings": "tsx scripts/verify-ai-settings.ts",
+    "verify:report-profile-routing": "tsx scripts/verify-report-profile-routing.ts",
     "verify:profile-ops": "tsx scripts/verify-profile-ops.ts",
     "verify:section-config": "tsx scripts/verify-section-config.ts",
     "verify:openai-client": "tsx scripts/verify-openai-client.ts",
+    "verify:ai-run-diagnostics": "tsx scripts/verify-ai-run-diagnostics.ts",
     "verify:template-file": "tsx scripts/verify-template-file.ts",
     "verify:atomic-write": "tsx scripts/verify-atomic-write.ts",
     "verify:daily-review-blocks": "tsx scripts/verify-daily-review-blocks.ts",
     "verify:ai-runner": "tsx scripts/verify-ai-runner.ts",
-    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision && npm run verify:ai-stats && npm run verify:ai-settings && npm run verify:profile-ops && npm run verify:section-config && npm run verify:openai-client && npm run verify:template-file && npm run verify:atomic-write && npm run verify:daily-review-blocks && npm run verify:ai-runner && npm run verify:ai-timer && npm run verify:weekly && npm run verify:export-reports && npm run verify:recognize-template && npm run verify:monthly && npm run verify:redaction && npm run verify:section-overrides && npm run verify:fuzzy-match && npm run verify:onboarding-state && npm run verify:recognize-report && npm run verify:obsidian-template-center && npm run verify:obsidian-template-recognition && npm run verify:obsidian-template-ui && npm run verify:template-source-settings && npm run verify:daily-markdown-template && npm run verify:daily-template-markers && npm run verify:source-materials && npm run verify:unified-template-recognition && npm run verify:template-source-i18n",
+    "verify:rc": "npm run verify:rc-sync && npm run verify:rc-strings && npm run verify:settings-sync && npm run verify:delete-review && npm run verify:no-captures && npm run verify:daily-command && npm run verify:renderer-route && npm run verify:main-window-structure && npm run verify:rc-ui && npm run verify:ai-markers && npm run verify:ai-hash && npm run verify:scan-decision && npm run verify:ai-stats && npm run verify:ai-settings && npm run verify:report-profile-routing && npm run verify:profile-ops && npm run verify:section-config && npm run verify:openai-client && npm run verify:ai-run-diagnostics && npm run verify:template-file && npm run verify:atomic-write && npm run verify:daily-review-blocks && npm run verify:ai-runner && npm run verify:ai-timer && npm run verify:weekly && npm run verify:export-reports && npm run verify:recognize-template && npm run verify:monthly && npm run verify:redaction && npm run verify:section-overrides && npm run verify:fuzzy-match && npm run verify:onboarding-state && npm run verify:recognize-report && npm run verify:obsidian-template-center && npm run verify:obsidian-template-recognition && npm run verify:obsidian-template-ui && npm run verify:template-source-settings && npm run verify:daily-markdown-template && npm run verify:daily-template-markers && npm run verify:source-materials && npm run verify:unified-template-recognition && npm run verify:template-source-i18n",
     "verify:ai-timer": "tsx scripts/verify-ai-timer.ts",
     "verify:weekly": "tsx scripts/verify-weekly.ts",
     "verify:export-reports": "tsx scripts/verify-export-reports.ts",
@@ -63,7 +65,9 @@
     "verify:settings-v2-ai-account": "tsx scripts/verify-settings-v2-ai-account.ts",
     "verify:settings-v2-window-mode": "tsx scripts/verify-settings-v2-window-mode.ts",
     "verify:task-list-interactions": "tsx scripts/verify-task-list-interactions.ts",
-    "verify:frosted-glass-opacity": "tsx scripts/verify-frosted-glass-opacity-controls.ts"
+    "verify:frosted-glass-opacity": "tsx scripts/verify-frosted-glass-opacity-controls.ts",
+    "verify:task-layout-unified-glass": "tsx scripts/verify-task-layout-unified-glass.ts",
+    "verify:theme-visual-isolation": "tsx scripts/verify-theme-visual-isolation.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",

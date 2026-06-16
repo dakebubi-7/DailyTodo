@@ -19,6 +19,16 @@ export const MAX_MAX_TOKENS = 32768;
 
 export type WeeklySourceMode = 'daily-notes' | 'manual-files';
 export type MonthlySourceMode = 'weekly-then-daily' | 'weekly-reports' | 'daily-notes' | 'manual-files';
+export type AiReviewReportKind = 'daily' | 'weekly' | 'monthly';
+export type AiReviewProfileSource = 'specific' | 'default' | 'fallbackDefault' | 'missing';
+
+export interface AiReviewProfileResolution {
+  reportKind: AiReviewReportKind;
+  profile: AiProfile;
+  source: AiReviewProfileSource;
+  requestedProfileId?: string;
+  warning?: string;
+}
 
 /** 归一化输出上限：取整后限定在 [256, 32768]，非法回落默认 8192。 */
 export function normalizeMaxTokens(v: unknown, fb: number = DEFAULT_MAX_TOKENS): number {
@@ -36,6 +46,10 @@ export interface AiReviewSettings {
   // 顶层 provider/baseUrl/apiKey/model/timeoutSeconds 仅作迁移来源与兜底，实际调用走 resolveActiveProfile。
   profiles: AiProfile[];
   activeProfileId: string;
+  // 报告类型账号路由：空字符串表示跟随当前账号；非空为 profiles[].id。
+  dailyReviewProfileId?: string;
+  weeklyReportProfileId?: string;
+  monthlyReportProfileId?: string;
   timerEnabled: boolean;
   timerTime: string; // HH:mm
   // 周报定时：开关 + 星期几(0=周日..6=周六) + HH:mm。默认周一 09:00 生成上一周。
@@ -60,6 +74,17 @@ export interface AiReviewSettings {
   monthlySourceMode: MonthlySourceMode;
   externalWeeklySourceMode: WeeklySourceMode;
   externalMonthlySourceMode: MonthlySourceMode;
+  /** 启动时自动补生成最近 N 天缺失日报复盘。默认关闭，避免打开软件就消耗 token。 */
+  startupBackfillEnabled: boolean;
+  backfillDays: number;
+  weeklyDir: string;
+  monthlyDir: string;
+  externalWeeklyDir: string;
+  externalMonthlyDir: string;
+  weeklyPrompt: string;
+  monthlyPrompt: string;
+  externalWeeklyPrompt: string;
+  externalMonthlyPrompt: string;
   timeoutSeconds: number;
   onboardingDismissed: boolean;
 }
@@ -123,9 +148,22 @@ export function createDefaultAiReviewSettings(): AiReviewSettings {
     monthlySourceMode: 'weekly-then-daily',
     externalWeeklySourceMode: 'daily-notes',
     externalMonthlySourceMode: 'weekly-then-daily',
+    startupBackfillEnabled: false,
+    backfillDays: 7,
+    weeklyDir: '',
+    monthlyDir: '',
+    externalWeeklyDir: '',
+    externalMonthlyDir: '',
+    weeklyPrompt: '',
+    monthlyPrompt: '',
+    externalWeeklyPrompt: '',
+    externalMonthlyPrompt: '',
     timeoutSeconds: 90,
     profiles: [],
     activeProfileId: '',
+    dailyReviewProfileId: '',
+    weeklyReportProfileId: '',
+    monthlyReportProfileId: '',
     onboardingDismissed: false,
   };
 }
@@ -158,6 +196,19 @@ export function normalizeMonthlySourceMode(value: unknown): MonthlySourceMode {
 function normalizeTimeout(v: unknown, fb: number): number {
   const n = Number(v);
   return Number.isInteger(n) && n >= 10 && n <= 600 ? n : fb;
+}
+
+function normalizeBackfillDays(v: unknown, fb: number): number {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= 60 ? n : fb;
+}
+
+function looseText(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
+
+function normalizeProfileRouteId(v: unknown): string {
+  return typeof v === 'string' ? v : '';
 }
 
 /** 归一化单个 profile；非法字段回落到 fb（通常是一个全新的默认 profile，提供 id 等兜底）。 */
@@ -207,6 +258,9 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     model,
     profiles,
     activeProfileId,
+    dailyReviewProfileId: normalizeProfileRouteId(value.dailyReviewProfileId),
+    weeklyReportProfileId: normalizeProfileRouteId(value.weeklyReportProfileId),
+    monthlyReportProfileId: normalizeProfileRouteId(value.monthlyReportProfileId),
     timerEnabled: typeof value.timerEnabled === 'boolean' ? value.timerEnabled : d.timerEnabled,
     timerTime: isTime(value.timerTime) ? value.timerTime : d.timerTime,
     weeklyTimerEnabled: typeof value.weeklyTimerEnabled === 'boolean' ? value.weeklyTimerEnabled : d.weeklyTimerEnabled,
@@ -241,6 +295,16 @@ export function normalizeAiReviewSettings(value: unknown): AiReviewSettings {
     monthlySourceMode: normalizeMonthlySourceMode(value.monthlySourceMode),
     externalWeeklySourceMode: normalizeWeeklySourceMode(value.externalWeeklySourceMode),
     externalMonthlySourceMode: normalizeMonthlySourceMode(value.externalMonthlySourceMode),
+    startupBackfillEnabled: typeof value.startupBackfillEnabled === 'boolean' ? value.startupBackfillEnabled : d.startupBackfillEnabled,
+    backfillDays: normalizeBackfillDays(value.backfillDays, d.backfillDays),
+    weeklyDir: looseText(value.weeklyDir),
+    monthlyDir: looseText(value.monthlyDir),
+    externalWeeklyDir: looseText(value.externalWeeklyDir),
+    externalMonthlyDir: looseText(value.externalMonthlyDir),
+    weeklyPrompt: looseText(value.weeklyPrompt),
+    monthlyPrompt: looseText(value.monthlyPrompt),
+    externalWeeklyPrompt: looseText(value.externalWeeklyPrompt),
+    externalMonthlyPrompt: looseText(value.externalMonthlyPrompt),
     timeoutSeconds,
     onboardingDismissed:
       typeof value.onboardingDismissed === 'boolean' ? value.onboardingDismissed : d.onboardingDismissed,
@@ -263,4 +327,43 @@ export function resolveActiveProfile(settings: AiReviewSettings): AiProfile {
     maxTokens: DEFAULT_MAX_TOKENS,
     note: '',
   };
+}
+
+function hasUsableApiKey(profile: AiProfile): boolean {
+  return Boolean(profile.apiKey.trim());
+}
+
+function routeProfileId(settings: AiReviewSettings, reportKind: AiReviewReportKind): string {
+  if (reportKind === 'daily') return settings.dailyReviewProfileId ?? '';
+  if (reportKind === 'weekly') return settings.weeklyReportProfileId ?? '';
+  return settings.monthlyReportProfileId ?? '';
+}
+
+/**
+ * 按报告类型解析要使用的 AI 账号。只返回 profile 与非敏感路由元信息；API Key 仍只存在 profile 本身。
+ */
+export function resolveProfileForReportKind(settings: AiReviewSettings, reportKind: AiReviewReportKind): AiReviewProfileResolution {
+  const requestedProfileId = routeProfileId(settings, reportKind).trim();
+  const defaultProfile = resolveActiveProfile(settings);
+
+  if (!requestedProfileId) {
+    return { reportKind, profile: defaultProfile, source: hasUsableApiKey(defaultProfile) ? 'default' : 'missing' };
+  }
+
+  const specific = settings.profiles.find((p) => p.id === requestedProfileId);
+  if (specific && hasUsableApiKey(specific)) {
+    return { reportKind, profile: specific, source: 'specific', requestedProfileId };
+  }
+
+  if (hasUsableApiKey(defaultProfile)) {
+    const warning = specific
+      ? '指定报告账号缺少 API Key，已回退当前账号。'
+      : '指定报告账号不存在，已回退当前账号。';
+    return { reportKind, profile: defaultProfile, source: 'fallbackDefault', requestedProfileId, warning };
+  }
+
+  const warning = specific
+    ? '指定报告账号和当前账号都缺少 API Key。'
+    : '指定报告账号不存在，且当前账号缺少 API Key。';
+  return { reportKind, profile: specific ?? defaultProfile, source: 'missing', requestedProfileId, warning };
 }

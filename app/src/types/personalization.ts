@@ -37,19 +37,46 @@ export const OPACITY_KEYS = [
 
 export type OpacityKey = (typeof OPACITY_KEYS)[number];
 
-export const OPACITY_AREAS = [
-  { key: 'home', settingKey: 'windowOpacity', labelZh: '主页背景', labelEn: 'Home background' },
-  { key: 'card', settingKey: 'cardOpacity', labelZh: '任务卡', labelEn: 'Task card' },
-  { key: 'input', settingKey: 'inputOpacity', labelZh: '输入框', labelEn: 'Input' },
-  { key: 'top', settingKey: 'topOpacity', labelZh: '顶栏按钮', labelEn: 'Top-bar buttons' },
-  { key: 'dialog', settingKey: 'dialogOpacity', labelZh: '弹窗', labelEn: 'Dialogs' },
-  { key: 'menu', settingKey: 'menuOpacity', labelZh: '菜单', labelEn: 'Menus' },
-  { key: 'settings', settingKey: 'settingsPanelOpacity', labelZh: '设置面板', labelEn: 'Settings panel' },
+/**
+ * 每个主题单独记忆的外观字段。
+ * 不包含 themeId（主题身份）和 alwaysOnTop（窗口行为），避免切主题时互相污染。
+ */
+export const THEME_APPEARANCE_KEYS = [
+  'windowOpacity',
+  'panelOpacity',
+  'topOpacity',
+  'cardOpacity',
+  'controlOpacity',
+  'menuOpacity',
+  'inputOpacity',
+  'dialogOpacity',
+  'settingsPanelOpacity',
+  'blurStrength',
+  'radius',
+  'accentColor',
+  'secondaryColor',
+  'layoutDensity',
+  'texture',
+  'animations',
+  'fontScale',
 ] as const;
 
-export type OpacityAreaKey = (typeof OPACITY_AREAS)[number]['key'];
+export type ThemeAppearanceKey = (typeof THEME_APPEARANCE_KEYS)[number];
+export type ThemeAppearanceOverride = Partial<Pick<PersonalizationSettings, ThemeAppearanceKey>>;
 
-/** 单个主题的透明度覆盖值（仅保存被定义过的字段）。 */
+/** 从一份完整设置中提取该主题自己的外观字段。 */
+export function extractThemeAppearanceOverride(settings: PersonalizationSettings): ThemeAppearanceOverride {
+  const override: ThemeAppearanceOverride = {};
+  for (const key of THEME_APPEARANCE_KEYS) {
+    const value = settings[key];
+    if (value !== undefined) {
+      override[key] = value as never;
+    }
+  }
+  return override;
+}
+
+/** 旧版只保存透明度；保留类型用于迁移旧数据。 */
 export type ThemeOpacityOverride = Partial<Pick<PersonalizationSettings, OpacityKey>>;
 
 /** 从一份完整设置中提取已定义的透明度字段。 */
@@ -63,6 +90,18 @@ export function extractOpacityOverride(settings: PersonalizationSettings): Theme
   }
   return override;
 }
+
+export const OPACITY_AREAS = [
+  { key: 'home', settingKey: 'windowOpacity', labelZh: '主页背景', labelEn: 'Home background' },
+  { key: 'card', settingKey: 'cardOpacity', labelZh: '任务卡', labelEn: 'Task card' },
+  { key: 'input', settingKey: 'inputOpacity', labelZh: '输入框', labelEn: 'Input' },
+  { key: 'top', settingKey: 'topOpacity', labelZh: '顶栏按钮', labelEn: 'Top-bar buttons' },
+  { key: 'dialog', settingKey: 'dialogOpacity', labelZh: '弹窗', labelEn: 'Dialogs' },
+  { key: 'menu', settingKey: 'menuOpacity', labelZh: '菜单', labelEn: 'Menus' },
+  { key: 'settings', settingKey: 'settingsPanelOpacity', labelZh: '设置面板', labelEn: 'Settings panel' },
+] as const;
+
+export type OpacityAreaKey = (typeof OPACITY_AREAS)[number]['key'];
 
 export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
   windowOpacity: 70,

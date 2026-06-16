@@ -32,11 +32,6 @@ const priorityTitles: Record<Task['priority'], string> = {
   low: '低优先级',
 };
 
-const sourceTitles: Record<NonNullable<Task['source']>, string> = {
-  personal: '个人任务',
-  external: '外部任务',
-};
-
 export function TaskItem({
   task,
   dragHandleProps,
@@ -77,7 +72,8 @@ export function TaskItem({
 
   const hasChildren = Boolean(task.subtasks?.length);
   const hasTags = Boolean(task.tags?.length);
-  const hasReviewAction = hasTaskReview(task);
+  const hasReview = hasTaskReview(task);
+  const canOpenReviewAction = task.completed || hasReview;
 
   return (
     <span className="task-tree-node">
@@ -114,7 +110,7 @@ export function TaskItem({
             },
           });
         }}
-        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasTags ? 'task-card-has-tags' : 'task-card-no-tags'} ${hasReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
+        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasTags ? 'task-card-has-tags' : 'task-card-no-tags'} ${canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
         data-priority={task.priority}
       >
         <button
@@ -130,7 +126,7 @@ export function TaskItem({
           <DragDotsIcon />
         </button>
 
-        {hasChildren && (
+        {hasChildren ? (
           <button
             type="button"
             className={`task-tree-toggle ${task.collapsed ? 'task-tree-toggle-collapsed' : ''}`}
@@ -141,6 +137,8 @@ export function TaskItem({
               <path d="M8 5l8 7-8 7" />
             </svg>
           </button>
+        ) : (
+          <span className="task-tree-spacer" aria-hidden="true" />
         )}
 
         <button
@@ -151,7 +149,7 @@ export function TaskItem({
           title={task.completed ? '标记为未完成' : '标记为完成'}
         >
           {task.completed && (
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
               <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
@@ -173,9 +171,6 @@ export function TaskItem({
         ) : (
           <span className="task-text-wrap">
             <span className="task-text-row">
-              <span className="task-source-badge" data-source={task.source || 'personal'}>
-                {sourceTitles[task.source || 'personal']}
-              </span>
               <span
                 onDoubleClick={() => !task.completed && setIsEditing(true)}
                 className="task-text"
@@ -204,10 +199,10 @@ export function TaskItem({
 
         <span className="task-action-layer" aria-hidden={false}>
           <span className="task-review-zone">
-            {hasReviewAction && (
+            {canOpenReviewAction && (
               <ReviewActionButton
-                hasReview={hasReviewAction}
-                label="查看完成情况"
+                hasReview={hasReview}
+                label={hasReview ? '查看完成情况' : '补写完成情况'}
                 onClick={onViewReview}
               />
             )}
@@ -279,7 +274,7 @@ function renderSubtaskTree(
             aria-label={subtask.completed ? '标记子任务为未完成' : '标记子任务为完成'}
           >
             {subtask.completed && (
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
                 <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}

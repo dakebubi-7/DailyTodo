@@ -70,6 +70,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     testSourceMaterials: (kind: 'weekly' | 'monthly', date: string) => ipcRenderer.invoke('aiReview:testSourceMaterials', kind, date),
     pickTemplateFile: () => ipcRenderer.invoke('aiReview:pickTemplateFile'),
     listModels: (cfg: { baseUrl?: string; apiKey?: string; provider?: string }) => ipcRenderer.invoke('aiReview:listModels', cfg),
+    onProgress: (callback: (payload: unknown) => void) => {
+      const listener = (_event: unknown, payload: unknown) => callback(payload);
+      ipcRenderer.on('aiReview:progress', listener);
+      return () => ipcRenderer.removeListener('aiReview:progress', listener);
+    },
     onTick: (callback: () => void) => {
       const listener = () => callback();
       ipcRenderer.on('aiReview:tick', listener);

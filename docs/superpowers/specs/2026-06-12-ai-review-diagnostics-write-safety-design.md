@@ -16,6 +16,8 @@
 - 显示每个阶段的状态、耗时和关键信息。
 - 在 provider 返回 usage 时展示 input/output/total tokens。
 - provider 不返回 usage 时明确显示“不支持/未返回”，不估算为真实 token。
+- 支持日报、周报、月报分别选择使用的 AI 账号/API Key。
+- 在诊断信息中显示本次实际使用的报告类型、账号名称和账号来源。
 - 区分 AI 生成失败、AI 已生成但写入失败、写入冲突、冲突但内容已完整存在、部分写入。
 - 冲突后重新读取 Obsidian 文件，确认目标 AI 复盘块是否完整。
 - 保持现有安全写入策略，不因为自动重试而覆盖 Obsidian 或同步软件的新内容。
@@ -27,6 +29,7 @@
 - 本设计不自动覆盖外部修改过的 Obsidian 文件。
 - 本设计不实现精确 token 预估；只展示 provider 实际返回的 usage，或展示输入规模提示。
 - 本设计不重构整个 AI 复盘模板系统。
+- 本设计不实现按每个自定义 AI block 单独选择 API Key；第一版只按日报、周报、月报三类报告路由账号。
 
 ## 过程阶段设计
 
@@ -70,6 +73,9 @@ AI 复盘运行时展示一个阶段式过程面板。每个阶段包含：阶�
 
 展示内容：
 
+- report kind：日报、周报或月报。
+- 本次实际使用的 AI 账号名称。
+- 账号来源：专用账号、跟随默认账号或回退默认账号。
 - provider。
 - model。
 - base URL 的安全摘要，例如只显示 host，不显示 API key。
@@ -77,6 +83,12 @@ AI 复盘运行时展示一个阶段式过程面板。每个阶段包含：阶�
 - 当前等待时长。
 - timeout 设置。
 - max output tokens 设置。
+
+如果日报、周报、月报配置了不同账号，本阶段必须显示最终解析后的账号，而不是只显示默认账号。示例：
+
+- “日报使用账号「Minimax m3.0」，provider minimax，model m3.0，已等待 18 秒”。
+- “周报指定账号已不存在，已回退到默认账号「Claude」”。
+- “月报没有可用 AI 账号，请在设置中选择账号或填写 API Key”。
 
 如果未来开启流式响应，补充显示“首次响应耗时”。当前如果仍是一次性响应，只显示“等待完整响应”。
 
@@ -159,7 +171,7 @@ AI 复盘区域展示最近一次运行的过程面板。推荐文案示例：
 
 - “准备复盘材料：已读取 12 个任务，发现 1 个复盘块需要生成，用时 120ms”
 - “构建提示词：材料约 18KB，max output tokens 8192”
-- “请求 AI：minimax / m3.0，已等待 18 秒”
+- “请求 AI：日报使用账号「Minimax m3.0」，provider minimax，model m3.0，已等待 18 秒”
 - “接收生成结果：生成 3,240 字，用时 42 秒，total tokens 5,812”
 - “写入 Obsidian：检测到文件变化，正在重新读取确认”
 - “确认结果：复盘块已完整存在，本次视为成功”
@@ -181,12 +193,21 @@ interface AiReviewRunProgress {
   runId: string;
   startedAt: string;
   finishedAt?: string;
+  reportKind: 'daily' | 'weekly' | 'monthly';
   provider: string;
   model: string;
+  profileName?: string;
+  profileSource?: AiReviewProfileSource;
   finalStatus?: AiReviewFinalStatus;
   stages: AiReviewStageProgress[];
   usage?: AiReviewTokenUsage;
 }
+
+type AiReviewProfileSource =
+  | 'specific'
+  | 'default'
+  | 'fallbackDefault'
+  | 'missing';
 
 interface AiReviewStageProgress {
   key: AiReviewStageKey;
@@ -211,6 +232,47 @@ interface AiReviewTokenUsage {
 
 过程记录只保存安全信息，不保存 API key，不保存完整 prompt，不保存完整 AI 输出正文。
 
+## 报告类型账号路由设计
+
+日报、周报、月报可以分别选择使用哪个 AI 账号。这里的“账号”沿用现有 AI profile 概念，每个 profile 内部保存 provider、base URL、API Key、model、timeout、max output tokens 等配置。日报、周报、月报只保存 profile id，不复制 API Key 本身。
+
+建议在 AI 复盘设置中增加：
+
+```ts
+interface AiReviewProfileRouting {
+  dailyReviewProfileId?: string;
+  weeklyReportProfileId?: string;
+  monthlyReportProfileId?: string;
+}
+```
+
+解析规则：
+
+1. 日报优先使用 `dailyReviewProfileId`。
+2. 周报优先使用 `weeklyReportProfileId`。
+3. 月报优先使用 `monthlyReportProfileId`。
+4. 如果对应类型未配置专用账号，使用现有默认账号 `activeProfileId`。
+5. 如果专用账号已被删除、找不到或缺少 API Key，尝试回退到默认账号，并在阶段 3 标记 `fallbackDefault` warning。
+6. 如果默认账号也不可用，请求 AI 阶段失败，最终状态为 `providerFailed`，错误信息指向“没有可用 AI 账号”。
+
+设置界面推荐在 AI 复盘账号区增加一组“报告使用账号”：
+
+```text
+日报：跟随默认账号 / <账号列表>
+周报：跟随默认账号 / <账号列表>
+月报：跟随默认账号 / <账号列表>
+```
+
+默认值均为“跟随默认账号”，以保持现有行为。定时日报、定时周报、定时月报也使用同一套路由规则，不能在触发时弹窗选择账号。
+
+安全要求：
+
+- UI 和过程记录只显示账号名称、provider、model、base URL host。
+- 不显示完整 API Key。
+- 不把 API Key 写入 `AiReviewRunProgress`。
+- 不把 API Key 写入 Obsidian 日记或报告正文。
+- 账号被删除后，报告类型只保留失效的 profile id；运行时按上述规则提示或回退。
+
 ## Minimax m3.0 速度分析策略
 
 本设计不先假设慢的原因，而是通过过程阶段定位。
@@ -226,11 +288,36 @@ interface AiReviewTokenUsage {
 
 第一版先记录证据。只有确认慢点后，后续再决定是否引入流式响应、压缩 prompt、减少 source materials 或优化模板。
 
+## 后续性能优化决策表
+
+本设计第一版不直接假设慢的原因。阶段耗时和账号路由上线后，按诊断结果决定下一步优化方向。
+
+| 观察结果 | 说明 | 后续优化方向 |
+|---|---|---|
+| “请求 AI”阶段占绝大多数耗时 | 慢点主要在 provider、model、base URL 或 API 线路 | 允许日报、周报、月报分别选择更合适账号；对比不同 provider/model/base URL；日报优先使用快模型，周报/月报使用长上下文或更稳定模型 |
+| “构建提示词”后材料大小过大 | 周报/月报输入内容太多，模型处理成本高 | 限制 source materials 大小；只取相关日记段落；对历史内容先摘要再进入报告；月报优先使用周摘要而不是 30 天全文 |
+| “请求 AI”耗时可接受但用户体感仍慢 | 当前一次性等待完整响应，界面没有早期反馈 | 第二阶段考虑流式响应；显示首次响应耗时、已生成字数和当前等待时间 |
+| stop reason 显示长度截断或内容疑似不完整 | 输出预算不足，或模板要求导致输出过长 | 提高可配置 max output tokens；增加截断检测；必要时按章节分段生成或自动续写 |
+| 写入或确认阶段耗时明显 | 慢点在 Obsidian 文件写入、同步冲突或二次确认 | 优化文件读取范围；减少重复全文扫描；保留安全写入，不通过覆盖外部修改来提速 |
+| 账号回退频繁发生 | 报告类型绑定的账号失效或 API Key 缺失 | 在设置页标记失效账号；运行前提示修复；避免用户误以为慢来自目标账号 |
+| usage 不返回但耗时很长 | provider 不提供 token usage，无法直接判断 token 消耗 | 显示材料大小、生成字数和耗时；不把字符估算伪装成真实 token；必要时换支持 usage 的 provider 做对照测试 |
+
+性能优化优先级建议：
+
+1. 先用阶段耗时确认慢点。
+2. 如果慢在 provider/model，优先使用报告类型账号路由解决。
+3. 如果慢在体感反馈，优先做流式响应。
+4. 如果慢在输入规模，优先压缩 source materials 和报告输入。
+5. 如果慢在输出长度，优先做截断检测、分段生成或续写。
+6. 如果慢在写入阶段，优化确认逻辑，但不能破坏“不覆盖外部修改”的安全原则。
+
 ## 错误处理设计
 
 - provider 请求失败：保留 provider 错误摘要，隐藏敏感 header 和 key。
 - timeout：显示 timeout 设置和实际等待时长。
 - usage 缺失：不视为失败，只显示“服务未返回 token 用量”。
+- 日报、周报、月报指定账号缺失：尝试回退默认账号，并在请求 AI 阶段显示 warning。
+- 指定账号和默认账号都不可用：请求 AI 阶段失败，提示用户在设置中选择账号或填写 API Key。
 - 文件变化：不覆盖，进入二次确认。
 - 二次确认完整：视为成功但带 warning。
 - 二次确认不完整：提示可重试，不自动覆盖。
@@ -241,6 +328,10 @@ interface AiReviewTokenUsage {
 - 使用无 usage 响应，确认显示“服务未返回 token 用量”。
 - 模拟 provider 超时，确认阶段停在“请求 AI”并显示实际等待时长。
 - 模拟 AI 返回空正文，确认失败在“整理复盘块”。
+- 分别配置日报、周报、月报使用不同 AI 账号，确认请求 AI 阶段显示正确 report kind、账号名称、provider 和 model。
+- 不配置专用账号时，确认日报、周报、月报均跟随默认账号，现有行为不变。
+- 删除或清空某个报告类型指定账号后，确认能回退默认账号并显示 warning。
+- 指定账号和默认账号都不可用时，确认请求 AI 阶段失败且不泄露 API Key。
 - 模拟 Obsidian 文件未变化，确认正常写入并二次读取验证完整。
 - 模拟写入前文件 mtime 变化但内容已包含完整目标块，确认最终状态为 `completedWithExternalChange`。
 - 模拟写入前文件变化且目标块不存在，确认状态为 `generatedButNotWritten`。
@@ -249,4 +340,4 @@ interface AiReviewTokenUsage {
 
 ## 实现边界
 
-该设计只覆盖 AI 复盘过程诊断、token usage 展示和 Obsidian 写入结果确认。任务列表拖拽、删除按钮、完成弹窗设置将由其他独立设计处理。
+该设计只覆盖 AI 复盘过程诊断、token usage 展示、日报/周报/月报账号路由和 Obsidian 写入结果确认。任务列表拖拽、删除按钮、完成弹窗设置将由其他独立设计处理。

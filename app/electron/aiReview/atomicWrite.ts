@@ -23,7 +23,7 @@ export function atomicReplace(filePath: string, nextContent: string, expected: F
     if (fs.existsSync(filePath)) {
       const now = fs.statSync(filePath);
       if (!expected || now.size !== expected.size || now.mtimeMs !== expected.mtimeMs) {
-        return { ok: false, error: '文件已被外部修改（同步/Obsidian），放弃写入避免冲突' };
+        return { ok: false, error: '写入冲突：文件已被外部修改或重建（同步/Obsidian），放弃写入避免覆盖你的内容' };
       }
     } else if (expected) {
       return { ok: false, error: '文件已被外部删除，放弃写入' };

@@ -240,13 +240,15 @@ export default function App() {
       .catch(() => setObsidianTemplatesState(createDefaultObsidianTemplateSettings()));
   }, []);
 
-  // AI 复盘补偿：启动加载完成后补近 N 天；定时器到点（aiReview:tick）再补一次。
+  // AI 复盘补偿：启动时是否补近 N 天由 startupBackfillEnabled 控制；定时器到点（aiReview:tick）仍按定时设置执行。
   // 用 ref 持有最新 allTasks 供 tick 监听器读取；主进程在 AI 未启用/无 key 时会静默跳过。
   const allTasksRef = useRef(allTasks);
   allTasksRef.current = allTasks;
   useEffect(() => {
     if (!isLoaded) return;
-    void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
+    void window.electronAPI?.aiReview?.getSettings().then((settings) => {
+      if (settings?.startupBackfillEnabled) void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
+    });
     const offDaily = window.electronAPI?.aiReview?.onTick(() => {
       void window.electronAPI?.aiReview?.backfill(allTasksRef.current);
     });
@@ -373,6 +375,7 @@ export default function App() {
   const shellText = getShellText(appSettings.language).app;
   const activeThemeId = personalization.themeId || matchThemePreset(personalization, isDark);
   const activeThemeClass = activeThemeId ? `theme-${activeThemeId}` : '';
+  const isInvisibleTheme = activeThemeId === 'invisible';
 
   const handleToggleTask = (id: string) => {
     const task = tasks.find((item) => item.id === id);
@@ -460,6 +463,18 @@ export default function App() {
     setPersonalization(remembered ? { ...preset.settings, ...remembered } : preset.settings);
   };
 
+  const resetCurrentThemeDefaults = () => {
+    const themeId = personalization.themeId || activeThemeId;
+    const preset = THEME_PRESETS.find((item) => item.id === themeId) || THEME_PRESETS.find((item) => item.id === 'minimal');
+    if (!preset) return;
+    setThemeOverrides((prev) => {
+      const next = { ...prev };
+      delete next[preset.id];
+      return next;
+    });
+    setPersonalization(preset.settings);
+  };
+
   // 包装 setPersonalization：当用户调整透明度时，按当前主题记忆下来。
   const handlePersonalizationChange = (next: PersonalizationSettings) => {
     setPersonalization(next);
@@ -508,15 +523,15 @@ export default function App() {
   };
 
   const windowOpacity = clamp(personalization.windowOpacity / 100, 0, 1);
-  const panelOpacity = clamp(personalization.panelOpacity / 100, 0, 1);
-  const topOpacity = clamp((personalization.topOpacity ?? 90) / 100, 0, 1);
-  const cardOpacity = clamp((personalization.cardOpacity ?? 86) / 100, 0, 1);
-  const controlOpacity = clamp((personalization.controlOpacity ?? 90) / 100, 0, 1);
-  const menuOpacity = clamp((personalization.menuOpacity ?? 96) / 100, 0, 1);
-  const inputOpacity = clamp((personalization.inputOpacity ?? personalization.controlOpacity ?? personalization.panelOpacity) / 100, 0, 1);
-  const dialogOpacity = clamp((personalization.dialogOpacity ?? personalization.menuOpacity ?? 94) / 100, 0, 1);
-  const settingsPanelOpacity = clamp((personalization.settingsPanelOpacity ?? personalization.menuOpacity ?? 92) / 100, 0, 1);
-  const blurStrength = clamp(personalization.blurStrength, 0, 48);
+  const panelOpacity = isInvisibleTheme ? windowOpacity : clamp(personalization.panelOpacity / 100, 0, 1);
+  const topOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.topOpacity ?? 90) / 100, 0, 1);
+  const cardOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.cardOpacity ?? 86) / 100, 0, 1);
+  const controlOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.controlOpacity ?? 90) / 100, 0, 1);
+  const menuOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.menuOpacity ?? 96) / 100, 0, 1);
+  const inputOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.inputOpacity ?? personalization.controlOpacity ?? personalization.panelOpacity) / 100, 0, 1);
+  const dialogOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.dialogOpacity ?? personalization.menuOpacity ?? 94) / 100, 0, 1);
+  const settingsPanelOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.settingsPanelOpacity ?? personalization.menuOpacity ?? 92) / 100, 0, 1);
+  const blurStrength = clamp(personalization.blurStrength, 0, 80);
   const shellRadius = clamp(personalization.radius, 4, 36);
   const cardRadius = clamp(personalization.radius - 4, 4, 28);
   const controlRadius = clamp(personalization.radius - 8, 4, 24);
@@ -545,7 +560,11 @@ export default function App() {
         '--control-radius': `${controlRadius}px`,
       } as CSSProperties}
     >
-      <div className={`app-shell ${activeThemeClass} density-${personalization.layoutDensity} ${personalization.texture ? 'texture-on' : 'texture-off'} ${personalization.animations ? 'motion-on' : 'motion-off'} ${compactMode ? 'task-priority-mode' : ''} relative flex h-full flex-col overflow-hidden border border-white/45 text-zinc-900 backdrop-blur-2xl dark:border-white/10 dark:text-zinc-100`}>
+      <div
+        className={`app-shell ${activeThemeClass} density-${personalization.layoutDensity} ${personalization.texture ? 'texture-on' : 'texture-off'} ${personalization.animations ? 'motion-on' : 'motion-off'} ${compactMode ? 'task-priority-mode' : ''} relative flex h-full flex-col overflow-hidden border border-white/45 text-zinc-900 backdrop-blur-2xl dark:border-white/10 dark:text-zinc-100`}
+        data-theme={activeThemeId || 'custom'}
+        data-low-opacity={isInvisibleTheme || windowOpacity <= 0.4 ? 'true' : undefined}
+      >
         <TitleBar
           compactMode={compactMode}
           settingsOpen={settingsOpen}
@@ -568,6 +587,7 @@ export default function App() {
           tasks={allTasks}
           onClearCompleted={clearCompleted}
           onApplyTheme={applyThemePreset}
+          onResetTheme={resetCurrentThemeDefaults}
           onChange={handlePersonalizationChange}
           onAppSettingsChange={updateAppSettings}
           onObsidianTemplatesChange={updateObsidianTemplates}

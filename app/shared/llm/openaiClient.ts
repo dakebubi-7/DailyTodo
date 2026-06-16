@@ -1,3 +1,5 @@
+import type { AiReviewTokenUsage } from '../aiReview/runDiagnostics';
+
 export interface ChatMessage {
   role: 'system' | 'user';
   content: string;
@@ -13,7 +15,16 @@ export interface LlmConfig {
   maxTokens?: number;
 }
 
-export type LlmResult = { ok: true; content: string; truncated?: boolean } | { ok: false; error: string };
+export interface LlmDiagnostics {
+  provider: LlmProvider;
+  baseUrl: string;
+  durationMs: number;
+  usage?: AiReviewTokenUsage;
+}
+
+export type LlmResult =
+  | { ok: true; content: string; truncated?: boolean; diagnostics?: LlmDiagnostics }
+  | { ok: false; error: string; diagnostics?: Partial<LlmDiagnostics> };
 
 export interface CallOptions {
   fetchImpl?: typeof fetch;
@@ -190,6 +201,46 @@ function extractOpenAiTopLevelTextChunk(data: any): string | undefined {
   return firstTextPreserveWhitespace(data?.content, data?.text, data?.response, data?.output_text);
 }
 
+function numberOrUndefined(value: unknown): number | undefined {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function extractUsage(provider: LlmProvider, data: any): AiReviewTokenUsage {
+  if (provider === 'openai') {
+    const usage = data?.usage;
+    const promptTokens = numberOrUndefined(usage?.prompt_tokens);
+    const completionTokens = numberOrUndefined(usage?.completion_tokens);
+    const totalTokens = numberOrUndefined(usage?.total_tokens);
+    return promptTokens !== undefined || completionTokens !== undefined || totalTokens !== undefined
+      ? { source: 'openai', promptTokens, completionTokens, totalTokens }
+      : { source: 'missing' };
+  }
+  if (provider === 'anthropic') {
+    const usage = data?.usage;
+    const promptTokens = numberOrUndefined(usage?.input_tokens);
+    const completionTokens = numberOrUndefined(usage?.output_tokens);
+    const totalTokens = promptTokens !== undefined || completionTokens !== undefined
+      ? (promptTokens ?? 0) + (completionTokens ?? 0)
+      : undefined;
+    return promptTokens !== undefined || completionTokens !== undefined
+      ? { source: 'anthropic', promptTokens, completionTokens, totalTokens }
+      : { source: 'missing' };
+  }
+  const usage = data?.usageMetadata;
+  const promptTokens = numberOrUndefined(usage?.promptTokenCount);
+  const completionTokens = numberOrUndefined(usage?.candidatesTokenCount);
+  const totalTokens = numberOrUndefined(usage?.totalTokenCount);
+  return promptTokens !== undefined || completionTokens !== undefined || totalTokens !== undefined
+    ? { source: 'gemini', promptTokens, completionTokens, totalTokens }
+    : { source: 'missing' };
+}
+
+function extractSseUsage(provider: LlmProvider, events: any[]): AiReviewTokenUsage {
+  const eventWithUsage = [...events].reverse().find((event) => event?.usage || event?.usageMetadata);
+  return eventWithUsage ? extractUsage(provider, eventWithUsage) : { source: 'missing' };
+}
+
 function isUsageOnlyStream(events: any[]): boolean {
   return events.some((e) => e?.usage && Array.isArray(e?.choices) && e.choices.length === 0)
     && events.every((e) => !extractOpenAiChoiceText(e?.choices?.[0]) && !extractOpenAiTopLevelText(e));
@@ -362,6 +413,13 @@ async function callChatCompletionOnce(
   options: CallOptions,
 ): Promise<LlmResult> {
   const req = buildRequest(provider, config, messages);
+  const started = Date.now();
+  const diagnostics = (usage?: AiReviewTokenUsage): LlmDiagnostics => ({
+    provider,
+    baseUrl: config.baseUrl,
+    durationMs: Date.now() - started,
+    usage: usage ?? { source: 'missing' },
+  });
   const doFetch = options.fetchImpl ?? fetch;
   const controller = new AbortController();
   let timedOut = false;
@@ -376,7 +434,7 @@ async function callChatCompletionOnce(
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      return { ok: false, error: diagnoseHttpError(res.status, body) };
+      return { ok: false, error: diagnoseHttpError(res.status, body), diagnostics: diagnostics() };
     }
     // 有的中转站无视 stream:false，仍返回 text/event-stream。统一读成文本，再按格式分流。
     const text = await res.text();
@@ -388,27 +446,28 @@ async function callChatCompletionOnce(
       const agg = req.aggregate(events);
       if (!agg.content) {
         if (isUsageOnlyStream(events)) {
-          return { ok: false, error: usageOnlyStreamError(events) };
+          return { ok: false, error: usageOnlyStreamError(events), diagnostics: diagnostics(extractSseUsage(provider, events)) };
         }
         // 把最后一个事件的结构透出来，便于定位（如 gpt-5 把正文放在非常规字段、或 finish_reason 异常）。
         const last = events.length ? JSON.stringify(events[events.length - 1]).slice(0, 300) : text.slice(0, 300);
-        return { ok: false, error: `LLM 返回空内容（流式，${events.length} 段）。末段：${last}` };
+        return { ok: false, error: `LLM 返回空内容（流式，${events.length} 段）。末段：${last}`, diagnostics: diagnostics(extractSseUsage(provider, events)) };
       }
-      return { ok: true, content: agg.content, truncated: agg.truncated };
+      return { ok: true, content: agg.content, truncated: agg.truncated, diagnostics: diagnostics(extractSseUsage(provider, events)) };
     }
 
     let data: any;
     try {
       data = JSON.parse(text);
     } catch {
-      return { ok: false, error: `LLM 返回非 JSON：${text.slice(0, 200)}` };
+      return { ok: false, error: `LLM 返回非 JSON：${text.slice(0, 200)}`, diagnostics: diagnostics() };
     }
+    const usage = extractUsage(provider, data);
     const content = req.parse(data);
-    if (!content) return { ok: false, error: `LLM 返回空内容。原始：${JSON.stringify(data).slice(0, 300)}` };
-    return { ok: true, content, truncated: req.truncated(data) };
+    if (!content) return { ok: false, error: `LLM 返回空内容。原始：${JSON.stringify(data).slice(0, 300)}`, diagnostics: diagnostics(usage) };
+    return { ok: true, content, truncated: req.truncated(data), diagnostics: diagnostics(usage) };
   } catch (error) {
-    if (timedOut) return { ok: false, error: `请求超时（${options.timeoutMs ?? 30_000}ms）` };
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    if (timedOut) return { ok: false, error: `请求超时（${options.timeoutMs ?? 30_000}ms）`, diagnostics: diagnostics() };
+    return { ok: false, error: error instanceof Error ? error.message : String(error), diagnostics: diagnostics() };
   } finally {
     clearTimeout(timer);
   }

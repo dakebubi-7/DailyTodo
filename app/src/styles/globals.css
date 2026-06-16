@@ -5,6 +5,15 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
 :root {
   --color-paper: #F4F5F3;
   --color-paper-dark: #0f172a;
@@ -499,17 +508,17 @@ button, .select-none {
 
 .dark .task-card {
   border-color: rgba(71, 85, 105, 0.4) !important;
-  background: rgba(51, 65, 85, 0.5) !important;
+  background: transparent !important;
 }
 
 .dark .task-card:hover {
   border-color: rgba(59, 130, 246, 0.5) !important;
-  background: rgba(51, 65, 85, 0.7) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
 .dark .task-text {
-  color: #f1f5f9;
+  color: #fff;
 }
 
 .dark .task-card-completed .task-text {
@@ -1044,12 +1053,12 @@ button, .select-none {
 
 .dark .task-card {
   border-color: rgba(255, 255, 255, 0.09) !important;
-  background: color-mix(in srgb, rgba(32, 34, 37, var(--card-opacity)) 42%, transparent) !important;
+  background: transparent !important;
 }
 
 .dark .task-card:hover {
   border-color: color-mix(in srgb, var(--personal-secondary) 22%, rgba(255, 255, 255, 0.1)) !important;
-  background: color-mix(in srgb, rgba(38, 40, 43, var(--card-opacity)) 50%, transparent) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
 }
 
@@ -2896,22 +2905,6 @@ button, .select-none {
   color: #a1a1aa;
 }
 
-.dark .task-source-badge {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.08);
-  color: #e4e4e7;
-}
-
-.dark .task-source-badge[data-source='external'] {
-  background: rgba(248, 113, 113, 0.16);
-  color: #fca5a5;
-}
-
-.dark .task-source-badge[data-source='personal'] {
-  background: rgba(45, 74, 62, 0.24);
-  color: #d4d4d8;
-}
-
 .dark .settings-nav-item small,
 .dark .settings-field small,
 .dark .settings-switch-row small,
@@ -4013,12 +4006,12 @@ html {
 
 .dark .task-card {
   border-color: rgba(255, 255, 255, 0.09) !important;
-  background: color-mix(in srgb, rgba(32, 34, 37, var(--card-opacity)) 42%, transparent) !important;
+  background: transparent !important;
 }
 
 .dark .task-card:hover {
   border-color: color-mix(in srgb, var(--personal-secondary) 22%, rgba(255, 255, 255, 0.1)) !important;
-  background: color-mix(in srgb, rgba(38, 40, 43, var(--card-opacity)) 50%, transparent) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22) !important;
 }
 
@@ -5650,31 +5643,6 @@ html {
   color: #a1a1aa;
 }
 
-.task-source-badge {
-  display: inline-grid;
-  min-width: 1.18rem;
-  height: 1.18rem;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 999px;
-  padding: 0;
-  background: rgba(39, 39, 42, 0.08);
-  color: #52525b;
-  font-size: 0.58rem;
-  font-weight: 950;
-  line-height: 1;
-}
-
-.task-source-badge[data-source='external'] {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
-}
-
-.task-source-badge[data-source='personal'] {
-  background: rgba(45, 74, 62, 0.1);
-  color: var(--personal-accent);
-}
-
 .task-edit-input {
   height: 1.8rem;
   font-size: 0.86rem;
@@ -6531,12 +6499,12 @@ html {
 
 .theme-dark-mode.dark .task-card {
   border-color: rgba(71, 85, 105, 0.4) !important;
-  background: rgba(51, 65, 85, var(--card-opacity)) !important;
+  background: transparent !important;
 }
 
 .theme-dark-mode.dark .task-card:hover {
   border-color: rgba(59, 130, 246, 0.5) !important;
-  background: rgba(51, 65, 85, var(--card-opacity)) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
@@ -7929,7 +7897,7 @@ html {
 }
 
 .task-card-no-children {
-  grid-template-columns: auto auto auto minmax(0, 1fr) !important;
+  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
 }
 
 .task-priority-rail,
@@ -8009,9 +7977,9 @@ html {
    it a touch smaller than the trailing icon buttons so it doesn't crowd the
    text. */
 .task-complete-action {
-  height: 1.45rem !important;
-  width: 1.45rem !important;
-  min-width: 1.45rem !important;
+  height: 1.22rem !important;
+  width: 1.22rem !important;
+  min-width: 1.22rem !important;
 }
 
 .task-review-action {
@@ -8175,15 +8143,15 @@ html {
 
 .dark .task-subtask-row {
   border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(24, 26, 32, 0.74);
+  background: transparent;
 }
 
 .dark .task-subtask-row:hover {
-  background: rgba(34, 38, 46, 0.9);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .dark .task-subtask-text {
-  color: #f1f5f9;
+  color: #fff;
 }
 
 .dark .task-subtask-row-completed .task-subtask-text {
@@ -8762,3 +8730,258 @@ html {
 .task-source-group-dragging {
   pointer-events: none;
 }
+
+/* Invisible theme narrow cleanup: remove the remaining dark toolbar/task-card fills without touching text or layout. */
+.app-shell[data-theme='invisible'] .task-toolbar,
+.app-shell[data-theme='invisible'] .task-toolbar-row,
+.app-shell[data-theme='invisible'] .task-source-group-shell,
+.app-shell[data-theme='invisible'] .task-sortable-shell,
+.app-shell[data-theme='invisible'] .task-card {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-shell[data-theme='invisible'] .task-card {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.app-shell[data-theme='invisible'] .task-card:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: none !important;
+}
+
+.app-shell[data-theme='invisible'] .task-search-input,
+.app-shell[data-theme='invisible'] .task-filter-button,
+.app-shell[data-theme='invisible'] .task-filter-select,
+.app-shell[data-theme='invisible'] .task-clear-filter,
+.app-shell[data-theme='invisible'] .task-tool-icon {
+  background: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-shell[data-theme='invisible'] .task-filter-active,
+.app-shell[data-theme='invisible'] .task-tool-active {
+  background: rgba(255, 255, 255, 0.14) !important;
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Theme-scoped final fixes 2026-06-16: keep each theme isolated. */
+.task-card-has-children,
+.task-card-no-children {
+  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
+  grid-auto-flow: column !important;
+}
+
+.task-card > .task-text-wrap,
+.task-card > .task-edit-input {
+  grid-column: 5 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+}
+
+.task-card > .priority-dot-button,
+.task-card > .task-complete-action,
+.task-card > .task-tree-toggle,
+.task-card > .task-tree-spacer,
+.task-card > .task-drag-handle {
+  grid-row: 1 !important;
+  align-self: center !important;
+}
+
+.task-complete-action,
+.task-tree-toggle,
+.task-tree-spacer {
+  height: 1.12rem !important;
+  width: 1.12rem !important;
+  min-width: 1.12rem !important;
+}
+
+.task-complete-action svg,
+.task-subtask-check svg {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.task-subtask-action-layer {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: grid !important;
+  grid-template-columns: 1.38rem 1.38rem !important;
+  gap: 0.45rem !important;
+  align-items: center !important;
+  justify-items: center !important;
+}
+
+.task-subtask-review-zone,
+.task-subtask-delete-zone,
+.task-subtask-review,
+.task-subtask-delete {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.task-subtask-review-zone,
+.task-subtask-delete-zone {
+  width: 1.38rem !important;
+  height: 1.38rem !important;
+}
+
+.task-subtask-review,
+.task-subtask-delete {
+  width: 1.28rem !important;
+  height: 1.28rem !important;
+  min-width: 1.28rem !important;
+  border-radius: 0.45rem !important;
+}
+
+.app-shell[data-theme='invisible'] .titlebar-icon-active {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22) !important;
+}
+
+.app-shell[data-theme='invisible'] .task-card,
+.app-shell[data-theme='invisible'] .task-subtask-row,
+.app-shell[data-theme='invisible'] .task-source-group-shell,
+.app-shell[data-theme='invisible'] .task-toolbar,
+.app-shell[data-theme='invisible'] .add-task-inner {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'],
+.dark .app-shell[data-theme='invisible'] :is(.app-brand h1, .app-brand p, .app-brand-eyebrow, .date-current, .daily-panel-tab, .tabbar button, .task-text, .task-subtask-text, .task-source-group-title, .task-search-input, .task-filter-button, .task-filter-select, .add-task-input, .source-toggle-button, .add-task-button) {
+  color: #fff !important;
+}
+
+html:not(.dark) .app-shell[data-theme='invisible'],
+html:not(.dark) .app-shell[data-theme='invisible'] :is(.app-brand h1, .app-brand p, .app-brand-eyebrow, .date-current, .daily-panel-tab, .tabbar button, .task-text, .task-subtask-text, .task-source-group-title, .task-search-input, .task-filter-button, .task-filter-select, .source-toggle-button, .add-task-button) {
+  color: #111827 !important;
+}
+
+.app-shell[data-theme='invisible'] .task-complete-action-complete,
+.app-shell[data-theme='invisible'] .task-subtask-check-complete {
+  background: linear-gradient(135deg, #d8e1ea, #8fa4b8) !important;
+  border-color: rgba(216, 225, 234, 0.9) !important;
+  color: #17202a !important;
+  box-shadow: 0 0 0 2px rgba(143, 164, 184, 0.22) !important;
+}
+
+.app-shell[data-theme='invisible'] .completion-dialog,
+.app-shell[data-theme='invisible'] .completion-field,
+.app-shell[data-theme='invisible'] .completion-field select,
+.app-shell[data-theme='invisible'] .completion-field textarea {
+  background: rgba(31, 42, 56, 0.88) !important;
+  background-color: rgba(31, 42, 56, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #f8fafc !important;
+}
+
+.app-shell[data-theme='invisible'] .completion-field select option {
+  background: #1f2a38 !important;
+  color: #f8fafc !important;
+}
+
+.dark .app-shell[data-theme='minimal'] {
+  --personal-accent: #e5e7eb !important;
+  --personal-secondary: #a1a1aa !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.app-brand h1, .app-brand p, .app-brand-eyebrow, .date-current, .daily-panel-tab, .tabbar button, .task-text, .task-subtask-text, .settings-panel, .settings-panel *, .add-task-input, .task-search-input, .task-filter-button, .task-filter-select) {
+  color: #fff !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.progress-fill, .daily-panel-tab-active, .tabbar button.font-semibold, .task-filter-active, .task-tool-active, .add-task-button) {
+  background: linear-gradient(135deg, #f4f4f5, #a1a1aa) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
+  color: #111827 !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.date-card, .date-stepper, .daily-panel-switch, .task-toolbar, .add-task-inner, .settings-panel, .settings-field input, .settings-field select, .settings-field textarea) {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background-color: rgba(24, 24, 27, var(--card-opacity)) !important;
+}
+
+.app-shell[data-theme='neumorphism'] .task-source-group-shell {
+  padding: 0.55rem !important;
+  border-radius: calc(var(--card-radius) * 1.05) !important;
+  background: rgba(var(--neu-bg), var(--panel-opacity)) !important;
+  box-shadow: 8px 8px 18px color-mix(in srgb, var(--neu-d) 78%, transparent), -8px -8px 18px color-mix(in srgb, var(--neu-l) 85%, transparent) !important;
+}
+
+.app-shell[data-theme='neumorphism'] .task-card {
+  background: rgba(var(--neu-bg), 0.72) !important;
+  border-color: color-mix(in srgb, var(--neu-bg) 60%, transparent) !important;
+  box-shadow: inset 3px 3px 6px color-mix(in srgb, var(--neu-d) 60%, transparent), inset -3px -3px 6px color-mix(in srgb, var(--neu-l) 70%, transparent) !important;
+}
+
+.app-shell[data-theme='neumorphism'] .task-card:hover {
+  box-shadow: inset 2px 2px 5px color-mix(in srgb, var(--neu-d) 52%, transparent), inset -2px -2px 5px color-mix(in srgb, var(--neu-l) 64%, transparent) !important;
+}
+
+.app-shell[data-theme='neumorphism'] .add-task,
+.app-shell[data-theme='neumorphism'] .add-task-inner {
+  background: rgba(var(--neu-bg), var(--panel-opacity)) !important;
+  box-shadow: -8px -8px 18px color-mix(in srgb, var(--neu-l) 80%, transparent), 8px 8px 18px color-mix(in srgb, var(--neu-d) 70%, transparent) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .task-source-group-shell,
+.dark .app-shell[data-theme='neumorphism'] .add-task,
+.dark .app-shell[data-theme='neumorphism'] .add-task-inner {
+  box-shadow: 8px 8px 18px rgba(0, 0, 0, 0.36), -8px -8px 18px rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .task-card {
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.32), inset -3px -3px 6px rgba(255, 255, 255, 0.05) !important;
+}
+
+.app-shell[data-theme='watercolor'] .priority-dot-button {
+  min-width: 1.08rem !important;
+  min-height: 1.08rem !important;
+  width: 1.08rem !important;
+  height: 1.08rem !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.app-shell[data-theme='watercolor'] .priority-dot-button span {
+  width: 0.48rem !important;
+  height: 0.48rem !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.62) !important;
+}
+
+.dark .app-shell[data-theme='watercolor'] :is(.app-brand h1, .app-brand p, .app-brand-eyebrow, .date-current, .daily-panel-tab, .tabbar button, .task-text, .task-subtask-text, .settings-panel, .settings-panel *, .add-task-input, .task-search-input, .task-filter-button, .task-filter-select) {
+  color: #fff !important;
+}
+
+.dark .app-shell[data-theme='watercolor'] .task-card-completed .task-text,
+.dark .app-shell[data-theme='watercolor'] .task-card-completed .task-subtask-text {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.dark .app-shell[data-theme='watercolor'] :is(.settings-field input, .settings-field select, .settings-field textarea, .settings-preview-list, .settings-switch-row, .settings-nav-item, .settings-reset-button) {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #fff !important;
+}
+
+.dark .app-shell[data-theme='watercolor'] .settings-field select option {
+  background: #0f172a !important;
+  color: #fff !important;
+}
+

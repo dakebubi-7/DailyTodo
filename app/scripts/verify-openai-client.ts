@@ -28,6 +28,9 @@ const okFetch = (async () => jsonRes({ choices: [{ message: { content: '生成�
 const ok = await callChatCompletion(base, messages, { fetchImpl: okFetch });
 assert.equal(ok.ok, true);
 assert.equal(ok.ok && ok.content, '生成内容');
+assert.equal(ok.ok && ok.diagnostics?.provider, 'openai', '成功结果带 provider 诊断');
+assert.equal(ok.ok && ok.diagnostics?.baseUrl, 'https://x/v1', '成功结果带实际 baseUrl');
+assert.equal(ok.ok && typeof ok.diagnostics?.durationMs, 'number', '成功结果带请求耗时');
 
 // 非 200 → ok:false
 const badFetch = (async () => ({ ok: false, status: 401, text: async () => 'unauthorized' })) as unknown as typeof fetch;
@@ -337,6 +340,40 @@ assert.equal(anthTrunc.ok && anthTrunc.truncated, true, 'Anthropic stop_reason=m
 const gemTruncFetch = (async () => jsonRes({ candidates: [{ content: { parts: [{ text: '半截' }] }, finishReason: 'MAX_TOKENS' }] })) as unknown as typeof fetch;
 const gemTrunc = await callChatCompletion({ baseUrl: 'https://generativelanguage.googleapis.com', apiKey: 'k', model: 'gemini-1.5-flash' }, messages, { fetchImpl: gemTruncFetch });
 assert.equal(gemTrunc.ok && gemTrunc.truncated, true, 'Gemini finishReason=MAX_TOKENS → truncated');
+
+// token usage：OpenAI / Anthropic / Gemini 三协议解析真实返回字段；缺失时标记 missing。
+const oaiUsage = await callChatCompletion(base, messages, {
+  fetchImpl: (async () => jsonRes({ choices: [{ message: { content: 'usage ok' } }], usage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 } })) as unknown as typeof fetch,
+  provider: 'openai',
+});
+assert.equal(oaiUsage.ok && oaiUsage.diagnostics?.usage?.source, 'openai');
+assert.equal(oaiUsage.ok && oaiUsage.diagnostics?.usage?.promptTokens, 11);
+assert.equal(oaiUsage.ok && oaiUsage.diagnostics?.usage?.completionTokens, 7);
+assert.equal(oaiUsage.ok && oaiUsage.diagnostics?.usage?.totalTokens, 18);
+
+const anthUsage = await callChatCompletion({ baseUrl: 'https://api.anthropic.com', apiKey: 'k', model: 'm' }, messages, {
+  fetchImpl: (async () => jsonRes({ content: [{ text: 'anth usage' }], usage: { input_tokens: 5, output_tokens: 3 } })) as unknown as typeof fetch,
+  provider: 'anthropic',
+});
+assert.equal(anthUsage.ok && anthUsage.diagnostics?.usage?.source, 'anthropic');
+assert.equal(anthUsage.ok && anthUsage.diagnostics?.usage?.promptTokens, 5);
+assert.equal(anthUsage.ok && anthUsage.diagnostics?.usage?.completionTokens, 3);
+assert.equal(anthUsage.ok && anthUsage.diagnostics?.usage?.totalTokens, 8);
+
+const gemUsage = await callChatCompletion({ baseUrl: 'https://generativelanguage.googleapis.com', apiKey: 'k', model: 'gemini-1.5-flash' }, messages, {
+  fetchImpl: (async () => jsonRes({ candidates: [{ content: { parts: [{ text: 'gem usage' }] } }], usageMetadata: { promptTokenCount: 13, candidatesTokenCount: 4, totalTokenCount: 17 } })) as unknown as typeof fetch,
+  provider: 'gemini',
+});
+assert.equal(gemUsage.ok && gemUsage.diagnostics?.usage?.source, 'gemini');
+assert.equal(gemUsage.ok && gemUsage.diagnostics?.usage?.promptTokens, 13);
+assert.equal(gemUsage.ok && gemUsage.diagnostics?.usage?.completionTokens, 4);
+assert.equal(gemUsage.ok && gemUsage.diagnostics?.usage?.totalTokens, 17);
+
+const missingUsage = await callChatCompletion(base, messages, {
+  fetchImpl: (async () => jsonRes({ choices: [{ message: { content: 'no usage' } }] })) as unknown as typeof fetch,
+  provider: 'openai',
+});
+assert.equal(missingUsage.ok && missingUsage.diagnostics?.usage?.source, 'missing', '缺 usage 时不估算，标记 missing');
 
 // === 模型列表解析 ===
 assert.deepEqual(parseModelList('openai', { data: [{ id: 'gpt-4o' }, { id: 'gpt-4o-mini' }] }), ['gpt-4o', 'gpt-4o-mini']);

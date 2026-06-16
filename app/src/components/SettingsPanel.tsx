@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useState } from 'react';
+import { CSSProperties, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AppBehaviorSettings,
@@ -18,6 +18,7 @@ import {
   createDefaultAiProfile,
 } from '../../shared/aiReview/aiReviewSettings';
 import type { SyncPreview } from '../../shared/obsidianTemplates';
+import type { AiReviewProgressEvent, AiReviewRunDiagnostic } from '../../shared/aiReview/runDiagnostics';
 
 type SettingsSection = 'appearance' | 'sync' | 'templates' | 'aiReview' | 'schedule' | 'general';
 
@@ -34,6 +35,7 @@ interface SettingsPanelProps {
   tasks: Task[];
   onClearCompleted: () => void;
   onApplyTheme: (preset: ThemePreset) => void;
+  onResetTheme: () => void;
   onChange: (settings: PersonalizationSettings) => void;
   onAppSettingsChange: (settings: AppBehaviorSettings) => void;
   onObsidianTemplatesChange: (settings: ObsidianTemplateSettings) => void;
@@ -214,6 +216,7 @@ function ToggleRow({
 
 type AiReviewText = ReturnType<typeof getShellText>['settings']['aiReview'];
 type GenerationAction = 'daily' | 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly';
+type ReportProfileKey = 'dailyReviewProfileId' | 'weeklyReportProfileId' | 'monthlyReportProfileId';
 
 function formatLocalDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -234,6 +237,70 @@ function resultMessage(text: AiReviewText, result: { ok: boolean; error?: string
   if (!result.ok) return `${text.genFailed}${result.error ?? '未知错误'}`;
   const prefix = result.truncated ? text.genTruncated : text.genSuccess;
   return `${prefix}${result.filePath ?? '完成'}`;
+}
+
+function progressStatusLabel(event: AiReviewProgressEvent | null) {
+  if (!event) return '';
+  if (event.message) return event.message;
+  if (event.stageKey === 'requestAi') return '正在请求 AI / Requesting AI';
+  return event.label;
+}
+
+function progressDisplay(currentProgress: AiReviewProgressEvent | null, fallback: string) {
+  return progressStatusLabel(currentProgress) || fallback;
+}
+
+function initialProgressForAction(action: GenerationAction): AiReviewProgressEvent {
+  const reportKind = action === 'daily' ? 'daily' : action.includes('Monthly') ? 'monthly' : 'weekly';
+  return {
+    reportKind,
+    stageKey: 'prepareMaterials',
+    label: '准备素材',
+    status: 'running',
+    message: '准备素材',
+    at: new Date().toISOString(),
+  };
+}
+
+function fallbackProgress(current: AiReviewProgressEvent | null): AiReviewProgressEvent {
+  const reportKind = current?.reportKind ?? 'daily';
+  const stages: Array<Pick<AiReviewProgressEvent, 'stageKey' | 'label' | 'message'>> = [
+    { stageKey: 'prepareMaterials', label: '准备素材', message: '准备素材' },
+    { stageKey: 'buildPrompt', label: '构建提示词', message: '构建提示词' },
+    { stageKey: 'requestAi', label: '请求 AI', message: '等待模型返回' },
+    { stageKey: 'receiveResult', label: '接收结果', message: '接收模型结果' },
+    { stageKey: 'writeObsidian', label: '写入 Obsidian', message: '写入 Obsidian' },
+    { stageKey: 'confirmResult', label: '确认结果', message: '确认结果' },
+  ];
+  const currentIndex = stages.findIndex((stage) => stage.stageKey === current?.stageKey);
+  const next = stages[Math.min(Math.max(currentIndex, 0) + 1, stages.length - 1)] ?? stages[0];
+  return { reportKind, ...next, status: 'running', at: new Date().toISOString() };
+}
+
+function DiagnosticCard({ diagnostic, onClose }: { diagnostic: AiReviewRunDiagnostic; onClose: () => void }) {
+  const usage = diagnostic.usage;
+  return (
+    <div className="settings-preview-list settings-generation-status">
+      <div className="settings-row-header">
+        <strong>运行诊断</strong>
+        <button type="button" className="settings-reset-button" onClick={onClose}>关闭</button>
+      </div>
+      <p>{diagnostic.profile.profileName || diagnostic.profile.model} · {diagnostic.profile.provider} · {diagnostic.finalStatus}</p>
+      <p>{usage && usage.source !== 'missing' ? `Token：${usage.totalTokens ?? '-'}（输入 ${usage.promptTokens ?? '-'} / 输出 ${usage.completionTokens ?? '-'}）` : '服务未返回 token 用量'}</p>
+      {diagnostic.error && <p>{diagnostic.error}</p>}
+    </div>
+  );
+}
+
+function finishProgress(action: GenerationAction, ok: boolean): AiReviewProgressEvent {
+  return {
+    reportKind: action === 'daily' ? 'daily' : action.includes('Monthly') ? 'monthly' : 'weekly',
+    stageKey: 'confirmResult',
+    label: ok ? '完成' : '失败',
+    status: ok ? 'completed' : 'failed',
+    message: ok ? '完成' : '失败',
+    at: new Date().toISOString(),
+  };
 }
 
 const AI_PRESETS: Array<{ id: string; label: string; baseUrl: string; provider: AiProfile['provider']; model: string }> = [
@@ -603,6 +670,7 @@ export function SettingsPanel({
   tasks,
   onClearCompleted,
   onApplyTheme,
+  onResetTheme,
   onChange,
   onAppSettingsChange,
   onObsidianTemplatesChange,
@@ -614,6 +682,10 @@ export function SettingsPanel({
   const [aiReviewSettings, setAiReviewSettings] = useState<AiReviewSettings>(() => createDefaultAiReviewSettings());
   const [generationStatus, setGenerationStatus] = useState('');
   const [generatingAction, setGeneratingAction] = useState<GenerationAction | null>(null);
+  const [lastDiagnostic, setLastDiagnostic] = useState<AiReviewRunDiagnostic | null>(null);
+  const [currentProgress, setCurrentProgress] = useState<AiReviewProgressEvent | null>(null);
+  const generationActiveRef = useRef(false);
+  const progressFallbackTimerRef = useRef<number | null>(null);
   const [section, setSection] = useState<SettingsSection>('appearance');
   const text = getShellText(appSettings.language).settings;
   const zh = appSettings.language === 'zh-CN';
@@ -643,6 +715,19 @@ export function SettingsPanel({
     return () => { active = false; };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsubscribe = window.electronAPI?.aiReview.onProgress?.((payload) => {
+      if (!generationActiveRef.current) return;
+      setCurrentProgress(payload);
+    });
+    return () => unsubscribe?.();
+  }, [isOpen]);
+
+  useEffect(() => () => {
+    if (progressFallbackTimerRef.current) window.clearTimeout(progressFallbackTimerRef.current);
+  }, []);
+
   if (!isOpen) return null;
 
   const updatePersonalization = <K extends keyof PersonalizationSettings>(key: K, value: PersonalizationSettings[K]) => {
@@ -668,13 +753,29 @@ export function SettingsPanel({
     saveAiReviewSettings({ ...aiReviewSettings, [key]: value });
   };
 
+  const scheduleFallbackProgress = () => {
+    if (progressFallbackTimerRef.current) window.clearTimeout(progressFallbackTimerRef.current);
+    progressFallbackTimerRef.current = window.setTimeout(() => {
+      if (!generationActiveRef.current) return;
+      setCurrentProgress((current) => fallbackProgress(current));
+      scheduleFallbackProgress();
+    }, 1200);
+  };
+
   const runGeneration = async (action: GenerationAction) => {
     setGeneratingAction(action);
+    generationActiveRef.current = true;
+    setLastDiagnostic(null);
+    const initialProgress = initialProgressForAction(action);
+    setCurrentProgress(initialProgress);
+    scheduleFallbackProgress();
     setGenerationStatus(text.aiReview.generating);
     try {
       if (action === 'daily') {
         const result = await window.electronAPI?.aiReview.runForDate(selectedDate, tasks);
         if (!result) throw new Error('AI Review API unavailable');
+        if (result.diagnostic) setLastDiagnostic(result.diagnostic);
+        setCurrentProgress(finishProgress(action, result.ok));
         setGenerationStatus(result.ok ? `${text.aiReview.genSuccess}${selectedDate}` : `${text.aiReview.genFailed}${result.error ?? '未知错误'}`);
         return;
       }
@@ -687,10 +788,16 @@ export function SettingsPanel({
           ? await window.electronAPI?.aiReview.generateExternal('weekly', previousWeekDate())
           : await window.electronAPI?.aiReview.generateExternal('monthly', previousMonthStart());
       if (!result) throw new Error('AI Review API unavailable');
+      const diagnostic = (result as { diagnostic?: AiReviewRunDiagnostic }).diagnostic;
+      if (diagnostic) setLastDiagnostic(diagnostic);
+      setCurrentProgress(finishProgress(action, result.ok));
       setGenerationStatus(resultMessage(text.aiReview, result));
     } catch (error) {
+      setCurrentProgress(finishProgress(action, false));
       setGenerationStatus(`${text.aiReview.genFailed}${error instanceof Error ? error.message : String(error)}`);
     } finally {
+      generationActiveRef.current = false;
+      if (progressFallbackTimerRef.current) window.clearTimeout(progressFallbackTimerRef.current);
       setGeneratingAction(null);
     }
   };
@@ -812,6 +919,11 @@ export function SettingsPanel({
                 );
               })}
             </div>
+            <div className="settings-action-row">
+              <button type="button" className="settings-reset-button" onClick={onResetTheme}>
+                {appSettings.language === 'zh-CN' ? '恢复当前主题默认设置' : 'Reset current theme defaults'}
+              </button>
+            </div>
           </section>
 
           <section className="settings-section">
@@ -847,7 +959,7 @@ export function SettingsPanel({
                 hint={appSettings.language === 'zh-CN' ? '调整毛玻璃背景的模糊程度；双击恢复当前主题默认值' : 'Adjust frosted-glass blur strength; double-click to reset to the current theme default'}
                 value={settings.blurStrength}
                 min={0}
-                max={48}
+                max={80}
                 unit="px"
                 defaultValue={recommendation.blurStrength}
                 resetTitle={resetToThemeDefaultTitle}
@@ -1026,6 +1138,38 @@ export function SettingsPanel({
             />
             <AiAccountZone text={text.aiReview} settings={aiReviewSettings} onChange={saveAiReviewSettings} />
 
+            <section className="settings-inline-section" aria-label="reportAccountRouting">
+              <h3>{zh ? '报告使用账号' : 'Report account routing'}</h3>
+              <div className="settings-preview-list">
+                <p>{zh ? '日报、个人周报、个人月报可以分别选择 AI 账号；不选择时跟随当前默认账号。' : 'Daily, personal weekly, and personal monthly reports can each use a specific AI account, or follow the current account.'}</p>
+              </div>
+              <div className="settings-grid settings-compact-grid">
+                {([
+                  ['dailyReviewProfileId', zh ? '日报使用账号' : 'Daily review account'],
+                  ['weeklyReportProfileId', zh ? '个人周报使用账号' : 'Personal weekly account'],
+                  ['monthlyReportProfileId', zh ? '个人月报使用账号' : 'Personal monthly account'],
+                ] as Array<[ReportProfileKey, string]>).map(([key, label]) => {
+                  const value = String(aiReviewSettings[key] || '');
+                  const missing = value && !aiReviewSettings.profiles.some((profile) => profile.id === value);
+                  return (
+                    <label className="settings-field" key={String(key)}>
+                      <span>
+                        <strong>{label}</strong>
+                        <small>{missing ? (zh ? '账号已失效，生成时会回退默认账号' : 'Missing account; generation falls back to default') : (zh ? '留空表示跟随当前默认账号' : 'Leave empty to follow the current account')}</small>
+                      </span>
+                      <select value={value} onChange={(event) => updateAiReview(key, event.target.value)}>
+                        <option value="">{zh ? '跟随当前账号' : 'Follow current account'} / followCurrentAccount</option>
+                        {aiReviewSettings.profiles.map((profile) => (
+                          <option key={profile.id} value={profile.id}>{profile.name || profile.model}</option>
+                        ))}
+                        {missing && <option value={value}>{zh ? '已失效账号' : 'Missing account'} · {value}</option>}
+                      </select>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+
             <section className="settings-inline-section settings-highlight-section">
               <h3>{zh ? '手动生成' : 'Manual generation'}</h3>
               <div className="settings-action-row settings-action-row-wide">
@@ -1043,11 +1187,12 @@ export function SettingsPanel({
                     disabled={generatingAction !== null}
                     onClick={() => runGeneration(action)}
                   >
-                    {generatingAction === action ? text.aiReview.generating : label}
+                    {generatingAction === action ? progressDisplay(currentProgress, text.aiReview.generating) : label}
                   </button>
                 ))}
               </div>
-              {generationStatus && <div className="settings-preview-list settings-generation-status"><p>{generationStatus}</p></div>}
+              {generationStatus && <div className="settings-preview-list settings-generation-status"><p>{generationStatus}</p>{currentProgress && <small>{progressStatusLabel(currentProgress)}</small>}</div>}
+              {lastDiagnostic && <DiagnosticCard diagnostic={lastDiagnostic} onClose={() => setLastDiagnostic(null)} />}
             </section>
 
             <section className="settings-inline-section">
@@ -1118,6 +1263,20 @@ export function SettingsPanel({
                 hint={text.aiReview.timerTimeHint}
                 value={aiReviewSettings.timerTime}
                 onChange={(value) => updateAiReview('timerTime', value)}
+              />
+            </div>
+            <ToggleRow
+              title={text.aiReview.startupBackfillEnable}
+              description={text.aiReview.startupBackfillEnableHint}
+              checked={aiReviewSettings.startupBackfillEnabled}
+              onChange={(value) => updateAiReview('startupBackfillEnabled', value)}
+            />
+            <div className="settings-grid">
+              <Field
+                label={text.aiReview.backfillDays}
+                hint={text.aiReview.backfillDaysHint}
+                value={String(aiReviewSettings.backfillDays)}
+                onChange={(value) => updateAiReview('backfillDays', Number(value) || 7)}
               />
             </div>
             <ToggleRow

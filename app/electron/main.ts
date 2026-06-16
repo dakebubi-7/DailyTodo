@@ -49,7 +49,16 @@ import { runReviewForFile } from './aiReview/runner';
 import { backfillReviews } from './aiReview/backfill';
 import { callChatCompletion, listModels } from '../shared/llm/openaiClient';
 import type { LlmProvider } from '../shared/llm/openaiClient';
-import { AI_REVIEW_SETTINGS_KEY, normalizeAiReviewSettings, DEFAULT_REPORT_DIRS, sanitizeRelDir, resolveActiveProfile } from '../shared/aiReview/aiReviewSettings';
+import {
+  AI_REVIEW_SETTINGS_KEY,
+  normalizeAiReviewSettings,
+  DEFAULT_REPORT_DIRS,
+  sanitizeRelDir,
+  resolveActiveProfile,
+  resolveProfileForReportKind,
+  type AiReviewProfileResolution,
+  type AiReviewReportKind,
+} from '../shared/aiReview/aiReviewSettings';
 import { normalizeSections } from '../shared/aiReview/sectionConfig';
 import { buildRecognizeMessages, parseRecognizedSections } from '../shared/aiReview/recognizeTemplate';
 import { buildRecognizeReportMessages, parseRecognizedReportPrompt, type ReportTemplateTarget } from '../shared/aiReview/recognizeReportTemplate';
@@ -74,6 +83,14 @@ import {
 } from '../shared/aiReview/sourceMaterials';
 import { DEFAULT_EXTERNAL_WEEKLY_SYSTEM, DEFAULT_EXTERNAL_MONTHLY_SYSTEM } from '../shared/aiReview/defaultPrompts';
 import { computeRangeStats } from '../shared/aiReview/stats';
+import {
+  mergeTokenUsage,
+  safeBaseUrlHost,
+  type AiReviewRunDiagnostic,
+  type AiReviewRunFinalStatus,
+  type AiReviewRunReportKind,
+  type AiReviewStageDiagnostic,
+} from '../shared/aiReview/runDiagnostics';
 
 // 关闭 Chromium 在 Windows 上的原生窗口遮挡计算：透明无边框窗口在 Win+D / 点击桌面后
 // 会被判定为「被遮挡」而暂停合成，表现为窗口空白/消失，直到系统弹窗触发重绘。关闭后所有
@@ -400,17 +417,15 @@ function applyNativeBackgroundMaterial(win: BrowserWindow): void {
     return;
   }
 
-  for (const material of ['acrylic', 'mica', 'tabbed'] as const) {
-    try {
-      materialWindow.setBackgroundMaterial(material);
-      diag(`native background material enabled: ${material}`);
-      return;
-    } catch (error) {
-      diag(`native background material ${material} failed: ${String(error)}`);
-    }
+  try {
+    // Electron/Windows 的 acrylic/mica 是系统固定强度，不能跟随应用里的
+    // “模糊强度”滑杆变化。这里关闭原生 material，改由 renderer 的
+    // CSS backdrop-filter 玻璃层接管，这样 --blur-strength 才会实时生效。
+    materialWindow.setBackgroundMaterial('none');
+    diag('native background material disabled: css blur controls glass strength');
+  } catch (error) {
+    diag(`native background material disable failed: ${String(error)}`);
   }
-
-  diag('native background material fallback: transparent css glass');
 }
 
 const gotLock = app.requestSingleInstanceLock();
@@ -622,6 +637,106 @@ function getLlmCaller() {
     );
 }
 
+function getLlmCallerForReportKind(reportKind: AiReviewReportKind) {
+  const s = getAiReviewSettings();
+  const resolution = resolveProfileForReportKind(s, reportKind);
+  const p = resolution.profile;
+  return {
+    resolution,
+    callLlm: (messages: ChatMessage[]) =>
+      callChatCompletion(
+        { baseUrl: p.baseUrl, apiKey: p.apiKey, model: p.model, maxTokens: p.maxTokens },
+        messages,
+        { timeoutMs: p.timeoutSeconds * 1000, provider: p.provider },
+      ),
+  };
+}
+
+function ensureReportLlmAvailable(reportKind: AiReviewReportKind):
+  | { ok: true; callLlm: ReturnType<typeof getLlmCaller>; resolution: AiReviewProfileResolution }
+  | { ok: false; error: string; resolution?: AiReviewProfileResolution } {
+  const settings = getAiReviewSettings();
+  if (!settings.enabled) return { ok: false, error: 'AI 复盘未启用' };
+  const { callLlm, resolution } = getLlmCallerForReportKind(reportKind);
+  if (!resolution.profile.apiKey.trim()) {
+    return { ok: false, error: 'AI 复盘缺少可用账号 Key，请在设置中选择账号或填写 API Key', resolution };
+  }
+  return { ok: true, callLlm, resolution };
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function runId(reportKind: AiReviewRunReportKind) {
+  return `${reportKind}-${Date.now().toString(36)}`;
+}
+
+function stage(key: AiReviewStageDiagnostic['key'], label: string, status: AiReviewStageDiagnostic['status'], durationMs?: number, message?: string): AiReviewStageDiagnostic {
+  return { key, label, status, durationMs, message };
+}
+
+function emitAiReviewProgress(reportKind: AiReviewRunReportKind, stageKey: AiReviewStageDiagnostic['key'], label: string, status: 'running' | 'completed' | 'failed' | 'warning', message?: string) {
+  const payload = { reportKind, stageKey, label, status, message, at: nowIso() };
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.webContents.send('aiReview:progress', payload);
+  });
+}
+
+function profileDiagnostic(resolution?: AiReviewProfileResolution): AiReviewRunDiagnostic['profile'] {
+  const profile = resolution?.profile;
+  return {
+    profileId: profile?.id,
+    profileName: profile?.name,
+    profileSource: resolution?.source,
+    provider: profile?.provider ?? 'unknown',
+    model: profile?.model ?? 'unknown',
+    baseUrlHost: profile ? safeBaseUrlHost(profile.baseUrl) : undefined,
+  };
+}
+
+function createDiagnostic(params: {
+  reportKind: AiReviewRunReportKind;
+  startedAt: number;
+  finalStatus: AiReviewRunFinalStatus;
+  resolution?: AiReviewProfileResolution;
+  stages: AiReviewStageDiagnostic[];
+  llmResults?: Array<Awaited<ReturnType<ReturnType<typeof getLlmCaller>>>>;
+  sourceChars?: number;
+  error?: string;
+  warning?: string;
+}): AiReviewRunDiagnostic {
+  const finishedAtMs = Date.now();
+  const llmResults = params.llmResults ?? [];
+  const successful = llmResults.filter((result) => result.ok);
+  const diagnostics = llmResults.map((result) => result.diagnostics);
+  const usage = mergeTokenUsage(diagnostics.map((item) => item?.usage));
+  const requestDuration = diagnostics
+    .map((item) => item?.durationMs)
+    .filter((value): value is number => typeof value === 'number')
+    .reduce((acc, value) => acc + value, 0);
+  const stages = [...params.stages];
+  if (requestDuration > 0 && !stages.some((item) => item.key === 'requestAi')) {
+    stages.push(stage('requestAi', '请求 AI', 'completed', requestDuration));
+  }
+  return {
+    runId: runId(params.reportKind),
+    reportKind: params.reportKind,
+    startedAt: new Date(params.startedAt).toISOString(),
+    finishedAt: new Date(finishedAtMs).toISOString(),
+    durationMs: finishedAtMs - params.startedAt,
+    finalStatus: params.finalStatus,
+    profile: profileDiagnostic(params.resolution),
+    stages,
+    usage,
+    truncated: successful.some((result) => result.truncated),
+    outputChars: successful.reduce((acc, result) => acc + result.content.length, 0),
+    sourceChars: params.sourceChars,
+    error: params.error,
+    warning: params.warning ?? params.resolution?.warning,
+  };
+}
+
 /** .docx → 纯文本（mammoth）。仅主进程用，动态引入避免进入 renderer 包。 */
 async function extractDocxText(buffer: Buffer): Promise<string> {
   const mammoth = await import('mammoth');
@@ -630,19 +745,79 @@ async function extractDocxText(buffer: Buffer): Promise<string> {
 }
 
 async function runReviewForDate(date: string, tasks: Task[]) {
-  const settings = getAiReviewSettings();
-  if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key', filledMarkers: [], skippedMarkers: [] };
+  const startedAt = Date.now();
+  emitAiReviewProgress('daily', 'prepareMaterials', '准备复盘材料', 'running', '读取日记文件和复盘模板');
+  const llm = ensureReportLlmAvailable('daily');
+  const stages: AiReviewStageDiagnostic[] = [];
+  if (!llm.ok) {
+    emitAiReviewProgress('daily', 'requestAi', '请求 AI', 'failed', llm.error);
+    const diagnostic = createDiagnostic({
+      reportKind: 'daily',
+      startedAt,
+      finalStatus: 'accountUnavailable',
+      resolution: llm.resolution,
+      stages: [stage('requestAi', '请求 AI', 'failed', undefined, llm.error)],
+      error: llm.error,
+    });
+    return { ok: false, error: llm.error, filledMarkers: [], skippedMarkers: [], diagnostic };
+  }
+  const prepareStart = Date.now();
   const filePath = getDailyFilePath(date);
+  if (!fs.existsSync(filePath)) {
+    const error = '日记文件不存在，请先同步/创建当天日记后再生成复盘';
+    stages.push(stage('prepareMaterials', '准备复盘材料', 'failed', Date.now() - prepareStart, error));
+    emitAiReviewProgress('daily', 'prepareMaterials', '准备复盘材料', 'failed', error);
+    const diagnostic = createDiagnostic({
+      reportKind: 'daily',
+      startedAt,
+      finalStatus: 'noSourceMaterials',
+      resolution: llm.resolution,
+      stages,
+      error,
+    });
+    return { ok: false, error, filledMarkers: [], skippedMarkers: [], diagnostic };
+  }
+  const sourceChars = fs.readFileSync(filePath, 'utf-8').length;
   const templateSettings = getObsidianTemplateSettings();
   const customBlocks = templateSettings.dailyTemplate.customBlocks.filter((block) => block.aiGenerate);
-  return runReviewForFile({
+  stages.push(stage('prepareMaterials', '准备复盘材料', 'completed', Date.now() - prepareStart, `日记 ${sourceChars} 字符，${customBlocks.length} 个自定义 AI 块`));
+  emitAiReviewProgress('daily', 'prepareMaterials', '准备复盘材料', 'completed', `日记 ${sourceChars} 字符，${customBlocks.length} 个自定义 AI 块`);
+  stages.push(stage('buildPrompt', '构建提示词', 'completed', undefined, '按复盘段落整理提示词'));
+  emitAiReviewProgress('daily', 'buildPrompt', '构建提示词', 'completed', '按复盘段落整理提示词');
+  const llmResults: Array<Awaited<ReturnType<typeof llm.callLlm>>> = [];
+  const requestStart = Date.now();
+  const result = await runReviewForFile({
     filePath,
     date,
     tasks: tasks as StatTask[],
     sections: getReviewSections(),
     customBlocks,
-    callLlm: getLlmCaller(),
+    callLlm: async (messages) => {
+      emitAiReviewProgress('daily', 'requestAi', '请求 AI', 'running', '等待模型返回复盘内容');
+      const value = await llm.callLlm(messages);
+      emitAiReviewProgress('daily', 'requestAi', '请求 AI', value.ok ? 'completed' : 'failed', value.ok ? '已收到 AI 内容' : value.error);
+      llmResults.push(value);
+      return value;
+    },
   });
+  const requestStatus = llmResults.some((item) => !item.ok) ? 'failed' : 'completed';
+  stages.push(stage('requestAi', '请求 AI', requestStatus, Date.now() - requestStart, llmResults.length ? undefined : '没有需要 AI 填写的复盘块'));
+  const writeStatus = result.ok ? 'completed' : 'failed';
+  const writeMessage = result.ok ? '日报复盘已写入或无需写入' : result.error;
+  stages.push(stage('writeObsidian', '写入 Obsidian', writeStatus, undefined, writeMessage));
+  emitAiReviewProgress('daily', 'writeObsidian', '写入 Obsidian', writeStatus, writeMessage);
+  stages.push(stage('confirmResult', '确认结果', result.ok ? 'completed' : 'failed', undefined, result.ok ? '生成完成' : result.error));
+  const diagnostic = createDiagnostic({
+    reportKind: 'daily',
+    startedAt,
+    finalStatus: result.ok ? (llmResults.some((item) => !item.ok) ? 'completedWithWarning' : 'completed') : 'writeFailed',
+    resolution: llm.resolution,
+    stages,
+    llmResults,
+    sourceChars,
+    error: result.error,
+  });
+  return { ...result, diagnostic };
 }
 
 let aiTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1588,10 +1763,29 @@ function createWindow() {
     });
   });
   ipcMain.handle('aiReview:generateWeekly', async (_e, date: string, tasks: Task[]) => {
+    const startedAt = Date.now();
+    emitAiReviewProgress('weekly', 'prepareMaterials', '准备复盘材料', 'running', '读取本周日报素材');
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    const llm = ensureReportLlmAvailable('weekly');
+    if (!llm.ok) {
+      emitAiReviewProgress('weekly', 'requestAi', '请求 AI', 'failed', llm.error);
+      const diagnostic = createDiagnostic({
+        reportKind: 'weekly',
+        startedAt,
+        finalStatus: 'accountUnavailable',
+        resolution: llm.resolution,
+        stages: [stage('requestAi', '请求 AI', 'failed', undefined, llm.error)],
+        error: llm.error,
+      });
+      return { ok: false, error: llm.error, diagnostic };
+    }
     const vaultStatus = getVaultStatus();
-    if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
+    if (!vaultStatus.ok || !vaultStatus.vaultPath) {
+      emitAiReviewProgress('weekly', 'writeObsidian', '写入 Obsidian', 'failed', vaultStatus.reason);
+      const diagnostic = createDiagnostic({ reportKind: 'weekly', startedAt, finalStatus: 'writeFailed', resolution: llm.resolution, stages: [], error: vaultStatus.reason });
+      return { ok: false, error: vaultStatus.reason, diagnostic };
+    }
+    const prepareStart = Date.now();
     const selected = getDateKey(date);
     // 取所在 ISO 周的周一到周日 7 天。
     const d = new Date(`${selected}T00:00:00`);
@@ -1605,23 +1799,67 @@ function createWindow() {
         dates: weekDates,
         rules: getDailySourceRules(),
       }).map((source) => ({ date: source.date, content: source.content })));
-    if (!hasSourceMaterials(dailyContents)) return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh };
+    const sourceChars = dailyContents.reduce((acc, source) => acc + source.content.length, 0);
+    const stages = [stage('prepareMaterials', '准备复盘材料', 'completed', Date.now() - prepareStart, `素材 ${sourceChars} 字符`)];
+    emitAiReviewProgress('weekly', 'prepareMaterials', '准备复盘材料', 'completed', `素材 ${sourceChars} 字符`);
+    if (!hasSourceMaterials(dailyContents)) {
+      emitAiReviewProgress('weekly', 'prepareMaterials', '准备复盘材料', 'failed', NO_SOURCE_MATERIALS_ERROR.zh);
+      const diagnostic = createDiagnostic({ reportKind: 'weekly', startedAt, finalStatus: 'noSourceMaterials', resolution: llm.resolution, stages, sourceChars, error: NO_SOURCE_MATERIALS_ERROR.zh });
+      return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh, diagnostic };
+    }
     const stats = computeRangeStats(tasks as StatTask[], monday, weekDates[6]);
-    return generatePersonalWeekly({
+    let llmResult: Awaited<ReturnType<typeof llm.callLlm>> | undefined;
+    const result = await generatePersonalWeekly({
       vaultPath: vaultStatus.vaultPath,
       weekKey: isoWeekKey(selected),
       dailyContents,
       stats,
       relativeDir: sanitizeRelDir(settings.weeklyDir, DEFAULT_REPORT_DIRS.weekly),
       systemPrompt: settings.weeklyPrompt,
-      callLlm: getLlmCaller(),
+      callLlm: async (messages) => {
+        emitAiReviewProgress('weekly', 'requestAi', '请求 AI', 'running', '等待模型生成周报');
+        llmResult = await llm.callLlm(messages);
+        emitAiReviewProgress('weekly', 'requestAi', '请求 AI', llmResult.ok ? 'completed' : 'failed', llmResult.ok ? '已收到 AI 周报' : llmResult.error);
+        return llmResult;
+      },
     });
+    emitAiReviewProgress('weekly', 'writeObsidian', '写入 Obsidian', result.ok ? 'completed' : 'failed', result.ok ? '周报已写入' : result.error);
+    const diagnostic = createDiagnostic({
+      reportKind: 'weekly',
+      startedAt,
+      finalStatus: result.ok ? (result.truncated ? 'completedWithWarning' : 'completed') : (llmResult && !llmResult.ok ? 'providerFailed' : 'writeFailed'),
+      resolution: llm.resolution,
+      stages,
+      llmResults: llmResult ? [llmResult] : [],
+      sourceChars,
+      error: result.error,
+    });
+    return { ...result, diagnostic };
   });
   ipcMain.handle('aiReview:generateMonthly', async (_e, date: string, tasks: Task[]) => {
+    const startedAt = Date.now();
+    emitAiReviewProgress('monthly', 'prepareMaterials', '准备复盘材料', 'running', '读取本月周报/日报素材');
     const settings = getAiReviewSettings();
-    if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { ok: false, error: 'AI 复盘未启用或缺少 Key' };
+    const llm = ensureReportLlmAvailable('monthly');
+    if (!llm.ok) {
+      emitAiReviewProgress('monthly', 'requestAi', '请求 AI', 'failed', llm.error);
+      const diagnostic = createDiagnostic({
+        reportKind: 'monthly',
+        startedAt,
+        finalStatus: 'accountUnavailable',
+        resolution: llm.resolution,
+        stages: [stage('requestAi', '请求 AI', 'failed', undefined, llm.error)],
+        error: llm.error,
+      });
+      return { ok: false, error: llm.error, diagnostic };
+    }
     const vaultStatus = getVaultStatus();
-    if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, error: vaultStatus.reason };
+    if (!vaultStatus.ok || !vaultStatus.vaultPath) {
+      emitAiReviewProgress('monthly', 'writeObsidian', '写入 Obsidian', 'failed', vaultStatus.reason);
+      const diagnostic = createDiagnostic({ reportKind: 'monthly', startedAt, finalStatus: 'writeFailed', resolution: llm.resolution, stages: [], error: vaultStatus.reason });
+      return { ok: false, error: vaultStatus.reason, diagnostic };
+    }
+    const prepareStart = Date.now();
     const month = monthKey(getDateKey(date));
     const { first, last } = monthRange(month);
     const sources = collectMonthlySources({
@@ -1631,17 +1869,42 @@ function createWindow() {
       dailyRules: getDailySourceRules(),
       mode: settings.monthlySourceMode,
     }).map((source) => ({ label: source.label, content: source.content }));
-    if (!hasSourceMaterials(sources)) return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh };
+    const sourceChars = sources.reduce((acc, source) => acc + source.content.length, 0);
+    const stages = [stage('prepareMaterials', '准备复盘材料', 'completed', Date.now() - prepareStart, `素材 ${sourceChars} 字符`)];
+    emitAiReviewProgress('monthly', 'prepareMaterials', '准备复盘材料', 'completed', `素材 ${sourceChars} 字符`);
+    if (!hasSourceMaterials(sources)) {
+      emitAiReviewProgress('monthly', 'prepareMaterials', '准备复盘材料', 'failed', NO_SOURCE_MATERIALS_ERROR.zh);
+      const diagnostic = createDiagnostic({ reportKind: 'monthly', startedAt, finalStatus: 'noSourceMaterials', resolution: llm.resolution, stages, sourceChars, error: NO_SOURCE_MATERIALS_ERROR.zh });
+      return { ok: false, error: NO_SOURCE_MATERIALS_ERROR.zh, diagnostic };
+    }
     const stats = computeRangeStats(tasks as StatTask[], first, last);
-    return generatePersonalMonthly({
+    let llmResult: Awaited<ReturnType<typeof llm.callLlm>> | undefined;
+    const result = await generatePersonalMonthly({
       vaultPath: vaultStatus.vaultPath,
       month,
       sources,
       stats,
       relativeDir: sanitizeRelDir(settings.monthlyDir, DEFAULT_REPORT_DIRS.monthly),
       systemPrompt: settings.monthlyPrompt,
-      callLlm: getLlmCaller(),
+      callLlm: async (messages) => {
+        emitAiReviewProgress('monthly', 'requestAi', '请求 AI', 'running', '等待模型生成月报');
+        llmResult = await llm.callLlm(messages);
+        emitAiReviewProgress('monthly', 'requestAi', '请求 AI', llmResult.ok ? 'completed' : 'failed', llmResult.ok ? '已收到 AI 月报' : llmResult.error);
+        return llmResult;
+      },
     });
+    emitAiReviewProgress('monthly', 'writeObsidian', '写入 Obsidian', result.ok ? 'completed' : 'failed', result.ok ? '月报已写入' : result.error);
+    const diagnostic = createDiagnostic({
+      reportKind: 'monthly',
+      startedAt,
+      finalStatus: result.ok ? (result.truncated ? 'completedWithWarning' : 'completed') : (llmResult && !llmResult.ok ? 'providerFailed' : 'writeFailed'),
+      resolution: llm.resolution,
+      stages,
+      llmResults: llmResult ? [llmResult] : [],
+      sourceChars,
+      error: result.error,
+    });
+    return { ...result, diagnostic };
   });
   ipcMain.handle('aiReview:generateExternal', async (_e, kind: 'weekly' | 'monthly', date: string) => {
     const settings = getAiReviewSettings();

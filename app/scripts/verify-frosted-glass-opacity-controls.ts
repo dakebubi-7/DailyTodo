@@ -173,7 +173,7 @@ assertBlockIncludes(glassOpacityControl, 'onChange={(value) => onChange(withUnif
 const blurStrengthControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', 'value={settings.blurStrength}');
 assertBlockIncludes(blurStrengthControl, "label={appSettings.language === 'zh-CN' ? '模糊强度' : 'Blur strength'}", 'Appearance should expose a blur strength control.');
 assertBlockIncludes(blurStrengthControl, 'min={0}', 'Blur strength control should start at zero.');
-assertBlockIncludes(blurStrengthControl, 'max={48}', 'Blur strength control should cap at 48.');
+assertBlockIncludes(blurStrengthControl, 'max={80}', 'Blur strength control should cap at 80.');
 assertBlockIncludes(blurStrengthControl, 'defaultValue={recommendation.blurStrength}', 'Blur strength reset should use the current theme blur recommendation.');
 assertBlockIncludes(blurStrengthControl, 'resetTitle={resetToThemeDefaultTitle}', 'Blur strength control should use the theme-default reset tooltip.');
 assertBlockIncludes(blurStrengthControl, "onChange={(value) => updatePersonalization('blurStrength', value)}", 'Blur strength control should update blurStrength.');
@@ -211,10 +211,9 @@ const meaningfulCssConsumers: Array<[string, RegExp, string]> = [
   ['.app-shell', /var\(--glass-saturation\)/, 'App shell blur should use --glass-saturation.'],
   ['.dark .app-shell', /var\(--window-opacity\)/, 'Dark app shell should use --window-opacity.'],
   ['.app-top', /var\(--top-opacity\)/, 'Top area should use --top-opacity.'],
-  ['.task-card', /var\(--card-opacity\)/, 'Task cards should use --card-opacity.'],
-  ['.dark .task-card', /var\(--card-opacity\)/, 'Dark task cards should use --card-opacity.'],
-  ['.task-toolbar', /var\(--card-opacity\)/, 'Task toolbar should use --card-opacity.'],
-  ['.dark .task-toolbar', /var\(--card-opacity\)/, 'Dark task toolbar should use --card-opacity.'],
+  ['.task-card', /var\(--card-opacity\)/, 'Light task cards should use --card-opacity.'],
+  ['.task-toolbar', /var\(--card-opacity\)|var\(--control-opacity\)/, 'Task toolbar should use opacity variables.'],
+  ['.dark .task-toolbar', /var\(--card-opacity\)|var\(--control-opacity\)/, 'Dark task toolbar should use opacity variables.'],
   ['.add-task-container', /var\(--input-opacity\)/, 'Light input containers should use --input-opacity.'],
   ['.dark .add-task-container', /var\(--input-opacity\)/, 'Dark input containers should use --input-opacity.'],
   ['.settings-panel', /var\(--settings-panel-opacity\)/, 'Light settings panel should use --settings-panel-opacity.'],
@@ -227,8 +226,7 @@ const meaningfulCssConsumers: Array<[string, RegExp, string]> = [
   ['.theme-neumorphism .completion-dialog', /var\(--dialog-opacity\)/, 'Neumorphism completion dialog should use --dialog-opacity.'],
   ['.dark .theme-minimal .task-card', /var\(--card-opacity\)/, 'Dark minimal task cards should use --card-opacity.'],
   ['.dark .theme-minimal .task-toolbar', /var\(--card-opacity\)/, 'Dark minimal task toolbar should use --card-opacity.'],
-  ['.theme-dark-mode.dark .task-card', /var\(--card-opacity\)/, 'Dark mode task cards should use --card-opacity.'],
-  ['.theme-dark-mode.dark .task-toolbar', /var\(--card-opacity\)/, 'Dark mode task toolbar should use --card-opacity.'],
+  ['.theme-dark-mode.dark .task-toolbar', /var\(--card-opacity\)|var\(--control-opacity\)/, 'Dark mode task toolbar should use opacity variables.'],
   ['.theme-dark-mode.dark .settings-panel', /var\(--settings-panel-opacity\)/, 'Dark mode settings panel should use --settings-panel-opacity.'],
   ['.theme-invisible .settings-panel', /var\(--settings-panel-opacity\)/, 'Invisible settings panel should use --settings-panel-opacity.'],
   ['.theme-invisible .priority-popover', /var\(--menu-opacity\)/, 'Invisible priority popover should use --menu-opacity.'],
@@ -254,8 +252,8 @@ assert.match(
 );
 assert.match(
   electronMain,
-  /for \(const material of \['acrylic', 'mica'/,
-  'Native material helper should prefer acrylic and fall back to mica-like materials.'
+  /setBackgroundMaterial\('none'\)/,
+  'Native material helper should disable fixed OS material so CSS blur strength controls glass strength.'
 );
 assert.match(
   electronMain,
@@ -285,8 +283,23 @@ assertSelectorBlockUses(
 );
 assertSelectorBlockUses(
   '.dark .task-card',
-  /color-mix\(in srgb, rgba\(32, 34, 37, var\(--card-opacity\)\) 42%, transparent\)/,
-  'Dark task cards should soften --card-opacity instead of using it as a full opaque card fill.'
+  /background:\s*transparent\s*!important/,
+  'Dark task cards should be transparent so they do not draw black blocks behind rows.'
+);
+assertSelectorBlockUses(
+  ".app-shell[data-theme='invisible'] .task-toolbar",
+  /background(?:-color)?:\s*transparent\s*!important[\s\S]*backdrop-filter:\s*none\s*!important/,
+  'Invisible task toolbar should match the surrounding transparent pane instead of drawing a separate black/white glass block.'
+);
+assertSelectorBlockUses(
+  ".app-shell[data-theme='invisible'] .task-search-input",
+  /background(?:-color)?:[\s\S]*!important[\s\S]*backdrop-filter:\s*none\s*!important/,
+  'Invisible task toolbar inputs should avoid their own blur layer.'
+);
+assertSelectorBlockUses(
+  ".app-shell[data-theme='invisible'] .add-task-inner",
+  /background(?:-color)?:\s*transparent\s*!important|box-shadow:\s*none\s*!important/,
+  'Invisible add-task shell should match the surrounding transparent pane while the text input remains a readable field.'
 );
 assertSelectorDoesNotUse(
   '.task-card:hover',

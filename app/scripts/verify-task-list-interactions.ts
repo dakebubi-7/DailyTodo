@@ -118,7 +118,7 @@ const taskList = readFileSync(join(root, 'src/components/TaskList.tsx'), 'utf8')
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
 const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
 const addTaskInput = readFileSync(join(root, 'src/components/AddTaskInput.tsx'), 'utf8');
-const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8');
+const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').replace(/\r\n/g, '\n');
 const useTasks = readFileSync(join(root, 'src/hooks/useTasks.ts'), 'utf8');
 const packageJson = readFileSync(join(root, 'package.json'), 'utf8');
 
@@ -165,14 +165,23 @@ assert(!taskList.includes('layout="position"'), 'Source groups should not run a 
 assert(addTaskInput.includes('source-toggle-button') && addTaskInput.includes('TaskSource'), 'AddTaskInput should keep the personal/external source toggle.');
 assert(globals.includes('.task-subtask-row:hover .task-subtask-delete') && globals.includes('pointer-events: none'), 'Subtask delete should keep its slot but hide visually until row hover/focus.');
 assert(globals.includes('.task-delete-zone') && globals.includes('height: 40px'), 'CSS should keep a tall delete hot zone while using a compact width so task text has room.');
-assert(globals.includes('--task-action-safe-space: 3.9rem'), 'Trailing source/review/delete controls should reserve a compact right-side safe space.');
-assert(taskItem.includes("personal: '个'") && taskItem.includes("external: '外'"), 'The source badge should use compact one-character labels in the trailing action cluster.');
-assert(taskItem.indexOf('task-source-badge') > taskItem.indexOf('task-action-layer') && taskItem.indexOf('task-source-badge') < taskItem.indexOf('ReviewActionButton'), 'Trailing action order should be source, review, then delete from left to right.');
-assert(!taskItem.includes('<span className="task-source-badge" data-source={taskSource} title={sourceTitles[taskSource]}>
-                {sourceLabels[taskSource]}
-              </span>'), 'The source badge should not sit inside the text row because it crowds the task title.');
 assert(!globals.includes('.task-card:hover .task-delete-action'), 'Delete visibility should be controlled by the right-side hot zone, not whole-card hover.');
 assert(globals.includes('position: absolute') && globals.includes('.task-action-layer'), 'Action buttons should be absolutely positioned outside text layout.');
 assert(globals.includes('padding-right') && globals.includes('--task-action-safe-space'), 'Task card text layout should reserve a stable right-side safe space.');
+
+assert(
+  globals.includes('height: 1.22rem !important;') &&
+    globals.includes('width: 1.22rem !important;') &&
+    globals.includes('min-width: 1.22rem !important;'),
+  'Main completion circle should stay compact across themes.',
+);
+assert(taskItem.includes('<svg width="9" height="9" viewBox="0 0 12 12" fill="none">'), 'Completion check icon should scale down with the smaller completion circle.');
+
+assert(taskItem.includes('className="task-tree-spacer"') && taskItem.includes('aria-hidden="true"'), 'Main task rows without children should keep a tree-toggle spacer so completion/priority/text columns align.');
+assert(globals.includes('.task-card-no-children {\n  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;'), 'No-child task rows should use the same leading column structure as rows with children.');
+
+assert(globals.includes('.task-card > .task-text-wrap,\n.task-card > .task-edit-input {\n  grid-column: 5 !important;'), 'Task text should stay in the first row text column, not wrap under the leading controls.');
+assert(globals.includes('.task-subtask-action-layer {\n  top: 50% !important;\n  transform: translateY(-50%) !important;') && globals.includes('grid-template-columns: 1.38rem 1.38rem !important;'), 'Subtask review/delete controls should be vertically centered and aligned in equal slots.');
+assert(globals.includes('.task-complete-action,\n.task-tree-toggle,\n.task-tree-spacer {\n  height: 1.12rem !important;'), 'Completion circle and tree toggle should stay compact across themes.');
 
 console.log('Task list interactions verification passed');

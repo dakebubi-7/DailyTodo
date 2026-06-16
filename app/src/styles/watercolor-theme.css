@@ -702,10 +702,11 @@
   background: linear-gradient(to bottom, rgba(15, 22, 38, var(--window-opacity)), rgba(20, 28, 46, var(--window-opacity))) !important;
 }
 
-/* 正文/次要文字统一浅色 */
+/* 正文/次要文字统一纯白，避免透明桌面上发灰发蓝 */
 .dark .theme-watercolor .task-text,
+.dark .theme-watercolor .task-subtask-text,
 .dark .theme-watercolor .date-current {
-  color: #cdd8e6 !important;
+  color: #fff !important;
 }
 .dark .theme-watercolor .task-card-completed .task-text {
   color: #6f7d8f !important;
