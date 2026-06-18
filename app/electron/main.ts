@@ -195,6 +195,13 @@ const SETTINGS_WINDOW_WIDTH = 720;
 function getSettingsWindowWidth(workAreaWidth: number) {
   return Math.min(SETTINGS_WINDOW_WIDTH, Math.max(MIN_WINDOW_WIDTH, workAreaWidth - 40));
 }
+
+function normalizeRestoredWindowState(saved: WindowState | undefined): WindowState | undefined {
+  if (!saved) return undefined;
+  const settingsLikeWidth = saved.width && saved.width >= SETTINGS_WINDOW_WIDTH - 8;
+  if (!settingsLikeWidth) return saved;
+  return { ...saved, width: DEFAULT_WINDOW_WIDTH, height: saved.height || DEFAULT_WINDOW_HEIGHT };
+}
 const APP_ICON_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABiklEQVR4nO3bQRKCMAwFUM7BHbgCB0Dv4PW8ijdx6ca1rpxhFCFpkv6kDTPZgc1/QumCDgPxmJb5FamouZoLrgaBbhwKgW4WioBuEoqAbg6KgG4KjoBuCAqAbgaOgG4ECoBuAl3qAM/H3bRcA1iHt0BQA6gVXhtBBaB2eE0EMQAqvBZCAiRAAiSAGcC0zBetSoAECAjQ/RyQAAmQAOoBQwFMy3wqrb1wXQBQx2wVgDymawCrSa1rgFCToHX4pgBKx2kCQDJGeADpGO4AtJvXAKwGwAmhdXeFAOCcRwl/u543yzXA+tzS8P+CSyCqAkj+eWp4LoL5JFg7/DiOLAST1yAy/KeoCGbrgNoA6/AuADgIVuEpCOYrQcn1R8/4Vnh3ANwF0h7Ad0hKeBcAWwiUa45udUp4cwAOArcoz/tR+CoAVgilkx4EAIUgXRG6/1CSsxByAWBRVuGnSN8Lm4WPAsBBoP5e2D0D0uA/4aMBaFTX+4a63jm2G751BFL4VhFY4VuCKA4eHYKa6w3BqOZexsuoaQAAAABJRU5ErkJggg==';
 
@@ -1164,7 +1171,8 @@ function previewTasksToObsidian(tasks: Task[], date?: string, dailyWork = '', in
 }
 
 function getInitialBounds() {
-  const saved = store.get(WINDOW_STATE_KEY) as WindowState | undefined;
+  const stored = store.get(WINDOW_STATE_KEY) as WindowState | undefined;
+  const saved = normalizeRestoredWindowState(stored);
   const { workArea } = screen.getPrimaryDisplay();
   const width = Math.max(MIN_WINDOW_WIDTH, saved?.width || DEFAULT_WINDOW_WIDTH);
   const height = saved?.height || DEFAULT_WINDOW_HEIGHT;
@@ -1187,11 +1195,13 @@ function loadRenderer(win: BrowserWindow, route: RendererRoute) {
   win.loadFile(path.join(__dirname, '../dist/index.html'), { query });
 }
 
-function persistWindowState(win: BrowserWindow) {
+function persistWindowState(win: BrowserWindow, options: { persistSize?: boolean; overrideBounds?: WindowState } = {}) {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     if (win.isDestroyed() || win.isMinimized()) return;
-    store.set(WINDOW_STATE_KEY, win.getBounds());
+    const bounds = options.overrideBounds ?? win.getBounds();
+    const previous = normalizeRestoredWindowState((store.get(WINDOW_STATE_KEY) as WindowState | undefined) ?? undefined) ?? {};
+    store.set(WINDOW_STATE_KEY, options.persistSize === false ? { ...bounds, width: previous.width, height: previous.height } : bounds);
   }, 250);
 }
 
@@ -1587,8 +1597,8 @@ function createWindow() {
   });
   win.on('unresponsive', () => diag('window unresponsive'));
 
-  win.on('move', () => persistWindowState(win));
-  win.on('resize', () => persistWindowState(win));
+  win.on('move', () => persistWindowState(win, { persistSize: !settingsModeOpen }));
+  win.on('resize', () => persistWindowState(win, { persistSize: !settingsModeOpen }));
   // Win+D / 切换前台会让窗口失焦并可能被「显示桌面」压下；失焦时重新确立 screen-saver 层级，
   // 把它带回桌面之上（仅在置顶开启时）。
   // 注意：不要在 blur 里重新设置 setAlwaysOnTop/setVisibleOnAllWorkspaces。
@@ -1651,7 +1661,7 @@ function createWindow() {
       const x = Math.min(Math.max(bounds.x, workArea.x), workArea.x + workArea.width - width);
       win.setMinimumSize(width, RESET_WINDOW_HEIGHT);
       win.setBounds({ ...bounds, x, width });
-      persistWindowState(win);
+      persistWindowState(win, { persistSize: false });
       return { ok: true, width };
     }
 
@@ -1663,8 +1673,9 @@ function createWindow() {
     win.setMinimumSize(MIN_WINDOW_WIDTH, RESET_WINDOW_HEIGHT);
     const width = Math.min(settingsModeRestoreWidth, Math.max(MIN_WINDOW_WIDTH, workArea.width - 40));
     const x = Math.min(Math.max(bounds.x, workArea.x), workArea.x + workArea.width - width);
-    win.setBounds({ ...bounds, x, width });
-    persistWindowState(win);
+    const restoredBounds = { ...bounds, x, width };
+    win.setBounds(restoredBounds);
+    persistWindowState(win, { overrideBounds: restoredBounds });
     return { ok: true, width };
   });
 

@@ -65,9 +65,12 @@
     "verify:settings-v2-ai-account": "tsx scripts/verify-settings-v2-ai-account.ts",
     "verify:settings-v2-window-mode": "tsx scripts/verify-settings-v2-window-mode.ts",
     "verify:task-list-interactions": "tsx scripts/verify-task-list-interactions.ts",
+    "verify:quick-capture": "tsx scripts/verify-quick-capture.ts",
+    "verify:quick-capture-ui": "tsx scripts/verify-quick-capture-ui.ts",
     "verify:frosted-glass-opacity": "tsx scripts/verify-frosted-glass-opacity-controls.ts",
     "verify:task-layout-unified-glass": "tsx scripts/verify-task-layout-unified-glass.ts",
-    "verify:theme-visual-isolation": "tsx scripts/verify-theme-visual-isolation.ts"
+    "verify:theme-visual-isolation": "tsx scripts/verify-theme-visual-isolation.ts",
+    "verify:ui-feedback-regressions": "tsx scripts/verify-ui-feedback-regressions.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",

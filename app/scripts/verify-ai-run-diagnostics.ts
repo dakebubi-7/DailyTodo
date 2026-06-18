@@ -57,7 +57,9 @@ assert.ok(settingsPanelSrc.includes('lastDiagnostic'), 'SettingsPanel stores las
 assert.ok(settingsPanelSrc.includes('setLastDiagnostic(null)'), 'SettingsPanel can close diagnostics');
 assert.ok(settingsPanelSrc.includes('currentProgress'), 'SettingsPanel stores current generation progress');
 assert.ok(settingsPanelSrc.includes('initialProgressForAction'), 'SettingsPanel sets a visible first stage immediately after clicking generate');
-assert.ok(settingsPanelSrc.includes('scheduleFallbackProgress'), 'SettingsPanel advances stages even if IPC progress is missed');
+assert.ok(settingsPanelSrc.includes('scheduleFallbackProgress'), 'SettingsPanel shows a waiting state if IPC progress is delayed');
+assert.ok(settingsPanelSrc.includes('waitingForRealProgress'), 'SettingsPanel fallback copy should be explicit about waiting for real progress');
+assert.ok(!settingsPanelSrc.includes('function fallbackProgress'), 'SettingsPanel should not synthesize fake AI pipeline stages');
 assert.ok(settingsPanelSrc.includes('finishProgress'), 'SettingsPanel sets final progress after result returns');
 assert.ok(settingsPanelSrc.includes('generationActiveRef'), 'SettingsPanel ignores stale late progress events');
 assert.ok(settingsPanelSrc.includes('progressDisplay(currentProgress'), 'active generate button shows current stage instead of static generating text');

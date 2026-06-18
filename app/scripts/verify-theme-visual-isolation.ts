@@ -28,8 +28,8 @@ assert.ok(
   'Invisible light mode should force primary UI text to black.',
 );
 assert.ok(
-  globals.includes(".app-shell[data-theme='invisible'] .completion-dialog") && globals.includes('rgba(31, 42, 56, 0.88)'),
-  'Invisible completion dialog should use the blue-gray readable surface.',
+  globals.includes(".dark .app-shell[data-theme='invisible'] .completion-dialog") && globals.includes('rgba(18, 18, 20, var(--dialog-opacity))'),
+  'Invisible dark completion dialog should use a neutral black-gray readable surface.',
 );
 assert.ok(
   globals.includes(".app-shell[data-theme='invisible'] .task-complete-action-complete") && globals.includes('linear-gradient(135deg, #d8e1ea, #8fa4b8)'),

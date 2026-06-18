@@ -257,24 +257,9 @@ function initialProgressForAction(action: GenerationAction): AiReviewProgressEve
     stageKey: 'prepareMaterials',
     label: '准备素材',
     status: 'running',
-    message: '准备素材',
+    message: '准备真实进度',
     at: new Date().toISOString(),
   };
-}
-
-function fallbackProgress(current: AiReviewProgressEvent | null): AiReviewProgressEvent {
-  const reportKind = current?.reportKind ?? 'daily';
-  const stages: Array<Pick<AiReviewProgressEvent, 'stageKey' | 'label' | 'message'>> = [
-    { stageKey: 'prepareMaterials', label: '准备素材', message: '准备素材' },
-    { stageKey: 'buildPrompt', label: '构建提示词', message: '构建提示词' },
-    { stageKey: 'requestAi', label: '请求 AI', message: '等待模型返回' },
-    { stageKey: 'receiveResult', label: '接收结果', message: '接收模型结果' },
-    { stageKey: 'writeObsidian', label: '写入 Obsidian', message: '写入 Obsidian' },
-    { stageKey: 'confirmResult', label: '确认结果', message: '确认结果' },
-  ];
-  const currentIndex = stages.findIndex((stage) => stage.stageKey === current?.stageKey);
-  const next = stages[Math.min(Math.max(currentIndex, 0) + 1, stages.length - 1)] ?? stages[0];
-  return { reportKind, ...next, status: 'running', at: new Date().toISOString() };
 }
 
 function DiagnosticCard({ diagnostic, onClose }: { diagnostic: AiReviewRunDiagnostic; onClose: () => void }) {
@@ -753,12 +738,13 @@ export function SettingsPanel({
     saveAiReviewSettings({ ...aiReviewSettings, [key]: value });
   };
 
+  const waitingForRealProgress = zh ? '等待真实进度…' : 'Waiting for real progress…';
+
   const scheduleFallbackProgress = () => {
     if (progressFallbackTimerRef.current) window.clearTimeout(progressFallbackTimerRef.current);
     progressFallbackTimerRef.current = window.setTimeout(() => {
       if (!generationActiveRef.current) return;
-      setCurrentProgress((current) => fallbackProgress(current));
-      scheduleFallbackProgress();
+      setCurrentProgress((current) => current ? { ...current, message: waitingForRealProgress, at: new Date().toISOString() } : current);
     }, 1200);
   };
 
@@ -1187,7 +1173,7 @@ export function SettingsPanel({
                     disabled={generatingAction !== null}
                     onClick={() => runGeneration(action)}
                   >
-                    {generatingAction === action ? progressDisplay(currentProgress, text.aiReview.generating) : label}
+                    {generatingAction === action ? progressDisplay(currentProgress, waitingForRealProgress) : label}
                   </button>
                 ))}
               </div>

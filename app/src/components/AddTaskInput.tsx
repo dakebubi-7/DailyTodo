@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { parseQuickCapture } from '../../shared/quickCapture';
 import { Task, TaskSource } from '../types/task';
 import { PriorityPicker } from './PriorityPicker';
 
@@ -25,17 +26,24 @@ export function AddTaskInput({ onAdd }: AddTaskInputProps) {
   const [priority, setPriority] = useState<Task['priority']>('medium');
   const [source, setSource] = useState<TaskSource>('personal');
 
+  const parsed = useMemo(() => parseQuickCapture(text), [text]);
+  const effectivePriority = parsed.priority || priority;
+  const effectiveSource: TaskSource = parsed.sourceLabel === '外部' ? 'external' : source;
+  const showQuickCapturePreview = Boolean(text.trim());
+  const showQuickCaptureError = showQuickCapturePreview && !parsed.title;
+
   const toggleSource = () => {
     setSource((prev) => (prev === 'personal' ? 'external' : 'personal'));
   };
 
   const handleSubmit = () => {
-    if (text.trim()) {
-      onAdd(text.trim(), priority, source);
-      setText('');
-      setPriority('medium');
-      setSource('personal');
-    }
+    const nextText = parsed.title || text.trim();
+    if (!nextText || showQuickCaptureError) return;
+
+    onAdd(nextText, effectivePriority, effectiveSource);
+    setText('');
+    setPriority('medium');
+    setSource('personal');
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -97,7 +105,7 @@ export function AddTaskInput({ onAdd }: AddTaskInputProps) {
           {sourceLabels[source]}
         </button>
 
-        <PriorityPicker value={priority} onChange={setPriority} title="选择新任务优先级" />
+        <PriorityPicker value={effectivePriority} onChange={setPriority} title="选择新任务优先级" />
 
         <motion.button
           type="button"
@@ -113,6 +121,23 @@ export function AddTaskInput({ onAdd }: AddTaskInputProps) {
           </svg>
         </motion.button>
       </div>
+
+      {showQuickCapturePreview && (
+        <div className="quick-capture-preview" aria-live="polite">
+          {showQuickCaptureError ? (
+            <span className="quick-capture-error">请输入任务内容</span>
+          ) : (
+            <>
+              <span>任务：{parsed.title}</span>
+              {parsed.dateIntent && <span>日期：{parsed.dateIntent.label}</span>}
+              <span>优先级：{effectivePriority === 'high' ? '高' : effectivePriority === 'medium' ? '中' : '低'}</span>
+              {parsed.sourceLabel && <span>来源：{parsed.sourceLabel}</span>}
+              {parsed.tags.length > 0 && <span>标签：{parsed.tags.join('、')}</span>}
+              {parsed.timeIntent && <span>时间：{parsed.timeIntent}</span>}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -92,19 +92,19 @@ assert.ok(
 );
 assert.ok(!watercolorTheme.includes('color: #cdd8e6 !important;'), 'Dark watercolor should not tint task text blue-gray.');
 
-// Invisible theme: text edit + completion stay readable, completion circle is blue-gray (per user request), inner surfaces transparent.
+// Invisible theme: text edit + completion stay readable, completed circle stays neutral, inner surfaces transparent.
 assert.ok(
   globals.includes("body .app-shell[data-theme=\"invisible\"] :is(.add-task-input, .task-edit-input)") ||
     globals.includes(".app-shell[data-theme='invisible'] .task-card"),
   'Invisible theme should scope its rules under the data-theme selector.',
 );
 assert.ok(
-  globals.includes("linear-gradient(135deg, #d8e1ea, #8fa4b8)"),
-  'Invisible completed circle should use the requested blue-gray fill, not amber.',
+  globals.includes(".app-shell[data-theme='invisible'] .task-complete-action-complete") && globals.includes('linear-gradient(135deg, #d8e1ea, #8fa4b8)'),
+  'Invisible completed circle should use a neutral low-noise fill, not amber.',
 );
 assert.ok(
-  globals.includes(".app-shell[data-theme='invisible'] .completion-dialog") && globals.includes('rgba(31, 42, 56, 0.88)'),
-  'Invisible completion dialog should use the blue-gray surface matching the daily editor.',
+  globals.includes(".dark .app-shell[data-theme='invisible'] .completion-dialog") && globals.includes('rgba(18, 18, 20, var(--dialog-opacity))'),
+  'Invisible dark completion dialog should use a neutral black-gray surface.',
 );
 
 // Invisible light/dark text is fully readable (no gray): white in dark, near-black in light.

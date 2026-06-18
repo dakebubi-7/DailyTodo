@@ -74,6 +74,7 @@ export function TaskItem({
   const hasTags = Boolean(task.tags?.length);
   const hasReview = hasTaskReview(task);
   const canOpenReviewAction = task.completed || hasReview;
+  const showAiAssistBadge = shouldShowAiAssistBadge(task);
 
   return (
     <span className="task-tree-node">
@@ -178,6 +179,11 @@ export function TaskItem({
               >
                 {task.text}
               </span>
+              {showAiAssistBadge && (
+                <span className="task-ai-assist-badge" title="适合 AI 辅助拆解 / AI assist">
+                  AI
+                </span>
+              )}
             </span>
 
             {task.tags && task.tags.length > 0 && (
@@ -320,6 +326,11 @@ function renderSubtaskTree(
 
 function hasTaskReview(task: Task) {
   return Boolean(task.completionReviews?.length || task.completionReview);
+}
+
+function shouldShowAiAssistBadge(task: Task) {
+  const searchable = [task.text, ...(task.tags || [])].join(' ').toLowerCase();
+  return task.priority === 'high' || /\b(ai|llm|gpt|claude)\b|人工智能|课程|课|学习|训练|模型/.test(searchable);
 }
 
 function ReviewActionButton({

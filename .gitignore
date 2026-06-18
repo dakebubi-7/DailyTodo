@@ -18,6 +18,13 @@ data/
 # Local cleanup backups
 _backup/
 
+# Local process/session artifacts
+.superpowers/
+.claude/worktrees/
+
+# Accidental nested project copies
+DailyTodo/
+
 # OS / editor junk
 .DS_Store
 Thumbs.db
@@ -26,5 +33,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-.claude/worktrees/
