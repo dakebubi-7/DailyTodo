@@ -60,7 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setSettings: (v: unknown) => ipcRenderer.invoke('aiReview:setSettings', v),
     getSections: () => ipcRenderer.invoke('aiReview:getSections'),
     setSections: (v: unknown) => ipcRenderer.invoke('aiReview:setSections', v),
-    runForDate: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:runForDate', date, tasks),
+    runForDate: (date: string, tasks: unknown, force?: boolean) => ipcRenderer.invoke('aiReview:runForDate', date, tasks, force),
     backfill: (tasks: unknown) => ipcRenderer.invoke('aiReview:backfill', tasks),
     generateWeekly: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:generateWeekly', date, tasks),
     generateMonthly: (date: string, tasks: unknown) => ipcRenderer.invoke('aiReview:generateMonthly', date, tasks),

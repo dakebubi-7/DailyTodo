@@ -8,6 +8,9 @@ const root = join(here, '..');
 const main = readFileSync(join(root, 'electron/main.ts'), 'utf8');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
+const addTaskInput = readFileSync(join(root, 'src/components/AddTaskInput.tsx'), 'utf8');
+const appTsx = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+const quickCapture = readFileSync(join(root, 'shared/quickCapture.ts'), 'utf8');
 const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').replace(/\r\n/g, '\n');
 
 function expectIncludes(source: string, needle: string, message: string) {
@@ -29,9 +32,16 @@ expectIncludes(settingsPanel, '等待真实进度', 'Fallback progress copy shou
 expectNotIncludes(settingsPanel, 'function fallbackProgress', 'SettingsPanel should not synthesize fake AI pipeline stages.');
 expectNotIncludes(settingsPanel, 'setCurrentProgress((current) => fallbackProgress(current))', 'AI progress fallback should not advance through fake stages on a timer.');
 expectIncludes(settingsPanel, 'progressDisplay(currentProgress, waitingForRealProgress)', 'Generate button should use real progress or the waiting fallback copy.');
-expectIncludes(taskItem, 'shouldShowAiAssistBadge', 'TaskItem should decide when to show an AI assist badge.');
-expectIncludes(taskItem, 'task-ai-assist-badge', 'TaskItem should render a visible AI assist badge for high-priority/AI course tasks.');
-expectIncludes(globals, '.task-ai-assist-badge', 'AI assist badge should have dedicated low-noise styling.');
+expectNotIncludes(taskItem, 'shouldShowAiAssistBadge', 'TaskItem should not keep the old AI assist badge heuristic; natural quick capture handles AI-like intent.');
+expectNotIncludes(taskItem, 'task-ai-assist-badge', 'TaskItem should not render the old AI assist badge.');
+expectNotIncludes(globals, '.task-ai-assist-badge', 'AI assist badge styling should be removed because the requirement is natural-language task parsing, not a badge.');
+expectIncludes(quickCapture, 'NATURAL_DATE_PATTERNS', 'Quick capture should understand natural Chinese date phrases like 明天 without slash syntax.');
+expectIncludes(quickCapture, 'NATURAL_URGENCY_PATTERNS', 'Quick capture should infer high priority from urgent Chinese phrases.');
+expectIncludes(quickCapture, 'extractNaturalTaskTitle', 'Quick capture should extract concise task titles from natural sentences.');
+expectIncludes(addTaskInput, 'resolveDateIntent(parsed.dateIntent)', 'AddTaskInput should route parsed date intents to taskDate.');
+expectIncludes(addTaskInput, 'onAdd(nextText, effectivePriority, effectiveSource, taskDate)', 'AddTaskInput should pass the resolved date into addTask.');
+expectIncludes(appTsx, '<ReviewView allTasks={allTasks} onEditReview={editTaskReview} onDeleteReview={deleteTaskReview}', 'Main review tab should support deleting records from context/menu actions.');
+expectIncludes(appTsx, 'onAdd={(text, taskPriority, taskSource, taskDate) => addTask(text, taskPriority, taskSource, taskDate)}', 'App should pass parsed quick-capture dates into addTask.');
 
 expectIncludes(globals, '.dark .app-shell[data-theme=\'minimal\'] .settings-field select option', 'Minimal dark select options should be themed for contrast.');
 expectIncludes(globals, '.dark .app-shell[data-theme=\'invisible\'] .settings-field select option', 'Invisible dark select options should be themed for contrast.');
@@ -53,5 +63,11 @@ expectIncludes(globals, ".dark .app-shell[data-theme='watercolor'] .daily-work-t
 expectIncludes(globals, ".dark .app-shell[data-theme='watercolor'] .review-edit-textarea", 'Watercolor dark completion record editor should be explicitly blue.');
 expectIncludes(globals, ".app-shell[data-theme='invisible'] .task-complete-action:not(.task-complete-action-complete)", 'Invisible incomplete completion action should be deliberately de-emphasized.');
 expectIncludes(globals, 'background: rgba(255, 255, 255, 0.025) !important;', 'Invisible mark-complete action should use a very subtle fill.');
+
+expectIncludes(globals, ".task-subtask-row {\n  padding-right: 3.25rem !important;", 'Subtask rows should reserve the same compact trailing action width as the action layer.');
+expectIncludes(globals, ".task-delete-zone,\n.task-subtask-delete-zone {\n  transform: none !important;", 'Main/subtask delete zones should not be nudged out of vertical alignment.');
+expectIncludes(globals, ".task-action-layer {\n  transform: translateY(-50%) !important;", 'Main task action layer should be vertically centered.');
+expectIncludes(globals, ".task-action-layer,\n.task-subtask-action-layer {\n  grid-template-columns: 1.38rem 1.38rem !important;", 'Main and subtask action layers should use the same fixed icon columns.');
+expectIncludes(globals, ".task-review-action,\n.task-delete-action,\n.task-subtask-review,\n.task-subtask-delete {\n  width: 1.28rem !important;", 'Review and delete icons should share one visual size across main/subtask rows.');
 
 console.log('verify-ui-feedback-regressions passed');

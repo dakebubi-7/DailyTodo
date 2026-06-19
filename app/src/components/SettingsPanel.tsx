@@ -739,6 +739,9 @@ export function SettingsPanel({
   };
 
   const waitingForRealProgress = zh ? '等待真实进度…' : 'Waiting for real progress…';
+  const confirmDailyRegeneration = zh
+    ? '当前日报可能已存在。确认后会覆盖 DailyTodo 管理的 AI 复盘块并重新生成，继续吗？'
+    : 'Today\'s daily review may already exist. Confirm to overwrite DailyTodo-managed AI review blocks and regenerate it.';
 
   const scheduleFallbackProgress = () => {
     if (progressFallbackTimerRef.current) window.clearTimeout(progressFallbackTimerRef.current);
@@ -758,7 +761,12 @@ export function SettingsPanel({
     setGenerationStatus(text.aiReview.generating);
     try {
       if (action === 'daily') {
-        const result = await window.electronAPI?.aiReview.runForDate(selectedDate, tasks);
+        if (!window.confirm(confirmDailyRegeneration)) {
+          setCurrentProgress(finishProgress(action, false));
+          setGenerationStatus(zh ? '已取消重新生成日报' : 'Daily regeneration canceled');
+          return;
+        }
+        const result = await window.electronAPI?.aiReview.runForDate(selectedDate, tasks, true);
         if (!result) throw new Error('AI Review API unavailable');
         if (result.diagnostic) setLastDiagnostic(result.diagnostic);
         setCurrentProgress(finishProgress(action, result.ok));

@@ -745,7 +745,7 @@ export default function App() {
             </div>
 
             {activeTab === 'completed' ? (
-              <ReviewView allTasks={allTasks} onEditReview={editTaskReview} />
+              <ReviewView allTasks={allTasks} onEditReview={editTaskReview} onDeleteReview={deleteTaskReview} />
             ) : (
               <TaskList
                 tasks={visibleTasks}
@@ -776,7 +776,7 @@ export default function App() {
             )}
           </div>
 
-          <AddTaskInput onAdd={addTask} />
+          <AddTaskInput onAdd={(text, taskPriority, taskSource, taskDate) => addTask(text, taskPriority, taskSource, taskDate)} />
         </motion.div>
       </div>
     </div>

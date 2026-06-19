@@ -9,6 +9,8 @@ interface ReviewViewProps {
   allTasks: Task[];
   /** 编辑已有复盘记录（保留原时间戳和 id，只改文字字段/状态/完成度）。 */
   onEditReview?: (taskId: string, reviewId: string, updates: Partial<Pick<TaskCompletionReview, 'status' | 'percent' | 'summary' | 'unknowns' | 'nextStep'>>) => void;
+  /** 删除已有复盘记录。 */
+  onDeleteReview?: (taskId: string, reviewId: string) => void;
 }
 
 /** 一条完成记录（某任务在某天的一次追加；无 review 的「只标记完成」用 review=undefined 兜底）。 */
@@ -54,7 +56,7 @@ function formatTime(timestamp: string) {
   return date.toLocaleString('zh-CN');
 }
 
-export function ReviewView({ allTasks, onEditReview }: ReviewViewProps) {
+export function ReviewView({ allTasks, onEditReview, onDeleteReview }: ReviewViewProps) {
   const today = localDateKey();
   const yesterday = useMemo(() => {
     const d = new Date(`${today}T00:00:00`);
@@ -165,6 +167,7 @@ export function ReviewView({ allTasks, onEditReview }: ReviewViewProps) {
                               record={record}
                               showDivider={idx > 0}
                               onEditReview={onEditReview}
+                              onDeleteReview={onDeleteReview}
                             />
                           ))}
                         </motion.div>
@@ -191,10 +194,12 @@ function ReviewRecordBlock({
   record,
   showDivider,
   onEditReview,
+  onDeleteReview,
 }: {
   record: ReviewRecord;
   showDivider: boolean;
   onEditReview?: ReviewViewProps['onEditReview'];
+  onDeleteReview?: ReviewViewProps['onDeleteReview'];
 }) {
   const review = record.review;
   const [isEditing, setIsEditing] = useState(false);
@@ -239,8 +244,14 @@ function ReviewRecordBlock({
     setIsEditing(false);
   };
 
+  const handleContextMenu = (event: React.MouseEvent) => {
+    if (!review || !onDeleteReview) return;
+    event.preventDefault();
+    onDeleteReview(record.task.id, getReviewIdentity(review));
+  };
+
   return (
-    <div className={`review-record ${showDivider ? 'review-record-divided' : ''}`}>
+    <div className={`review-record ${showDivider ? 'review-record-divided' : ''}`} onContextMenu={handleContextMenu}>
       <div className="review-record-head">
         <span className="review-record-time">{formatTime(record.timestamp)}</span>
         <span className="review-record-head-actions">
@@ -252,6 +263,16 @@ function ReviewRecordBlock({
               title="编辑这条记录（保留原时间）"
             >
               编辑
+            </button>
+          )}
+          {review && !isEditing && onDeleteReview && (
+            <button
+              type="button"
+              onClick={() => onDeleteReview(record.task.id, getReviewIdentity(review))}
+              className="review-delete-btn"
+              title="删除这条完成记录"
+            >
+              删除
             </button>
           )}
           {review && <span className="review-record-status">{statusLabel[review.status]} · {review.percent}%</span>}

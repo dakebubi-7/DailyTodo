@@ -751,7 +751,7 @@ async function extractDocxText(buffer: Buffer): Promise<string> {
   return value;
 }
 
-async function runReviewForDate(date: string, tasks: Task[]) {
+async function runReviewForDate(date: string, tasks: Task[], force = false) {
   const startedAt = Date.now();
   emitAiReviewProgress('daily', 'prepareMaterials', '准备复盘材料', 'running', '读取日记文件和复盘模板');
   const llm = ensureReportLlmAvailable('daily');
@@ -799,6 +799,7 @@ async function runReviewForDate(date: string, tasks: Task[]) {
     tasks: tasks as StatTask[],
     sections: getReviewSections(),
     customBlocks,
+    force,
     callLlm: async (messages) => {
       emitAiReviewProgress('daily', 'requestAi', '请求 AI', 'running', '等待模型返回复盘内容');
       const value = await llm.callLlm(messages);
@@ -1756,7 +1757,7 @@ function createWindow() {
     store.set(AI_REVIEW_SECTIONS_KEY, next);
     return next;
   });
-  ipcMain.handle('aiReview:runForDate', (_e, date: string, tasks: Task[]) => runReviewForDate(getDateKey(date), tasks));
+  ipcMain.handle('aiReview:runForDate', (_e, date: string, tasks: Task[], force?: boolean) => runReviewForDate(getDateKey(date), tasks, Boolean(force)));
   ipcMain.handle('aiReview:backfill', async (_e, tasks: Task[]) => {
     const settings = getAiReviewSettings();
     if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { processed: [], filled: [], errors: [] };

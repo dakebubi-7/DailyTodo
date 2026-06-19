@@ -34,6 +34,19 @@ const WEEKDAY_TOKENS: Record<string, number> = {
   周天: 0,
 };
 
+const NATURAL_DATE_PATTERNS: Array<{ pattern: RegExp; intent: QuickCaptureDateIntent }> = [
+  { pattern: /今天/, intent: { kind: 'today', label: '今天' } },
+  { pattern: /明天/, intent: { kind: 'tomorrow', label: '明天' } },
+  { pattern: /后天/, intent: { kind: 'day-after-tomorrow', label: '后天' } },
+  ...Object.entries(WEEKDAY_TOKENS).map(([label, weekday]) => ({
+    pattern: new RegExp(label),
+    intent: { kind: 'weekday' as const, label, weekday },
+  })),
+];
+
+const NATURAL_URGENCY_PATTERNS = /很急|紧急|加急|急需|尽快|马上|立刻|高优先级|重要/;
+const NATURAL_FILLER_PATTERN = /^(?:我|你|他|她|我们|明天|今天|后天|周[一二三四五六日天]|要|需要|得|去|到|在|把|进行|做|处理|推进|安排|一下|一个|一份|公司|学校|家里|办公室)+$/;
+
 function parseDateIntent(token: string): QuickCaptureDateIntent | undefined {
   if (token === '今天') return { kind: 'today', label: '今天' };
   if (token === '明天') return { kind: 'tomorrow', label: '明天' };
@@ -44,8 +57,35 @@ function parseDateIntent(token: string): QuickCaptureDateIntent | undefined {
   return undefined;
 }
 
+function parseNaturalDateIntent(input: string): QuickCaptureDateIntent | undefined {
+  return NATURAL_DATE_PATTERNS.find((item) => item.pattern.test(input))?.intent;
+}
+
 function isTimeToken(token: string) {
   return /^([01]?\d|2[0-3]):[0-5]\d$/.test(token) || /^([01]?\d|2[0-3])点$/.test(token);
+}
+
+function extractNaturalTaskTitle(input: string) {
+  const withoutMarkers = input
+    .replace(/!高|!中|!低/g, ' ')
+    .replace(/[#@][\p{L}\p{N}_-]+/gu, ' ')
+    .replace(NATURAL_URGENCY_PATTERNS, ' ')
+    .replace(/[，。,.!?！？、；;：:]/g, ' ')
+    .trim();
+
+  const segments = withoutMarkers.split(/\s+/).filter(Boolean);
+  const candidates = segments
+    .flatMap((segment) => segment.split(/(?=明天|今天|后天|周[一二三四五六日天]|很急|紧急|加急|尽快)/).filter(Boolean))
+    .map((segment) => segment
+      .replace(/^(?:我|你|他|她|我们)?(?:今天|明天|后天|周[一二三四五六日天])?/, '')
+      .replace(/^(?:要|需要|得|去|到|在|把|进行|做|处理|推进|安排)+/, '')
+      .replace(/^(?:公司|学校|家里|办公室)+/, '')
+      .replace(/^(?:要|需要|得|去|到|在|把|进行|做|处理|推进|安排)+/, '')
+      .replace(/(?:很急|紧急|加急|急需|尽快|马上|立刻|一下|一个|一份)+$/, '')
+      .trim())
+    .filter((segment) => segment && !NATURAL_FILLER_PATTERN.test(segment));
+
+  return candidates.sort((a, b) => b.length - a.length)[0] || withoutMarkers;
 }
 
 export function parseQuickCapture(input: string): QuickCaptureResult {
@@ -90,7 +130,14 @@ export function parseQuickCapture(input: string): QuickCaptureResult {
     titleTokens.push(token);
   }
 
-  const title = titleTokens.join(' ').trim();
+  const rawTitle = titleTokens.join(' ').trim();
+  const naturalDateIntent = parseNaturalDateIntent(input);
+  const hasInlineNaturalSignal = titleTokens.some((token) => parseNaturalDateIntent(token) || NATURAL_URGENCY_PATTERNS.test(token));
+  dateIntent = dateIntent || naturalDateIntent;
+  priority = priority || (NATURAL_URGENCY_PATTERNS.test(input) ? 'high' : undefined);
+  const title = rawTitle && !hasInlineNaturalSignal
+    ? rawTitle
+    : extractNaturalTaskTitle(input);
   const warnings = title ? [] : ['请输入任务内容'];
 
   return {

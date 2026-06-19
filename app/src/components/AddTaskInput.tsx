@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { parseQuickCapture } from '../../shared/quickCapture';
+import { parseQuickCapture, type QuickCaptureDateIntent } from '../../shared/quickCapture';
+import { getBusinessDateKey, shiftDateKey } from '../../shared/taskRollover';
 import { Task, TaskSource } from '../types/task';
 import { PriorityPicker } from './PriorityPicker';
 
 interface AddTaskInputProps {
-  onAdd: (text: string, priority: Task['priority'], source: TaskSource) => void;
+  onAdd: (text: string, priority: Task['priority'], source: TaskSource, taskDate?: string) => void;
 }
 
 // 高 → 中 → 低，↑ 提高一级、↓ 降低一级。
@@ -20,6 +21,19 @@ const sourceTitles: Record<TaskSource, string> = {
   personal: '个人任务',
   external: '外部任务',
 };
+
+function resolveDateIntent(intent?: QuickCaptureDateIntent) {
+  if (!intent) return undefined;
+  const today = getBusinessDateKey();
+  if (intent.kind === 'today') return today;
+  if (intent.kind === 'tomorrow') return shiftDateKey(today, 1);
+  if (intent.kind === 'day-after-tomorrow') return shiftDateKey(today, 2);
+
+  const current = new Date(`${today}T00:00:00`);
+  const currentWeekday = current.getDay();
+  const daysUntil = (intent.weekday - currentWeekday + 7) % 7 || 7;
+  return shiftDateKey(today, daysUntil);
+}
 
 export function AddTaskInput({ onAdd }: AddTaskInputProps) {
   const [text, setText] = useState('');
@@ -40,7 +54,8 @@ export function AddTaskInput({ onAdd }: AddTaskInputProps) {
     const nextText = parsed.title || text.trim();
     if (!nextText || showQuickCaptureError) return;
 
-    onAdd(nextText, effectivePriority, effectiveSource);
+    const taskDate = resolveDateIntent(parsed.dateIntent);
+    onAdd(nextText, effectivePriority, effectiveSource, taskDate);
     setText('');
     setPriority('medium');
     setSource('personal');

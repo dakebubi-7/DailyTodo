@@ -78,7 +78,7 @@ interface Window {
       setSettings: (settings: import('../shared/aiReview/aiReviewSettings').AiReviewSettings) => Promise<import('../shared/aiReview/aiReviewSettings').AiReviewSettings>;
       getSections: () => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
       setSections: (sections: import('../shared/aiReview/sectionConfig').SectionConfig[]) => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
-      runForDate: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; error?: string; filledMarkers: string[]; skippedMarkers: string[]; diagnostic?: import('../shared/aiReview/runDiagnostics').AiReviewRunDiagnostic }>;
+      runForDate: (date: string, tasks: import('./types/task').Task[], force?: boolean) => Promise<{ ok: boolean; error?: string; filledMarkers: string[]; skippedMarkers: string[]; diagnostic?: import('../shared/aiReview/runDiagnostics').AiReviewRunDiagnostic }>;
       backfill: (tasks: import('./types/task').Task[]) => Promise<{ processed: string[]; filled: string[]; errors: Array<{ date: string; error: string }> }>;
       generateWeekly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean; diagnostic?: import('../shared/aiReview/runDiagnostics').AiReviewRunDiagnostic }>;
       generateMonthly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean; diagnostic?: import('../shared/aiReview/runDiagnostics').AiReviewRunDiagnostic }>;

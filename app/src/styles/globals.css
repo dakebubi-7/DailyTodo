@@ -9160,28 +9160,114 @@ html:not(.dark) .app-shell[data-theme='invisible'] .review-entry-text {
 }
 
 .task-subtask-row {
-  padding-right: 2.95rem !important;
+  padding-right: 3.25rem !important;
 }
 
-.task-ai-assist-badge {
-  display: inline-flex;
-  height: 1.05rem;
-  flex: 0 0 auto;
-  align-items: center;
+.task-delete-zone,
+.task-subtask-delete-zone {
+  transform: none !important;
+}
+
+.task-action-layer {
+  transform: translateY(-50%) !important;
+}
+
+.task-action-layer,
+.task-subtask-action-layer {
+  grid-template-columns: 1.38rem 1.38rem !important;
+  gap: 0.45rem !important;
+  align-items: center !important;
+  justify-items: center !important;
+}
+
+.task-review-zone,
+.task-delete-zone,
+.task-subtask-review-zone,
+.task-subtask-delete-zone {
+  display: grid !important;
+  width: 1.38rem !important;
+  height: 1.38rem !important;
+  place-items: center !important;
+}
+
+.task-review-action,
+.task-delete-action,
+.task-subtask-review,
+.task-subtask-delete {
+  width: 1.28rem !important;
+  height: 1.28rem !important;
+  min-width: 1.28rem !important;
+  border-radius: 0.45rem !important;
+}
+
+/* Final feedback polish: no blue outside watercolor; AI settings cards share stable sizing. */
+.dark .app-shell:not([data-theme='watercolor']) {
+  --neutral-accent: #e5e7eb;
+  --neutral-accent-strong: #f9fafb;
+  --neutral-surface: rgba(39, 39, 42, 0.78);
+  --neutral-surface-soft: rgba(255, 255, 255, 0.08);
+  --neutral-border: rgba(255, 255, 255, 0.18);
+}
+
+.dark .app-shell:not([data-theme='watercolor']) :is(.titlebar-icon-button:hover, .titlebar-icon-active, .header-actions button:hover, .daily-panel-tab-active, .tabbar button.font-semibold, .task-tool-active, .task-filter-active, .settings-nav-active, .settings-switch-on) {
+  border-color: var(--neutral-border) !important;
+  background: var(--neutral-surface) !important;
+  color: var(--neutral-accent-strong) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .app-shell:not([data-theme='watercolor']) :is(.task-complete-action-complete, .task-subtask-check-complete, .add-task-button, .review-edit-save) {
+  border-color: var(--neutral-border) !important;
+  background: linear-gradient(135deg, #52525b, #27272a) !important;
+  color: #ffffff !important;
+}
+
+.dark .app-shell:not([data-theme='watercolor']) :is(.date-stepper:hover, .date-calendar-button:hover, .task-tool-icon:hover, .task-filter-button:hover, .task-icon-action:enabled:hover, .daily-work-preview:hover) {
+  border-color: var(--neutral-border) !important;
+  background: var(--neutral-surface-soft) !important;
+  color: var(--neutral-accent) !important;
+}
+
+.dark .app-shell:not([data-theme='watercolor']) :is(.settings-field input:focus, .settings-field select:focus, .settings-field textarea:focus, .add-task-input:focus, .task-search-input:focus) {
+  border-color: var(--neutral-border) !important;
+  box-shadow: 0 0 0 3px rgba(229, 231, 235, 0.1) !important;
+}
+
+.settings-action-row-wide {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(9.8rem, 1fr));
+  align-items: stretch !important;
+}
+
+.settings-action-row-wide .settings-reset-button {
+  width: 100%;
+  min-height: 3.25rem;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--personal-accent) 28%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--personal-accent) 9%, transparent);
-  padding: 0 0.36rem;
-  color: var(--personal-accent);
-  font-size: 0.56rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  line-height: 1;
+  white-space: normal;
 }
 
-.dark .task-ai-assist-badge {
-  border-color: color-mix(in srgb, var(--personal-secondary) 32%, transparent);
-  background: color-mix(in srgb, var(--personal-secondary) 14%, transparent);
-  color: var(--personal-secondary);
+.ai-account-inline-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, auto);
+  gap: 0.45rem;
+  align-items: stretch;
 }
+
+.ai-account-inline-actions > select,
+.ai-account-inline-actions > .settings-reset-button {
+  min-height: 2.5rem;
+}
+
+.settings-zone > .settings-inline-section,
+.settings-zone > .settings-grid,
+.settings-zone > .settings-field,
+.settings-zone > .settings-switch-row {
+  width: 100%;
+}
+
+.settings-zone > .settings-inline-section .settings-field,
+.settings-zone > .settings-grid .settings-field,
+.settings-zone > .settings-switch-row {
+  min-height: 3.25rem;
+}
+
