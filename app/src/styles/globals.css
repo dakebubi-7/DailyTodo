@@ -8479,56 +8479,41 @@ html {
   position: relative;
   z-index: 1;
   display: grid;
-  padding-bottom: 0.08rem;
-  transition: padding-bottom 0.18s ease;
-}
-
-.task-card-accordion-shell-layers {
-  pointer-events: none;
-  position: relative;
-  z-index: 0;
-  display: block;
-  height: calc(1.05rem + (min(var(--accordion-layer-count), var(--accordion-max-layers)) - 1) * 0.18rem);
-  margin-top: -0.42rem;
+  padding-bottom: 0.48rem;
+  margin-bottom: 0;
   overflow: visible;
+  isolation: isolate;
 }
 
-.task-card-accordion-shell-layers > span {
+.task-card-accordion-shell::before,
+.task-card-accordion-shell::after {
+  content: '';
+  pointer-events: none;
   position: absolute;
-  left: 0.3rem;
-  right: 0.3rem;
-  height: 1.05rem;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  border-top: 0;
+  left: 0.32rem;
+  right: 0.32rem;
   border-radius: 0 0 calc(var(--card-radius) * 0.96) calc(var(--card-radius) * 0.96);
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-  opacity: 0.7;
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
-.task-card-accordion-shell-layers > span:nth-child(1) {
-  top: 0.14rem;
+.task-card-accordion-shell::after {
+  bottom: -0.08rem;
+  height: 0.86rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  opacity: 0.72;
+  z-index: 0;
 }
 
-.task-card-accordion-shell-layers > span:nth-child(2) {
-  top: 0.3rem;
-  left: 0.52rem;
-  right: 0.52rem;
-  opacity: 0.54;
-}
-
-.task-card-accordion-shell-layers > span:nth-child(3) {
-  top: 0.46rem;
-  left: 0.74rem;
-  right: 0.74rem;
-  opacity: 0.4;
-}
-
-.task-card-accordion-shell-layers > span:nth-child(4) {
-  top: 0.62rem;
-  left: 0.96rem;
-  right: 0.96rem;
-  opacity: 0.28;
+.task-card-accordion-shell::before {
+  left: 0.54rem;
+  right: 0.54rem;
+  bottom: -0.22rem;
+  height: 0.56rem;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+  opacity: 0.38;
+  z-index: -1;
 }
 
 .task-card-accordion-shell-has-children {
@@ -8536,11 +8521,11 @@ html {
 }
 
 .task-card-accordion-shell-collapsed {
-  padding-bottom: 0.08rem;
+  padding-bottom: 0.48rem;
 }
 
 .task-card-accordion-shell-open {
-  padding-bottom: 0.08rem;
+  padding-bottom: 0.48rem;
 }
 
 .task-card-accordion-shell-has-children .task-card {
@@ -8550,22 +8535,42 @@ html {
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
 }
 
-.task-card-accordion-shell-open .task-card-accordion-shell-layers > span {
-  background: rgba(255, 255, 255, 0.26);
-  border-color: rgba(255, 255, 255, 0.62);
+.task-card-accordion-shell-collapsed::after {
+  opacity: 0.72;
+  transform: translateY(0);
+}
+
+.task-card-accordion-shell-collapsed::before {
   opacity: 0.34;
+  transform: translateY(0);
 }
 
-.dark .task-card-accordion-shell-layers > span {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+.task-card-accordion-shell-open::after {
+  opacity: 0.28;
+  transform: translateY(0.03rem);
 }
 
-.dark .task-card-accordion-shell-open .task-card-accordion-shell-layers > span {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
-  opacity: 0.24;
+.task-card-accordion-shell-open::before {
+  opacity: 0.16;
+  transform: translateY(0.06rem);
+}
+
+.dark .task-card-accordion-shell::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.dark .task-card-accordion-shell::before {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+}
+
+.dark .task-card-accordion-shell-open::after {
+  opacity: 0.22;
+}
+
+.dark .task-card-accordion-shell-open::before {
+  opacity: 0.1;
 }
 
 .task-subtasks-motion {

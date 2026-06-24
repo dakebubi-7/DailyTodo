@@ -35,13 +35,13 @@ expectNotIncludes(settingsPanel, 'setCurrentProgress((current) => fallbackProgre
 expectIncludes(settingsPanel, 'progressDisplay(currentProgress, waitingForRealProgress)', 'Generate button should use real progress or the waiting fallback copy.');
 expectNotIncludes(taskItem, 'shouldShowAiAssistBadge', 'TaskItem should not keep the old AI assist badge heuristic; natural quick capture handles AI-like intent.');
 expectNotIncludes(taskItem, 'task-ai-assist-badge', 'TaskItem should not render the old AI assist badge.');
-expectIncludes(taskItem, 'task-card-accordion-shell-layers', 'Collapsed parent tasks should render the thin stacked base layer.');
+expectIncludes(taskItem, 'task-card-accordion-shell', 'Parent tasks should render in the accordion shell.');
+expectIncludes(globals, '.task-card-accordion-shell::after {', 'The accordion base should be drawn by the shell itself.');
+expectIncludes(globals, '.task-card-accordion-shell::before {', 'The shell should expose a second faint underside shadow.');
+expectIncludes(globals, '.task-card-accordion-shell-open::after {', 'Expanded shells should keep a very faint base remnant.');
+expectIncludes(globals, '.task-card-accordion-shell-open::before {', 'Expanded shells should keep a very faint rear shadow remnant.');
 expectIncludes(taskItem, 'task-subtasks task-subtasks-nested task-subtasks-motion', 'Expanded parent tasks should still render the subtask reveal wrapper.');
 expectIncludes(taskItem, "initial={{ height: 0, opacity: 0, y: -10, clipPath: 'inset(0 0 100% 0)' }}", 'Subtasks should enter from the card base with a clipped reveal motion.');
-expectIncludes(globals, '.task-card-accordion-shell-collapsed {', 'Collapsed parent tasks should keep a visible thin base under the card.');
-expectIncludes(globals, '.task-card-accordion-shell-open {', 'Expanded parent tasks should keep a faint base state after opening.');
-expectIncludes(globals, '.task-card-accordion-shell-layers {', 'The stacked base layer needs dedicated layout styling.');
-expectIncludes(globals, '.task-card-accordion-shell-layers > span:nth-child(1) {', 'The base layer should still render stacked page slices.');
 expectIncludes(globals, '.task-subtasks-motion {', 'Subtask reveal animation should use an overflow-clipped motion wrapper.');
 expectIncludes(quickCapture, 'NATURAL_DATE_PATTERNS', 'Quick capture should understand natural Chinese date phrases like 明天 without slash syntax.');
 expectIncludes(quickCapture, 'NATURAL_URGENCY_PATTERNS', 'Quick capture should infer high priority from urgent Chinese phrases.');

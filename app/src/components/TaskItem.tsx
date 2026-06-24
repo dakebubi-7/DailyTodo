@@ -147,138 +147,123 @@ export function TaskItem({
         style={{ ['--accordion-layer-count' as const]: accordionLayerCount } as CSSProperties}
       >
         <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, x: 48 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          const viewport = document.querySelector('.app-viewport');
-          const shell = document.querySelector('.app-shell');
-          const cs = viewport ? getComputedStyle(viewport) : null;
-          const num = (v: string, fallback: number) => {
-            const n = parseFloat(v);
-            return Number.isFinite(n) ? n : fallback;
-          };
-          const themeId = shell
-            ? (Array.from(shell.classList).find((c) => c.startsWith('theme-'))?.slice('theme-'.length) || '')
-            : '';
-          void window.electronAPI?.openTaskContextMenu({
-            task,
-            allTags,
-            screenX: e.screenX,
-            screenY: e.screenY,
-            isDark: document.documentElement.classList.contains('dark'),
-            theme: {
-              themeId,
-              accent: cs?.getPropertyValue('--personal-accent').trim() || '#3b82f6',
-              secondary: cs?.getPropertyValue('--personal-secondary').trim() || '#8b5cf6',
-              menuOpacity: cs ? num(cs.getPropertyValue('--menu-opacity'), 0.96) : 0.96,
-              blurStrength: cs ? num(cs.getPropertyValue('--blur-strength'), 18) : 18,
-              cardRadius: cs ? num(cs.getPropertyValue('--card-radius'), 12) : 12,
-            },
-          });
-        }}
-        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasTags ? 'task-card-has-tags' : 'task-card-no-tags'} ${canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
-        data-priority={task.priority}
-      >
-        <button
-          type="button"
-          ref={dragHandleProps?.setActivatorNodeRef}
-          className="task-drag-handle"
-          disabled={dragHandleProps?.disabled ?? true}
-          aria-label="拖动调整任务顺序"
-          {...(dragHandleProps?.attributes || {})}
-          {...(dragHandleProps?.listeners || {})}
-          aria-disabled={dragHandleProps?.disabled ?? true}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, x: 48 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            const viewport = document.querySelector('.app-viewport');
+            const shell = document.querySelector('.app-shell');
+            const cs = viewport ? getComputedStyle(viewport) : null;
+            const num = (v: string, fallback: number) => {
+              const n = parseFloat(v);
+              return Number.isFinite(n) ? n : fallback;
+            };
+            const themeId = shell
+              ? (Array.from(shell.classList).find((c) => c.startsWith('theme-'))?.slice('theme-'.length) || '')
+              : '';
+            void window.electronAPI?.openTaskContextMenu({
+              task,
+              allTags,
+              screenX: e.screenX,
+              screenY: e.screenY,
+              isDark: document.documentElement.classList.contains('dark'),
+              theme: {
+                themeId,
+                accent: cs?.getPropertyValue('--personal-accent').trim() || '#3b82f6',
+                secondary: cs?.getPropertyValue('--personal-secondary').trim() || '#8b5cf6',
+                menuOpacity: cs ? num(cs.getPropertyValue('--menu-opacity'), 0.96) : 0.96,
+                blurStrength: cs ? num(cs.getPropertyValue('--blur-strength'), 18) : 18,
+                cardRadius: cs ? num(cs.getPropertyValue('--card-radius'), 12) : 12,
+              },
+            });
+          }}
+          className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasTags ? 'task-card-has-tags' : 'task-card-no-tags'} ${canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
+          data-priority={task.priority}
         >
-          <DragDotsIcon />
-        </button>
-
-        <span className="task-tree-spacer" aria-hidden="true" />
-
-        <button
-          type="button"
-          onClick={onToggle}
-          className={`task-complete-action ${task.completed ? 'task-complete-action-complete' : ''}`}
-          aria-label={task.completed ? '标记为未完成' : '标记为完成'}
-          title={task.completed ? '标记为未完成' : '标记为完成'}
-        >
-          {task.completed && (
-            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </button>
-
-        <PriorityPicker value={task.priority} onChange={onPriorityChange} />
-
-        {isEditing ? (
-          <input
-            type="text"
-            value={editText}
-            onChange={(event) => setEditText(event.target.value)}
-            onBlur={handleSubmit}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            className="task-edit-input"
-            aria-label="编辑任务"
-          />
-        ) : hasChildren ? (
           <button
             type="button"
-            className="task-summary-trigger task-summary-trigger-expandable"
-            onClick={queueCollapseToggle}
-            aria-expanded={!task.collapsed}
-            aria-controls={`task-subtasks-${task.id}`}
-            aria-label={task.collapsed ? '展开子任务' : '收起子任务'}
+            ref={dragHandleProps?.setActivatorNodeRef}
+            className="task-drag-handle"
+            disabled={dragHandleProps?.disabled ?? true}
+            aria-label="拖动调整任务顺序"
+            {...(dragHandleProps?.attributes || {})}
+            {...(dragHandleProps?.listeners || {})}
+            aria-disabled={dragHandleProps?.disabled ?? true}
           >
-            {taskTextContent}
+            <DragDotsIcon />
           </button>
-        ) : (
-          taskTextContent
-        )}
 
-        <span className="task-action-layer" aria-hidden={false}>
-          <span className="task-review-zone">
-            {canOpenReviewAction && (
-              <ReviewActionButton
-                hasReview={hasReview}
-                label={hasReview ? '查看完成情况' : '补写完成情况'}
-                onClick={onViewReview}
-              />
+          <span className="task-tree-spacer" aria-hidden="true" />
+
+          <button
+            type="button"
+            onClick={onToggle}
+            className={`task-complete-action ${task.completed ? 'task-complete-action-complete' : ''}`}
+            aria-label={task.completed ? '标记为未完成' : '标记为完成'}
+            title={task.completed ? '标记为未完成' : '标记为完成'}
+          >
+            {task.completed && (
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             )}
-          </span>
+          </button>
 
-          <span className="task-delete-zone">
-            <motion.button
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.94 }}
-              onClick={onDelete}
-              className="task-icon-action task-delete-action"
-              aria-label="删除任务"
-              title="删除任务"
+          <PriorityPicker value={task.priority} onChange={onPriorityChange} />
+
+          {isEditing ? (
+            <input
+              type="text"
+              value={editText}
+              onChange={(event) => setEditText(event.target.value)}
+              onBlur={handleSubmit}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className="task-edit-input"
+              aria-label="编辑任务"
+            />
+          ) : hasChildren ? (
+            <button
+              type="button"
+              className="task-summary-trigger task-summary-trigger-expandable"
+              onClick={queueCollapseToggle}
+              aria-expanded={!task.collapsed}
+              aria-controls={`task-subtasks-${task.id}`}
+              aria-label={task.collapsed ? '展开子任务' : '收起子任务'}
             >
-              <TrashIcon />
-            </motion.button>
+              {taskTextContent}
+            </button>
+          ) : (
+            taskTextContent
+          )}
+
+          <span className="task-action-layer" aria-hidden={false}>
+            <span className="task-review-zone">
+              {canOpenReviewAction && (
+                <ReviewActionButton
+                  hasReview={hasReview}
+                  label={hasReview ? '查看完成情况' : '补写完成情况'}
+                  onClick={onViewReview}
+                />
+              )}
+            </span>
+
+            <span className="task-delete-zone">
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={onDelete}
+                className="task-icon-action task-delete-action"
+                aria-label="删除任务"
+                title="删除任务"
+              >
+                <TrashIcon />
+              </motion.button>
+            </span>
           </span>
-        </span>
-      </motion.div>
-      {hasChildren && (
-        <motion.span
-          key={`task-accordion-page-${task.id}`}
-          className="task-card-accordion-shell-layers"
-          aria-hidden="true"
-          initial={false}
-          animate={{ opacity: task.collapsed ? 1 : 0.34, y: task.collapsed ? 0 : -0.08, scaleY: task.collapsed ? 1 : 0.98 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
-          style={{ transformOrigin: 'top' }}
-        >
-          {Array.from({ length: accordionLayerCount }).map((_, index) => (
-            <span key={`accordion-layer-${task.id}-${index}`} />
-          ))}
-        </motion.span>
-      )}
+        </motion.div>
       </span>
       <AnimatePresence initial={false}>
         {task.subtasks && task.subtasks.length > 0 && !task.collapsed && (
