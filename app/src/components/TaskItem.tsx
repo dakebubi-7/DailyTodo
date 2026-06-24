@@ -264,6 +264,41 @@ export function TaskItem({
             </span>
           </span>
         </motion.div>
+        {hasChildren && (
+          <motion.span
+            className="task-card-accordion-shell-layers"
+            aria-hidden="true"
+            variants={{
+              collapsed: { transition: { staggerChildren: 0.02, staggerDirection: -1 } },
+              open: { transition: { staggerChildren: 0.06, delayChildren: 0.02 } },
+            }}
+            initial={false}
+            animate={task.collapsed ? 'collapsed' : 'open'}
+          >
+            {Array.from({ length: accordionLayerCount }).map((_, index) => (
+              <motion.span
+                key={`accordion-layer-${task.id}-${index}`}
+                className="task-card-accordion-shell-layer"
+                custom={index}
+                variants={{
+                  collapsed: (layerIndex: number) => ({
+                    opacity: Math.max(0.18, 0.7 - layerIndex * 0.12),
+                    y: 0,
+                    scaleX: 1,
+                    scaleY: 1,
+                  }),
+                  open: (layerIndex: number) => ({
+                    opacity: Math.max(0.08, 0.34 - layerIndex * 0.06),
+                    y: layerIndex * 0.18,
+                    scaleX: 1 - layerIndex * 0.01,
+                    scaleY: 0.985,
+                  }),
+                }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              />
+            ))}
+          </motion.span>
+        )}
       </span>
       <AnimatePresence initial={false}>
         {task.subtasks && task.subtasks.length > 0 && !task.collapsed && (

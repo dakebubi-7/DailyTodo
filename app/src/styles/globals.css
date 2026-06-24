@@ -8555,6 +8555,59 @@ html {
   transform: translateY(0.06rem);
 }
 
+.task-card-accordion-shell-layers {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 0.45rem);
+  height: calc(1.05rem + (min(var(--accordion-layer-count), var(--accordion-max-layers)) - 1) * 0.18rem);
+  z-index: 1;
+  overflow: visible;
+}
+
+.task-card-accordion-shell-layer {
+  position: absolute;
+  left: 0.3rem;
+  right: 0.3rem;
+  height: 1.05rem;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-top: 0;
+  border-radius: 0 0 calc(var(--card-radius) * 0.96) calc(var(--card-radius) * 0.96);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  opacity: 0.7;
+}
+
+.task-card-accordion-shell-layer:nth-child(1) {
+  top: 0.14rem;
+}
+
+.task-card-accordion-shell-layer:nth-child(2) {
+  top: 0.3rem;
+  left: 0.52rem;
+  right: 0.52rem;
+  opacity: 0.54;
+}
+
+.task-card-accordion-shell-layer:nth-child(3) {
+  top: 0.46rem;
+  left: 0.74rem;
+  right: 0.74rem;
+  opacity: 0.4;
+}
+
+.task-card-accordion-shell-layer:nth-child(4) {
+  top: 0.62rem;
+  left: 0.96rem;
+  right: 0.96rem;
+  opacity: 0.28;
+}
+
+.task-card-accordion-shell-open .task-card-accordion-shell-layer {
+  opacity: 0.34;
+}
+
 .dark .task-card-accordion-shell::after {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
@@ -8571,6 +8624,18 @@ html {
 
 .dark .task-card-accordion-shell-open::before {
   opacity: 0.1;
+}
+
+.dark .task-card-accordion-shell-layer {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.dark .task-card-accordion-shell-open .task-card-accordion-shell-layer {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  opacity: 0.24;
 }
 
 .task-subtasks-motion {

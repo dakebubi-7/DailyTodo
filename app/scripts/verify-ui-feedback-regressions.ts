@@ -35,11 +35,11 @@ expectNotIncludes(settingsPanel, 'setCurrentProgress((current) => fallbackProgre
 expectIncludes(settingsPanel, 'progressDisplay(currentProgress, waitingForRealProgress)', 'Generate button should use real progress or the waiting fallback copy.');
 expectNotIncludes(taskItem, 'shouldShowAiAssistBadge', 'TaskItem should not keep the old AI assist badge heuristic; natural quick capture handles AI-like intent.');
 expectNotIncludes(taskItem, 'task-ai-assist-badge', 'TaskItem should not render the old AI assist badge.');
-expectIncludes(taskItem, 'task-card-accordion-shell', 'Parent tasks should render in the accordion shell.');
-expectIncludes(globals, '.task-card-accordion-shell::after {', 'The accordion base should be drawn by the shell itself.');
+expectIncludes(taskItem, 'task-card-accordion-shell-layer', 'Each peel-out slice should be rendered as its own animating layer.');
+expectIncludes(taskItem, 'staggerChildren: 0.06', 'Expanded parent tasks should peel layers out one by one.');
+expectIncludes(globals, '.task-card-accordion-shell-layer {', 'Each animated layer slice needs dedicated styling.');
+expectIncludes(globals, '.task-card-accordion-shell::after {', 'The accordion base should still be drawn by the shell itself.');
 expectIncludes(globals, '.task-card-accordion-shell::before {', 'The shell should expose a second faint underside shadow.');
-expectIncludes(globals, '.task-card-accordion-shell-open::after {', 'Expanded shells should keep a very faint base remnant.');
-expectIncludes(globals, '.task-card-accordion-shell-open::before {', 'Expanded shells should keep a very faint rear shadow remnant.');
 expectIncludes(taskItem, 'task-subtasks task-subtasks-nested task-subtasks-motion', 'Expanded parent tasks should still render the subtask reveal wrapper.');
 expectIncludes(taskItem, "initial={{ height: 0, opacity: 0, y: -10, clipPath: 'inset(0 0 100% 0)' }}", 'Subtasks should enter from the card base with a clipped reveal motion.');
 expectIncludes(globals, '.task-subtasks-motion {', 'Subtask reveal animation should use an overflow-clipped motion wrapper.');
