@@ -8,6 +8,7 @@ const root = join(here, '..');
 const main = readFileSync(join(root, 'electron/main.ts'), 'utf8');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
+const taskCompletionDialog = readFileSync(join(root, 'src/components/TaskCompletionDialog.tsx'), 'utf8');
 const addTaskInput = readFileSync(join(root, 'src/components/AddTaskInput.tsx'), 'utf8');
 const appTsx = readFileSync(join(root, 'src/App.tsx'), 'utf8');
 const quickCapture = readFileSync(join(root, 'shared/quickCapture.ts'), 'utf8');
@@ -34,7 +35,14 @@ expectNotIncludes(settingsPanel, 'setCurrentProgress((current) => fallbackProgre
 expectIncludes(settingsPanel, 'progressDisplay(currentProgress, waitingForRealProgress)', 'Generate button should use real progress or the waiting fallback copy.');
 expectNotIncludes(taskItem, 'shouldShowAiAssistBadge', 'TaskItem should not keep the old AI assist badge heuristic; natural quick capture handles AI-like intent.');
 expectNotIncludes(taskItem, 'task-ai-assist-badge', 'TaskItem should not render the old AI assist badge.');
-expectNotIncludes(globals, '.task-ai-assist-badge', 'AI assist badge styling should be removed because the requirement is natural-language task parsing, not a badge.');
+expectIncludes(taskItem, 'task-card-accordion-shell-layers', 'Collapsed parent tasks should render the thin stacked base layer.');
+expectIncludes(taskItem, 'task-subtasks task-subtasks-nested task-subtasks-motion', 'Expanded parent tasks should still render the subtask reveal wrapper.');
+expectIncludes(taskItem, "initial={{ height: 0, opacity: 0, y: -10, clipPath: 'inset(0 0 100% 0)' }}", 'Subtasks should enter from the card base with a clipped reveal motion.');
+expectIncludes(globals, '.task-card-accordion-shell-collapsed {', 'Collapsed parent tasks should keep a visible thin base under the card.');
+expectIncludes(globals, '.task-card-accordion-shell-open {', 'Expanded parent tasks should keep a faint base state after opening.');
+expectIncludes(globals, '.task-card-accordion-shell-layers {', 'The stacked base layer needs dedicated layout styling.');
+expectIncludes(globals, '.task-card-accordion-shell-layers > span:nth-child(1) {', 'The base layer should still render stacked page slices.');
+expectIncludes(globals, '.task-subtasks-motion {', 'Subtask reveal animation should use an overflow-clipped motion wrapper.');
 expectIncludes(quickCapture, 'NATURAL_DATE_PATTERNS', 'Quick capture should understand natural Chinese date phrases like 明天 without slash syntax.');
 expectIncludes(quickCapture, 'NATURAL_URGENCY_PATTERNS', 'Quick capture should infer high priority from urgent Chinese phrases.');
 expectIncludes(quickCapture, 'extractNaturalTaskTitle', 'Quick capture should extract concise task titles from natural sentences.');
@@ -42,6 +50,11 @@ expectIncludes(addTaskInput, 'resolveDateIntent(parsed.dateIntent)', 'AddTaskInp
 expectIncludes(addTaskInput, 'onAdd(nextText, effectivePriority, effectiveSource, taskDate)', 'AddTaskInput should pass the resolved date into addTask.');
 expectIncludes(appTsx, '<ReviewView allTasks={allTasks} onEditReview={editTaskReview} onDeleteReview={deleteTaskReview}', 'Main review tab should support deleting records from context/menu actions.');
 expectIncludes(appTsx, 'onAdd={(text, taskPriority, taskSource, taskDate) => addTask(text, taskPriority, taskSource, taskDate)}', 'App should pass parsed quick-capture dates into addTask.');
+
+expectIncludes(taskCompletionDialog, 'className="completion-field completion-status-field"', 'Completion dialog should mark the status select with a dedicated scoped class.');
+expectIncludes(taskCompletionDialog, 'rounded-[18px]', 'Completion dialog outer frame should use the tighter rounded radius.');
+expectIncludes(globals, '.completion-dialog .completion-status-field', 'Only the completion dialog should tighten the status field density.');
+expectNotIncludes(globals, '.completion-field select {\n  padding:', 'The change should not rewrite the shared completion-field select rule.');
 
 expectIncludes(globals, '.dark .app-shell[data-theme=\'minimal\'] .settings-field select option', 'Minimal dark select options should be themed for contrast.');
 expectIncludes(globals, '.dark .app-shell[data-theme=\'invisible\'] .settings-field select option', 'Invisible dark select options should be themed for contrast.');

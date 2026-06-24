@@ -1,5 +1,5 @@
-import { useState, useEffect, type ButtonHTMLAttributes, type CSSProperties } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef, type ButtonHTMLAttributes, type CSSProperties, type MouseEvent } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Task } from '../types/task';
 import { PriorityPicker } from './PriorityPicker';
 
@@ -32,6 +32,8 @@ const priorityTitles: Record<Task['priority'], string> = {
   low: '低优先级',
 };
 
+const SUBTASK_TOGGLE_DELAY_MS = 180;
+
 export function TaskItem({
   task,
   dragHandleProps,
@@ -49,6 +51,7 @@ export function TaskItem({
 }: TaskItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
+  const collapseClickTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (editTrigger && !task.completed) {
@@ -56,6 +59,14 @@ export function TaskItem({
       setIsEditing(true);
     }
   }, [editTrigger, task.completed, task.text]);
+
+  useEffect(() => {
+    return () => {
+      if (collapseClickTimer.current !== null) {
+        window.clearTimeout(collapseClickTimer.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = () => {
     if (editText.trim()) onEdit(editText.trim());
@@ -75,9 +86,67 @@ export function TaskItem({
   const hasReview = hasTaskReview(task);
   const canOpenReviewAction = task.completed || hasReview;
 
+  const queueCollapseToggle = () => {
+    if (!hasChildren || isEditing) return;
+    if (collapseClickTimer.current !== null) {
+      window.clearTimeout(collapseClickTimer.current);
+    }
+    collapseClickTimer.current = window.setTimeout(() => {
+      onToggleCollapse(task.id);
+      collapseClickTimer.current = null;
+    }, SUBTASK_TOGGLE_DELAY_MS);
+  };
+
+  const handleTaskTextDoubleClick = (event: MouseEvent<HTMLSpanElement>) => {
+    if (collapseClickTimer.current !== null) {
+      window.clearTimeout(collapseClickTimer.current);
+      collapseClickTimer.current = null;
+    }
+    event.stopPropagation();
+    if (!task.completed) {
+      setEditText(task.text);
+      setIsEditing(true);
+    }
+  };
+
+  const taskTextContent = (
+    <span className="task-text-wrap">
+      <span className="task-text-row">
+        <span
+          onDoubleClick={hasChildren ? handleTaskTextDoubleClick : () => !task.completed && setIsEditing(true)}
+          className="task-text"
+          title={`${task.text} · ${priorityTitles[task.priority]}`}
+        >
+          {task.text}
+        </span>
+      </span>
+
+      {task.tags && task.tags.length > 0 && (
+        <span className="task-tags task-inline-tags">
+          {task.tags.slice(0, 2).map((tag) => (
+            <span key={tag} className="tag-pill-small">{tag}</span>
+          ))}
+          {task.tags.length > 2 && <span className="tag-more">+{task.tags.length - 2}</span>}
+        </span>
+      )}
+      {task.scheduledDates && task.scheduledDates.length > 0 && (
+        <span className="scheduled-dates">
+          📅 {task.scheduledDates.slice(0, 3).join(' · ')}
+          {task.scheduledDates.length > 3 && ` +${task.scheduledDates.length - 3}`}
+        </span>
+      )}
+    </span>
+  );
+
+  const accordionLayerCount = Math.min(task.subtasks?.length || 0, 4);
+
   return (
     <span className="task-tree-node">
-      <motion.div
+      <span
+        className={`task-card-accordion-shell ${hasChildren ? 'task-card-accordion-shell-has-children' : ''} ${hasChildren && task.collapsed ? 'task-card-accordion-shell-collapsed' : ''} ${hasChildren && !task.collapsed ? 'task-card-accordion-shell-open' : ''}`}
+        style={{ ['--accordion-layer-count' as const]: accordionLayerCount } as CSSProperties}
+      >
+        <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, x: 48 }}
@@ -126,20 +195,7 @@ export function TaskItem({
           <DragDotsIcon />
         </button>
 
-        {hasChildren ? (
-          <button
-            type="button"
-            className={`task-tree-toggle ${task.collapsed ? 'task-tree-toggle-collapsed' : ''}`}
-            onClick={() => onToggleCollapse(task.id)}
-            aria-label={task.collapsed ? '展开子任务' : '收起子任务'}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 5l8 7-8 7" />
-            </svg>
-          </button>
-        ) : (
-          <span className="task-tree-spacer" aria-hidden="true" />
-        )}
+        <span className="task-tree-spacer" aria-hidden="true" />
 
         <button
           type="button"
@@ -168,33 +224,19 @@ export function TaskItem({
             className="task-edit-input"
             aria-label="编辑任务"
           />
+        ) : hasChildren ? (
+          <button
+            type="button"
+            className="task-summary-trigger task-summary-trigger-expandable"
+            onClick={queueCollapseToggle}
+            aria-expanded={!task.collapsed}
+            aria-controls={`task-subtasks-${task.id}`}
+            aria-label={task.collapsed ? '展开子任务' : '收起子任务'}
+          >
+            {taskTextContent}
+          </button>
         ) : (
-          <span className="task-text-wrap">
-            <span className="task-text-row">
-              <span
-                onDoubleClick={() => !task.completed && setIsEditing(true)}
-                className="task-text"
-                title={`${task.text} · ${priorityTitles[task.priority]}`}
-              >
-                {task.text}
-              </span>
-            </span>
-
-            {task.tags && task.tags.length > 0 && (
-              <span className="task-tags task-inline-tags">
-                {task.tags.slice(0, 2).map((tag) => (
-                  <span key={tag} className="tag-pill-small">{tag}</span>
-                ))}
-                {task.tags.length > 2 && <span className="tag-more">+{task.tags.length - 2}</span>}
-              </span>
-            )}
-            {task.scheduledDates && task.scheduledDates.length > 0 && (
-              <span className="scheduled-dates">
-                📅 {task.scheduledDates.slice(0, 3).join(' · ')}
-                {task.scheduledDates.length > 3 && ` +${task.scheduledDates.length - 3}`}
-              </span>
-            )}
-          </span>
+          taskTextContent
         )}
 
         <span className="task-action-layer" aria-hidden={false}>
@@ -222,17 +264,44 @@ export function TaskItem({
           </span>
         </span>
       </motion.div>
-      {task.subtasks && task.subtasks.length > 0 && !task.collapsed && (
-        <span className="task-subtasks task-subtasks-nested" aria-label="子任务">
-          {renderSubtaskTree(task.subtasks, {
-            depth: 1,
-            onToggleSubtask,
-            onDeleteSubtask,
-            onToggleCollapse,
-            onViewSubtaskReview,
-          })}
-        </span>
+      {hasChildren && (
+        <motion.span
+          key={`task-accordion-page-${task.id}`}
+          className="task-card-accordion-shell-layers"
+          aria-hidden="true"
+          initial={false}
+          animate={{ opacity: task.collapsed ? 1 : 0.34, y: task.collapsed ? 0 : -0.08, scaleY: task.collapsed ? 1 : 0.98 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          style={{ transformOrigin: 'top' }}
+        >
+          {Array.from({ length: accordionLayerCount }).map((_, index) => (
+            <span key={`accordion-layer-${task.id}-${index}`} />
+          ))}
+        </motion.span>
       )}
+      </span>
+      <AnimatePresence initial={false}>
+        {task.subtasks && task.subtasks.length > 0 && !task.collapsed && (
+          <motion.span
+            key={`task-subtasks-${task.id}`}
+            id={`task-subtasks-${task.id}`}
+            className="task-subtasks task-subtasks-nested task-subtasks-motion"
+            aria-label="子任务"
+            initial={{ height: 0, opacity: 0, y: -10, clipPath: 'inset(0 0 100% 0)' }}
+            animate={{ height: 'auto', opacity: 1, y: 0, clipPath: 'inset(0 0 0% 0)' }}
+            exit={{ height: 0, opacity: 0, y: -8, clipPath: 'inset(0 0 100% 0)' }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+          >
+            {renderSubtaskTree(task.subtasks, {
+              depth: 1,
+              onToggleSubtask,
+              onDeleteSubtask,
+              onToggleCollapse,
+              onViewSubtaskReview,
+            })}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </span>
   );
 }
@@ -251,8 +320,16 @@ function renderSubtaskTree(
   return subtasks.map((subtask) => {
     const hasChildren = Boolean(subtask.subtasks?.length);
     return (
-      <span key={subtask.id} className="task-subtask-branch" style={{ ['--subtask-depth' as const]: depth } as CSSProperties}>
-        <span className={`task-subtask-row ${subtask.completed ? 'task-subtask-row-completed' : ''}`}>
+      <motion.span
+        key={subtask.id}
+        className="task-subtask-branch task-subtask-popout-motion"
+        style={{ ['--subtask-depth' as const]: depth } as CSSProperties}
+        initial={{ opacity: 0, y: 10, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+      >
+        <span className={`task-subtask-row task-subtask-row-card ${subtask.completed ? 'task-subtask-row-completed' : ''}`}>
           {hasChildren ? (
             <button
               type="button"
@@ -313,7 +390,7 @@ function renderSubtaskTree(
           onToggleCollapse,
           onViewSubtaskReview,
         })}
-      </span>
+      </motion.span>
     );
   });
 }
