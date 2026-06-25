@@ -21,14 +21,15 @@ assert.ok(component.includes('AI 识别模板'), 'component renders AI import se
 assert.ok(component.includes('applyObsidianTemplatePreset'), 'component applies presets');
 assert.ok(component.includes('updateTemplateModule'), 'component updates modules');
 assert.ok(component.includes('recognizedDraft'), 'component previews recognized draft');
-assert.ok(component.includes('dailyMarkdownTemplate'), 'component exposes dailyMarkdownTemplate editor');
+assert.ok(component.includes('templates.dailyTemplate'), 'component exposes structured dailyTemplate editor');
+assert.ok(component.includes('templates.dailyPath'), 'component exposes daily path editor');
 assert.ok(component.includes('templateSources.dailyNotePath') || component.includes('text.dailyNotePath'), 'component reads i18n dailyNotePath');
-assert.ok(component.includes('templateSources.dailyMarkdownTemplate') || component.includes('text.dailyMarkdownTemplate'), 'component reads i18n dailyMarkdownTemplate');
+assert.ok(component.includes('templateSources.dailyTemplateTitle') || component.includes('text.dailyTemplateTitle'), 'component reads i18n dailyTemplateTitle');
 assert.equal(component.includes('Legacy task export path'), false, 'no English legacy label');
 assert.equal(component.includes('Work section title'), false, 'no English work title');
 assert.equal(component.includes('Inspiration section title'), false, 'no English inspiration title');
 assert.equal(component.includes('Reusable knowledge section title'), false, 'no English knowledge title');
-assert.ok(settingsPanel.includes('ObsidianTemplateCenter'), 'SettingsPanel uses ObsidianTemplateCenter');
+assert.ok(settingsPanel.includes('onEditTemplate?.(kind)'), 'SettingsPanel exposes template edit actions');
 
 const css = fs.readFileSync(path.join(root, 'src/styles/globals.css'), 'utf-8');
 assert.ok(css.includes('.obsidian-template-center'), 'template center css exists');

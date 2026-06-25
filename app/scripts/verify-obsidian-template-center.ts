@@ -13,7 +13,7 @@ import { buildDailyNoteContent, buildSyncPreview } from '../shared/obsidianTempl
 
 const defaults = createDefaultObsidianTemplateSettings();
 const defaultModules = modulesFromDailyTemplate(defaults.dailyTemplate);
-assert.equal(defaults.dailyPath, 'logs/daily/{{date}}.md');
+assert.equal(defaults.dailyPath, 'logs/daily/DailyTodo/{{date}}.md');
 assert.equal(defaultModules.work.enabled, true);
 assert.equal(defaultModules.work.title, '今日工作');
 assert.equal(defaultModules.inspiration.title, '灵感随笔');

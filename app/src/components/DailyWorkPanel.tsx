@@ -157,15 +157,26 @@ export function DailyWorkPanel({
           style={{ height: editorHeight }}
           autoFocus
         />
-        <div
-          className="daily-inline-resizer"
-          onPointerDown={startResize}
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label={language === 'zh-CN' ? '拖动调整高度' : 'Drag to resize'}
-          title={language === 'zh-CN' ? '拖动调整高度' : 'Drag to resize'}
-        >
-          <span className="daily-inline-resizer-grip" aria-hidden="true" />
+        <div className="daily-inline-bottom-row">
+          <div
+            className="daily-inline-resizer"
+            onPointerDown={startResize}
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label={language === 'zh-CN' ? '拖动调整高度' : 'Drag to resize'}
+            title={language === 'zh-CN' ? '拖动调整高度' : 'Drag to resize'}
+          >
+            <span className="daily-inline-resizer-grip" aria-hidden="true" />
+          </div>
+
+          <div className="daily-dialog-actions">
+            <button type="button" className="daily-dialog-cancel" onClick={onClose}>
+              {text.cancel}
+            </button>
+            <button type="button" className="daily-dialog-save" onClick={handleSave}>
+              {text.save}
+            </button>
+          </div>
         </div>
         {commandOpen && (
           <div className="daily-command-menu" role="menu">
@@ -201,15 +212,6 @@ export function DailyWorkPanel({
             )}
           </div>
         )}
-      </div>
-
-      <div className="daily-dialog-actions">
-        <button type="button" className="daily-dialog-cancel" onClick={onClose}>
-          {text.cancel}
-        </button>
-        <button type="button" className="daily-dialog-save" onClick={handleSave}>
-          {text.save}
-        </button>
       </div>
     </div>
   );

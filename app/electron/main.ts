@@ -46,6 +46,7 @@ import {
   setDesktopMode,
 } from '../shared/windowMode';
 import { runReviewForFile } from './aiReview/runner';
+import { hasManagedAiContent } from '../shared/aiReview/markers';
 import { backfillReviews } from './aiReview/backfill';
 import { callChatCompletion, listModels } from '../shared/llm/openaiClient';
 import type { LlmProvider } from '../shared/llm/openaiClient';
@@ -751,9 +752,20 @@ async function extractDocxText(buffer: Buffer): Promise<string> {
   return value;
 }
 
+function inspectDailyAiContent(date: string): { exists: boolean; hasAiContent: boolean; filePath: string; error?: string } {
+  const filePath = getDailyFilePath(date);
+  if (!fs.existsSync(filePath)) return { exists: false, hasAiContent: false, filePath };
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return { exists: true, hasAiContent: hasManagedAiContent(content), filePath };
+  } catch (error) {
+    return { exists: true, hasAiContent: false, filePath, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 async function runReviewForDate(date: string, tasks: Task[], force = false) {
   const startedAt = Date.now();
-  emitAiReviewProgress('daily', 'prepareMaterials', '准备复盘材料', 'running', '读取日记文件和复盘模板');
+  emitAiReviewProgress('daily', 'inspectDaily', '检查日报', 'running', '检查日报文件和 AI 生成内容');
   const llm = ensureReportLlmAvailable('daily');
   const stages: AiReviewStageDiagnostic[] = [];
   if (!llm.ok) {
@@ -770,10 +782,26 @@ async function runReviewForDate(date: string, tasks: Task[], force = false) {
   }
   const prepareStart = Date.now();
   const filePath = getDailyFilePath(date);
+  const inspection = inspectDailyAiContent(date);
+  stages.push(stage('inspectDaily', '检查日报', inspection.error ? 'failed' : 'completed', Date.now() - startedAt, inspection.error ?? (inspection.hasAiContent ? '发现已有 AI 内容' : '未发现 AI 内容')));
+  emitAiReviewProgress('daily', 'inspectDaily', '检查日报', inspection.error ? 'failed' : 'completed', inspection.error ?? (inspection.hasAiContent ? '发现已有 AI 内容' : '未发现 AI 内容'));
+  if (inspection.error) {
+    const error = `读取日记失败：${inspection.error}`;
+    const diagnostic = createDiagnostic({
+      reportKind: 'daily',
+      startedAt,
+      finalStatus: 'noSourceMaterials',
+      resolution: llm.resolution,
+      stages,
+      error,
+    });
+    return { ok: false, error, filledMarkers: [], skippedMarkers: [], diagnostic };
+  }
+  emitAiReviewProgress('daily', 'prepareMaterials', '整理素材', 'running', '整理任务、今日工作和灵感随笔素材');
   if (!fs.existsSync(filePath)) {
     const error = '日记文件不存在，请先同步/创建当天日记后再生成复盘';
-    stages.push(stage('prepareMaterials', '准备复盘材料', 'failed', Date.now() - prepareStart, error));
-    emitAiReviewProgress('daily', 'prepareMaterials', '准备复盘材料', 'failed', error);
+    stages.push(stage('prepareMaterials', '整理素材', 'failed', Date.now() - prepareStart, error));
+    emitAiReviewProgress('daily', 'prepareMaterials', '整理素材', 'failed', error);
     const diagnostic = createDiagnostic({
       reportKind: 'daily',
       startedAt,
@@ -787,10 +815,10 @@ async function runReviewForDate(date: string, tasks: Task[], force = false) {
   const sourceChars = fs.readFileSync(filePath, 'utf-8').length;
   const templateSettings = getObsidianTemplateSettings();
   const customBlocks = templateSettings.dailyTemplate.customBlocks.filter((block) => block.aiGenerate);
-  stages.push(stage('prepareMaterials', '准备复盘材料', 'completed', Date.now() - prepareStart, `日记 ${sourceChars} 字符，${customBlocks.length} 个自定义 AI 块`));
-  emitAiReviewProgress('daily', 'prepareMaterials', '准备复盘材料', 'completed', `日记 ${sourceChars} 字符，${customBlocks.length} 个自定义 AI 块`);
-  stages.push(stage('buildPrompt', '构建提示词', 'completed', undefined, '按复盘段落整理提示词'));
-  emitAiReviewProgress('daily', 'buildPrompt', '构建提示词', 'completed', '按复盘段落整理提示词');
+  stages.push(stage('prepareMaterials', '整理素材', 'completed', Date.now() - prepareStart, `日记 ${sourceChars} 字符，${customBlocks.length} 个自定义 AI 块`));
+  emitAiReviewProgress('daily', 'prepareMaterials', '整理素材', 'completed', `日记 ${sourceChars} 字符，${customBlocks.length} 个自定义 AI 块`);
+  stages.push(stage('buildPrompt', '提交提示词', 'completed', undefined, '将提示词提交给 AI 前完成组装'));
+  emitAiReviewProgress('daily', 'buildPrompt', '提交提示词', 'completed', '将提示词提交给 AI 前完成组装');
   const llmResults: Array<Awaited<ReturnType<typeof llm.callLlm>>> = [];
   const requestStart = Date.now();
   const result = await runReviewForFile({
@@ -801,15 +829,15 @@ async function runReviewForDate(date: string, tasks: Task[], force = false) {
     customBlocks,
     force,
     callLlm: async (messages) => {
-      emitAiReviewProgress('daily', 'requestAi', '请求 AI', 'running', '等待模型返回复盘内容');
+      emitAiReviewProgress('daily', 'requestAi', '等待模型返回', 'running', '等待模型返回复盘内容');
       const value = await llm.callLlm(messages);
-      emitAiReviewProgress('daily', 'requestAi', '请求 AI', value.ok ? 'completed' : 'failed', value.ok ? '已收到 AI 内容' : value.error);
+      emitAiReviewProgress('daily', 'requestAi', '等待模型返回', value.ok ? 'completed' : 'failed', value.ok ? '已收到 AI 内容' : value.error);
       llmResults.push(value);
       return value;
     },
   });
   const requestStatus = llmResults.some((item) => !item.ok) ? 'failed' : 'completed';
-  stages.push(stage('requestAi', '请求 AI', requestStatus, Date.now() - requestStart, llmResults.length ? undefined : '没有需要 AI 填写的复盘块'));
+  stages.push(stage('requestAi', '等待模型返回', requestStatus, Date.now() - requestStart, llmResults.length ? undefined : '没有需要 AI 填写的复盘块'));
   const writeStatus = result.ok ? 'completed' : 'failed';
   const writeMessage = result.ok ? '日报复盘已写入或无需写入' : result.error;
   stages.push(stage('writeObsidian', '写入 Obsidian', writeStatus, undefined, writeMessage));
@@ -1359,10 +1387,25 @@ function applyWindowMode(win: BrowserWindow, mode: WindowMode) {
   }
 }
 
+function reapplyWindowZOrder(win: BrowserWindow) {
+  if (win.isDestroyed()) return;
+  try {
+    if (windowMode === 'desktop') {
+      win.setAlwaysOnTop(false, 'normal');
+      applyDesktopTopmost(win);
+      return;
+    }
+    win.setAlwaysOnTop(isAlwaysOnTop(windowMode), 'normal');
+  } catch (error) {
+    diag(`reapplyWindowZOrder failed: ${String(error)}`);
+  }
+}
+
 /** 持久化模式并应用，再把新模式推送给渲染层让标题栏图钉同步。 */
 function setWindowMode(win: BrowserWindow, mode: WindowMode) {
   store.set(WINDOW_MODE_KEY, mode);
   applyWindowMode(win, mode);
+  setTimeout(() => reapplyWindowZOrder(win), 80);
   if (!win.isDestroyed()) {
     win.webContents.send('window:modeChanged', mode);
   }
@@ -1684,6 +1727,9 @@ function createWindow() {
 
   ipcMain.handle('window:setLockWindowPosition', (_event, locked: boolean) => {
     const next = setAppSettings({ ...getAppSettings(), lockWindowPosition: Boolean(locked) });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      reapplyWindowZOrder(mainWindow);
+    }
     return next.lockWindowPosition;
   });
 
@@ -1758,6 +1804,7 @@ function createWindow() {
     return next;
   });
   ipcMain.handle('aiReview:runForDate', (_e, date: string, tasks: Task[], force?: boolean) => runReviewForDate(getDateKey(date), tasks, Boolean(force)));
+  ipcMain.handle('aiReview:inspectDaily', (_e, date: string) => inspectDailyAiContent(getDateKey(date)));
   ipcMain.handle('aiReview:backfill', async (_e, tasks: Task[]) => {
     const settings = getAiReviewSettings();
     if (!settings.enabled || !resolveActiveProfile(settings).apiKey) return { processed: [], filled: [], errors: [] };

@@ -99,7 +99,7 @@ assert.ok(
   'Invisible theme should scope its rules under the data-theme selector.',
 );
 assert.ok(
-  globals.includes(".app-shell[data-theme='invisible'] .task-complete-action-complete") && globals.includes('linear-gradient(135deg, #d8e1ea, #8fa4b8)'),
+  globals.includes(".app-shell[data-theme='invisible'] .task-complete-action-complete") && globals.includes('linear-gradient(135deg, #e5e7eb, #71717a)'),
   'Invisible completed circle should use a neutral low-noise fill, not amber.',
 );
 assert.ok(

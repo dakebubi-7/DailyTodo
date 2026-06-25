@@ -200,7 +200,7 @@ export default function App() {
         const loaded = { ...DEFAULT_PERSONALIZATION, ...(value as Partial<PersonalizationSettings>) };
         // 如果加载的数据没有 themeId，尝试根据参数匹配主题
         if (!loaded.themeId) {
-          loaded.themeId = matchThemePreset(loaded, isDark) || undefined;
+          loaded.themeId = matchThemePreset(loaded) || undefined;
         }
         // 旧存档可能存有已移除的独立深色主题（dark-mode/night）——回退为浅色模板，
         // 深色现在由 isDark 单独控制，模板保持不变。
@@ -373,13 +373,18 @@ export default function App() {
   const selectedDateTasksForCommands = selectedDateTaskCommands;
   const currentReviewTask = reviewTask ? findTaskInTree(allTasks, reviewTask.id) : null;
   const shellText = getShellText(appSettings.language).app;
-  const activeThemeId = personalization.themeId || matchThemePreset(personalization, isDark);
+  const activeThemeId = personalization.themeId || matchThemePreset(personalization);
   const activeThemeClass = activeThemeId ? `theme-${activeThemeId}` : '';
   const isInvisibleTheme = activeThemeId === 'invisible';
 
   const handleToggleTask = (id: string) => {
     const task = tasks.find((item) => item.id === id);
     if (!task || task.completed) {
+      toggleTask(id);
+      return;
+    }
+
+    if (!appSettings.mainTaskCompletionReviewEnabled) {
       toggleTask(id);
       return;
     }
@@ -392,6 +397,11 @@ export default function App() {
     const subtask = findTaskInTree(allTasks, id);
     if (!subtask || subtask.completed) {
       toggleSubtask(id);
+      return;
+    }
+
+    if (!appSettings.subtaskCompletionReviewEnabled) {
+      markSubtaskDoneWithoutReview(id);
       return;
     }
 

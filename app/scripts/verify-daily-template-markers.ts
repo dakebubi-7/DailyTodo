@@ -7,10 +7,11 @@ import {
   replaceManagedBlock,
   WORK_END_MARKER,
 } from '../shared/obsidianTemplates';
-import { REVIEW_MARKERS } from '../shared/aiReview/markers';
+import { customBlockMarker } from '../shared/aiReview/markers';
 import { createDefaultObsidianTemplateSettings } from '../shared/appSettings';
 
 const templates = createDefaultObsidianTemplateSettings();
+const workSectionTitle = templates.dailyTemplate.fixedBlocks.find((block) => block.id === 'work')?.displayName || '今日工作';
 
 // 1) A custom template renders core tokens as titled marker blocks, with no duplicate heading.
 const fromTemplate = buildDailyNoteFromTemplate({
@@ -26,14 +27,14 @@ assert.ok(fromTemplate.includes(INSPIRATION_START_MARKER));
 assert.ok(fromTemplate.includes(TASK_START_MARKER));
 assert.ok(fromTemplate.includes('写代码'));
 // Work title appears exactly once (no double heading).
-assert.equal(fromTemplate.split(`## ${templates.workSectionTitle}`).length - 1, 1);
+assert.equal(fromTemplate.split(`## ${workSectionTitle}`).length - 1, 1);
 
 // 2) Markers survive an incremental upsert, so sync keeps working on template-built files.
 const upserted = replaceManagedBlock(
   fromTemplate,
   WORK_START_MARKER,
   WORK_END_MARKER,
-  `${WORK_START_MARKER}\n## ${templates.workSectionTitle}\n更新后的工作\n${WORK_END_MARKER}`,
+  `${WORK_START_MARKER}\n## ${workSectionTitle}\n更新后的工作\n${WORK_END_MARKER}`,
 );
 assert.ok(upserted.includes('更新后的工作'));
 assert.ok(!upserted.includes('写代码'));
@@ -58,6 +59,8 @@ const fallback = buildDailyNoteFromTemplate({
   templates: { ...templates, dailyMarkdownTemplate: '' },
 });
 assert.ok(fallback.includes(WORK_START_MARKER));
-assert.ok(fallback.includes(REVIEW_MARKERS.REVIEW.start));
+const reviewBlock = templates.dailyTemplate.customBlocks.find((block) => /复盘|review/i.test(block.name));
+if (!reviewBlock) throw new Error('default template should include a review custom block');
+assert.ok(fallback.includes(customBlockMarker(reviewBlock.id).start));
 
 console.log('verify-daily-template-markers ok');

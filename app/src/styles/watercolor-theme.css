@@ -723,3 +723,48 @@
   gap: 0.3rem !important;
 }
 
+/* 2026-06-19 watercolor action buttons use the shared compact layout. */
+.theme-watercolor .task-icon-action,
+.theme-watercolor .task-subtask-review,
+.theme-watercolor .task-subtask-delete {
+  width: 1.72rem !important;
+  height: 1.72rem !important;
+  min-width: 1.72rem !important;
+  min-height: 1.72rem !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 2026-06-19 watercolor dark blue surfaces */
+.dark .theme-watercolor {
+  --watercolor-dark-surface: rgba(18, 34, 64, 0.92);
+  --watercolor-dark-surface-soft: rgba(42, 74, 118, 0.78);
+  --watercolor-dark-border: rgba(168, 197, 227, 0.32);
+}
+
+.dark .theme-watercolor :is(.date-current, .date-nav button, .calendar-day-active) {
+  color: #ffffff !important;
+  border-color: var(--watercolor-dark-border) !important;
+  background: linear-gradient(135deg, var(--watercolor-blue), var(--watercolor-blue-light)) !important;
+}
+
+.dark .theme-watercolor :is(.daily-work-panel, .daily-inspiration-panel, .completion-dialog, .settings-panel, .settings-section, .settings-preview-list) {
+  color: #ffffff !important;
+  border-color: var(--watercolor-dark-border) !important;
+  background: linear-gradient(135deg, var(--watercolor-dark-surface), var(--watercolor-dark-surface-soft)) !important;
+}
+
+.dark .theme-watercolor :is(.settings-field input, .settings-field select, .settings-field textarea, .add-task-input, .task-edit-input) {
+  color: #ffffff !important;
+  border-color: var(--watercolor-dark-border) !important;
+  background: rgba(15, 31, 58, 0.92) !important;
+}
+
+.dark .theme-watercolor :is(.settings-reset-button, .settings-switch-row, .settings-nav-item) {
+  color: #ffffff !important;
+  border-color: var(--watercolor-dark-border) !important;
+  background: rgba(31, 58, 98, 0.72) !important;
+}
+

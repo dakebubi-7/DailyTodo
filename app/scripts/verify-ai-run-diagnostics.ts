@@ -4,6 +4,8 @@ import path from 'node:path';
 import { mergeTokenUsage, safeBaseUrlHost } from '../shared/aiReview/runDiagnostics';
 import { callChatCompletion } from '../shared/llm/openaiClient';
 
+const runDiagnosticsSrc = fs.readFileSync(path.join(process.cwd(), 'shared/aiReview/runDiagnostics.ts'), 'utf-8');
+
 const base = { baseUrl: 'https://relay.example/v1', apiKey: 'secret-key-must-not-leak', model: 'm' };
 const messages = [{ role: 'user' as const, content: 'hi' }];
 const jsonRes = (obj: any) => ({
@@ -34,6 +36,8 @@ const merged = mergeTokenUsage([
 assert.deepEqual(merged, { source: 'openai', promptTokens: 5, completionTokens: 7, totalTokens: 12 }, 'usage merges totals for daily multi-block runs');
 assert.deepEqual(mergeTokenUsage([{ source: 'missing' }]), { source: 'missing' }, 'missing usage stays missing');
 
+assert.ok(runDiagnosticsSrc.includes("| 'inspectDaily'"), 'runDiagnostics stage key union includes inspectDaily');
+
 const mainSrc = fs.readFileSync(path.join(process.cwd(), 'electron/main.ts'), 'utf-8');
 assert.ok(mainSrc.includes('createDiagnostic'), 'main process builds AI run diagnostics');
 assert.ok(mainSrc.includes('emitAiReviewProgress'), 'main process emits staged progress');
@@ -41,7 +45,7 @@ assert.ok(mainSrc.includes("'aiReview:progress'"), 'main process sends progress 
 assert.ok(mainSrc.includes("reportKind: 'weekly'"), 'weekly diagnostics are wired');
 assert.ok(mainSrc.includes("reportKind: 'monthly'"), 'monthly diagnostics are wired');
 assert.ok(mainSrc.includes("reportKind: 'daily'"), 'daily diagnostics are wired');
-assert.ok(mainSrc.includes("stage('buildPrompt', '构建提示词'"), 'daily diagnostics include buildPrompt stage');
+assert.ok(mainSrc.includes("stage('buildPrompt', '提交提示词'"), 'daily diagnostics include buildPrompt stage');
 assert.ok(mainSrc.includes("stage('writeObsidian', '写入 Obsidian'"), 'daily diagnostics include writeObsidian stage');
 assert.ok(mainSrc.includes("stage('confirmResult', '确认结果'"), 'daily diagnostics include confirmResult stage');
 assert.ok(mainSrc.includes('日记文件不存在，请先同步/创建当天日记后再生成复盘'), 'missing daily note gets a clear error');

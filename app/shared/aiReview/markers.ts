@@ -91,6 +91,13 @@ export function hasBlock(existing: string, marker: BlockMarker): boolean {
   return start !== -1 && end !== -1 && end > start;
 }
 
+export function hasManagedAiContent(existing: string): boolean {
+  if (!existing.trim()) return false;
+  const builtInMarkers = Object.values(REVIEW_MARKERS);
+  if (builtInMarkers.some((marker) => readBlockBody(existing, marker).length > 0)) return true;
+  return /<!--\s*DAILYTODO:CUSTOM:([^:\s]+):START\s*-->\s*\S[\s\S]*?<!--\s*DAILYTODO:CUSTOM:\1:END\s*-->/.test(existing);
+}
+
 /** 只替换 start/end 之间内容；无块则在文末追加。结果幂等。 */
 export function upsertBlock(existing: string, marker: BlockMarker, body: string): string {
   const block = `${marker.start}\n${body.trim()}\n${marker.end}`;

@@ -307,8 +307,22 @@ export function buildDailyNoteFromTemplate(params: {
   dailyInspiration: string;
   templates: ObsidianTemplateSettings;
 }) {
-  return buildDailyNoteContent(params);
+  const template = compat(params.templates).dailyMarkdownTemplate.trim();
+  if (!template) return buildDailyNoteContent(params);
+
+  let content = template
+    .replace(/\{\{date\}\}/g, params.date)
+    .replace(/\{\{work\}\}/g, buildWorkBlock(params.dailyWork, params.templates))
+    .replace(/\{\{inspiration\}\}/g, buildInspirationBlock(params.dailyInspiration, params.templates))
+    .replace(/\{\{tasks\}\}/g, buildTaskBlock(params.date, params.tasks, params.templates));
+
+  if (!content.includes(WORK_START_MARKER)) content += `\n\n${buildWorkBlock(params.dailyWork, params.templates)}`;
+  if (!content.includes(INSPIRATION_START_MARKER)) content += `\n\n${buildInspirationBlock(params.dailyInspiration, params.templates)}`;
+  if (!content.includes(TASK_START_MARKER)) content += `\n\n${buildTaskBlock(params.date, params.tasks, params.templates)}`;
+
+  return `${content.trimEnd()}\n`;
 }
+
 
 
 export function replaceManagedBlock(existing: string, startMarker: string, endMarker: string, block: string) {

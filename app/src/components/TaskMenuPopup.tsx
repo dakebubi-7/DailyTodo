@@ -34,8 +34,8 @@ function readPayload(): MenuPayload | null {
       isDark: Boolean(parsed.isDark),
       theme: {
         themeId: typeof t.themeId === 'string' ? t.themeId : '',
-        accent: t.accent || '#3b82f6',
-        secondary: t.secondary || '#8b5cf6',
+        accent: t.accent || '#52525b',
+        secondary: t.secondary || '#a1a1aa',
         menuOpacity: typeof t.menuOpacity === 'number' ? t.menuOpacity : 0.96,
         blurStrength: typeof t.blurStrength === 'number' ? t.blurStrength : 18,
         cardRadius: typeof t.cardRadius === 'number' ? t.cardRadius : 12,

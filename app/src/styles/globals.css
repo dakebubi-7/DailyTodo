@@ -377,13 +377,13 @@ button, .select-none {
 .dark .titlebar-icon-button:hover {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.5);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .dark .titlebar-icon-active {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.6);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .dark .app-brand h1 {
@@ -403,7 +403,7 @@ button, .select-none {
 .dark .header-actions button:hover {
   border-color: rgba(59, 130, 246, 0.5) !important;
   background: rgba(59, 130, 246, 0.15) !important;
-  color: #3b82f6 !important;
+  color: #71717a !important;
 }
 
 .dark .date-card {
@@ -421,7 +421,7 @@ button, .select-none {
 .dark .date-stepper button:hover,
 .dark .date-calendar-button:hover {
   background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .dark .date-current {
@@ -445,7 +445,7 @@ button, .select-none {
 
 .dark .daily-panel-tab-active {
   background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  color: #71717a;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
 
@@ -486,14 +486,14 @@ button, .select-none {
 .dark .task-filter-button:hover {
   background: rgba(59, 130, 246, 0.15);
   border-color: rgba(59, 130, 246, 0.5);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .dark .task-tool-active,
 .dark .task-filter-active {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.6);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .dark .task-search-input {
@@ -530,12 +530,12 @@ button, .select-none {
 }
 
 .dark .task-check:hover {
-  border-color: #3b82f6;
+  border-color: #71717a;
 }
 
 .dark .task-check-complete {
-  border-color: #3b82f6;
-  background: #3b82f6;
+  border-color: #71717a;
+  background: #71717a;
   color: #fff;
 }
 
@@ -555,7 +555,7 @@ button, .select-none {
 
 .dark .task-icon-action:enabled:hover {
   background: rgba(51, 65, 85, 0.5);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .dark .add-task {
@@ -580,12 +580,12 @@ button, .select-none {
 }
 
 .dark .add-task-button {
-  background: #3b82f6;
+  background: #71717a;
   color: #fff;
 }
 
 .dark .add-task-button:hover {
-  background: #2563eb;
+  background: #52525b;
 }
 
 .dark .settings-panel {
@@ -777,7 +777,7 @@ button, .select-none {
 .dark .titlebar-icon-button:hover {
   background: rgba(51, 65, 85, 0.9);
   border-color: rgba(59, 130, 246, 0.5);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .titlebar-icon-active {
@@ -1224,15 +1224,130 @@ button, .select-none {
   color: #d4d4d8;
 }
 
-/* 2026-06-22 completion dialog density tweak */
-.completion-dialog .completion-status-field {
-  gap: 0.28rem;
-  padding: 0.5rem 0.55rem;
+.completion-input-shell {
+  margin-top: 0.28rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(39, 39, 42, 0.1);
 }
 
-.completion-dialog .completion-status-field select {
-  padding: 0.42rem 0.55rem;
+.completion-field:has(select) .completion-input-shell {
+  border: 1px solid rgba(39, 39, 42, 0.1);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  padding: 0.22rem;
+}
+
+.completion-field select,
+.completion-field textarea {
+  width: 100%;
+  border: 0;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.55rem 0.65rem;
+  color: #3f3f46;
+  font-size: 0.78rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.completion-field select {
+  min-height: 2.55rem;
+  background: transparent;
+  padding: 0.58rem 2.2rem 0.58rem 0.72rem;
+}
+
+.completion-field textarea {
+  min-height: 4.2rem;
+  resize: vertical;
+}
+
+/* 2026-06-22 completion dialog radius tightening */
+.completion-dialog .completion-field {
+  border-radius: 0.9rem;
+}
+
+.completion-dialog .completion-field:has(select) .completion-input-shell {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0.68rem;
+}
+
+.completion-dialog .completion-field select {
+  min-height: 2.55rem;
+  border: 1px solid rgba(39, 39, 42, 0.08);
+  border-radius: 0.68rem;
+  background: rgba(244, 244, 245, 0.92);
+  padding: 0.58rem 2.2rem 0.58rem 0.72rem;
+}
+
+.completion-dialog .completion-percent-field .completion-input-shell {
+  border-radius: 0.74rem;
+}
+
+.completion-dialog .completion-field textarea {
+  border-radius: 0.68rem;
+}
+
+/* 2026-06-22 completion dialog percent field flattening */
+.completion-dialog .completion-percent-field {
+  gap: 0.26rem;
+}
+
+.completion-dialog .completion-percent-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  font-size: 0.72rem;
   line-height: 1.05;
+}
+
+.completion-dialog .completion-percent-field .completion-input-shell {
+  margin-top: 0.14rem;
+  padding-top: 0;
+  border-top: 0;
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.dark .completion-dialog .completion-percent-field .completion-input-shell {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.completion-dialog .completion-percent-field input[type='range'] {
+  margin: 0;
+  accent-color: auto;
+}
+
+.completion-dialog .completion-percent-field input[type='range']::-webkit-slider-runnable-track {
+  height: 0.34rem;
+  border-radius: 999px;
+  background: rgba(113, 113, 122, 0.22);
+}
+
+.completion-dialog .completion-percent-field input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.33rem;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: #f4f4f5;
+  box-shadow: 0 1px 4px rgba(39, 39, 42, 0.18);
+}
+
+.dark .completion-dialog .completion-percent-field input[type='range']::-webkit-slider-runnable-track {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.dark .completion-dialog .completion-percent-field input[type='range']::-webkit-slider-thumb {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: #e4e4e7;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.32);
 }
 
 .completion-field input[type='range'] {
@@ -1378,7 +1493,7 @@ button, .select-none {
 
 .dark .daily-panel-tab-active {
   background: rgba(51, 65, 85, 0.8);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .daily-work-panel button {
@@ -2424,21 +2539,16 @@ button, .select-none {
 }
 
 .dark .template-editor-modal {
-  border-color: rgba(155, 177, 217, 0.48);
-  background: rgba(31, 42, 60, 0.99);
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.98);
 }
 
 .dark .template-editor-title,
 .dark .template-editor-section-label {
-  color: #eef4ff;
+  color: #f4f4f5;
 }
 
-.dark .template-block-row {
-  border-color: rgba(155, 177, 217, 0.52);
-  background: rgba(76, 94, 122, 0.94);
-  color: #eef4ff;
-}
-
+.dark .template-block-row,
 .dark .block-name-input,
 .dark .render-type-select,
 .dark .block-prompt-input,
@@ -2446,17 +2556,17 @@ button, .select-none {
 .dark .block-prompt-toggle,
 .dark .template-editor-actions-row button,
 .dark .template-editor-footer button {
-  border-color: rgba(170, 194, 235, 0.54);
-  background: rgba(86, 105, 136, 0.96);
-  color: #f5f8ff;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: #d4d4d8;
 }
 
 .dark .template-block-custom-controls {
-  color: #eef4ff;
+  color: #d4d4d8;
 }
 
 .dark .ai-toggle {
-  color: #eef4ff;
+  color: #d4d4d8;
 }
 
 .dark .template-editor-footer .btn-save {
@@ -3722,7 +3832,7 @@ html {
 
 .dark .daily-panel-tab-active {
   background: rgba(51, 65, 85, 0.8);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .daily-work-preview {
@@ -4292,295 +4402,6 @@ html {
   border-color: var(--personal-secondary);
 }
 
-/* Crystal minimalism theme */
-.app-shell.theme-crystal {
-  --personal-accent: #64748b;
-  --personal-secondary: #d4af37;
-  --window-opacity: 0.58;
-  --panel-opacity: 0.42;
-  --top-opacity: 0.42;
-  --card-opacity: 0.42;
-  --input-opacity: 0.42;
-  --dialog-opacity: 0.44;
-  --menu-opacity: 0.42;
-  --settings-panel-opacity: 0.42;
-  --glass-saturation: 1.2;
-  --blur-strength: 25px;
-  --shell-radius: 22px;
-  --card-radius: 22px;
-  --control-radius: 14px;
-  background:
-    linear-gradient(135deg, #e2e8f0 0%, #e6fffa 48%, #faf5ff 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.56) !important;
-  border-right-color: rgba(148, 163, 184, 0.2) !important;
-  border-bottom-color: rgba(148, 163, 184, 0.18) !important;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.78) !important;
-  color: #334155;
-  backdrop-filter: blur(25px) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(25px) saturate(120%) !important;
-}
-
-.theme-crystal .app-top,
-.theme-crystal .titlebar,
-.theme-crystal .date-card,
-.theme-crystal .daily-work-preview,
-.theme-crystal .daily-work-textarea,
-.theme-crystal .task-toolbar,
-.theme-crystal .task-source-group-shell,
-.theme-crystal .task-card,
-.theme-crystal .add-task,
-.theme-crystal .add-task-container,
-.theme-crystal .add-task-inner,
-.theme-crystal .settings-panel,
-.theme-crystal .completion-dialog,
-.theme-crystal .review-dialog,
-.theme-crystal .tm-popup,
-.theme-crystal .task-menu-popup,
-.theme-crystal .priority-popover,
-.theme-crystal .month-calendar,
-.theme-crystal .companion-panel,
-.theme-crystal .template-editor-modal,
-.theme-crystal .recognition-modal,
-.theme-crystal .ai-account-modal {
-  border: 1px solid rgba(255, 255, 255, 0.58) !important;
-  border-right-color: rgba(148, 163, 184, 0.2) !important;
-  border-bottom-color: rgba(148, 163, 184, 0.18) !important;
-  background: rgba(255, 255, 255, 0.42) !important;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.82) !important;
-  backdrop-filter: blur(25px) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(25px) saturate(120%) !important;
-}
-
-.theme-crystal .app-top,
-.theme-crystal .titlebar,
-.theme-crystal .settings-v2-sidebar,
-.theme-crystal .settings-panel-header,
-.theme-crystal .template-editor-title,
-.theme-crystal .template-editor-actions-row,
-.theme-crystal .template-editor-footer,
-.theme-crystal .ai-account-header,
-.theme-crystal .date-today-button,
-.theme-crystal .settings-v2-sidebar {
-  border-color: transparent !important;
-  border-bottom-color: transparent !important;
-  border-right-color: transparent !important;
-  box-shadow: none !important;
-}
-
-.theme-crystal .tabbar {
-  gap: 0.65rem !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-.theme-crystal .tabbar-tab {
-  overflow: visible !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  padding: 0.38rem 0.18rem 0.5rem !important;
-  color: #64748b !important;
-  box-shadow: none !important;
-}
-
-.theme-crystal .tabbar-tab[aria-current='page'] {
-  color: #334155 !important;
-  font-weight: 800 !important;
-}
-
-.theme-crystal .tabbar-active-indicator {
-  left: 0 !important;
-  right: 0 !important;
-  bottom: -4px !important;
-  height: 2px !important;
-  border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.92) !important;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8) !important;
-}
-
-.theme-crystal .task-card {
-  gap: 0.68rem !important;
-  padding: 0.66rem 0.75rem 0.66rem 0.98rem !important;
-}
-
-.theme-crystal .task-card:hover,
-.theme-crystal .daily-work-preview:hover,
-.theme-crystal .date-card:hover,
-.theme-crystal .task-toolbar:hover,
-.theme-crystal .add-task:hover {
-  border-color: rgba(255, 255, 255, 0.72) !important;
-  background: rgba(255, 255, 255, 0.48) !important;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.9) !important;
-}
-
-.theme-crystal .priority-dot-button,
-.theme-crystal .priority-option-dot,
-.theme-crystal .review-entry[data-status='partial'],
-.theme-crystal .review-entry[data-status='done'],
-.theme-crystal .review-entry[data-status='blocked'] {
-  background: linear-gradient(135deg, #ffd700 0%, #d4af37 100%) !important;
-  border-color: rgba(255, 255, 255, 0.7) !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55), 0 0 10px rgba(212, 175, 55, 0.36) !important;
-}
-
-.theme-crystal .priority-dot-button span,
-.theme-crystal .day-done-check,
-.theme-crystal .header-sync-ready {
-  background: linear-gradient(135deg, #ffd700 0%, #d4af37 100%) !important;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.36) !important;
-}
-
-.theme-crystal svg,
-.theme-crystal .header-icon-button,
-.theme-crystal .titlebar-icon-button,
-.theme-crystal .task-tool-icon,
-.theme-crystal .task-icon-action,
-.theme-crystal .task-drag-handle,
-.theme-crystal .source-drag-handle,
-.theme-crystal .date-calendar-button,
-.theme-crystal .date-stepper button,
-.theme-crystal .add-task-button,
-.theme-crystal .source-toggle-button,
-.theme-crystal .daily-work-chevron,
-.theme-crystal .review-entry-caret {
-  color: #718096 !important;
-  stroke: currentColor !important;
-  stroke-width: 1.25px !important;
-}
-
-.theme-crystal .header-icon-button,
-.theme-crystal .header-folder-button,
-.theme-crystal .titlebar-icon-button,
-.theme-crystal .titlebar-mode,
-.theme-crystal .task-tool-icon,
-.theme-crystal .task-filter-button,
-.theme-crystal .task-filter-select,
-.theme-crystal .task-clear-filter,
-.theme-crystal .task-clear-completed,
-.theme-crystal .date-stepper,
-.theme-crystal .date-stepper button,
-.theme-crystal .date-input,
-.theme-crystal .date-history-select,
-.theme-crystal .task-search-input,
-.theme-crystal .settings-field input,
-.theme-crystal .settings-field select,
-.theme-crystal .settings-field textarea,
-.theme-crystal .settings-reset-button,
-.theme-crystal .settings-nav-item,
-.theme-crystal .settings-switch-row,
-.theme-crystal .settings-preview-list,
-.theme-crystal .theme-preset-card,
-.theme-crystal .daily-panel-switch,
-.theme-crystal .daily-panel-tab,
-.theme-crystal .review-entry,
-.theme-crystal .review-field,
-.theme-crystal .completion-field,
-.theme-crystal .completion-field select,
-.theme-crystal .completion-field textarea,
-.theme-crystal .recognition-footer button,
-.theme-crystal .recognition-file-row button,
-.theme-crystal .recognition-prompt-toggle,
-.theme-crystal .block-delete-btn,
-.theme-crystal .block-prompt-toggle,
-.theme-crystal .template-editor-actions-row button,
-.theme-crystal .template-editor-footer button,
-.theme-crystal .ai-account-item {
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  background: rgba(255, 255, 255, 0.32) !important;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.68) !important;
-  color: #475569 !important;
-}
-
-.theme-crystal .task-source-group-title,
-.theme-crystal .review-group-title,
-.theme-crystal .settings-nav-section-title,
-.theme-crystal .settings-section h3,
-.theme-crystal .settings-v2-page .settings-section h3,
-.theme-crystal .settings-v2-page .settings-zone h3,
-.theme-crystal .app-brand-eyebrow,
-.theme-crystal .date-card-label {
-  color: #64748b !important;
-}
-
-.theme-crystal .app-brand h1,
-.theme-crystal .review-entry-text,
-.theme-crystal .settings-page-title h2,
-.theme-crystal .settings-panel-header h2,
-.theme-crystal .settings-nav-active,
-.theme-crystal .settings-nav-item b,
-.theme-crystal .settings-range-row b,
-.theme-crystal .review-record-status,
-.theme-crystal .review-entry-meta,
-.theme-crystal .review-entry-badge {
-  color: #334155 !important;
-}
-
-.theme-crystal .settings-nav-active,
-.theme-crystal .settings-switch-on i,
-.theme-crystal .task-tool-active,
-.theme-crystal .task-filter-active,
-.theme-crystal .daily-panel-tab-active,
-.theme-crystal .theme-preset-active,
-.theme-crystal .recognition-footer .btn-primary,
-.theme-crystal .template-editor-footer .btn-save {
-  border-color: rgba(255, 255, 255, 0.74) !important;
-  background: rgba(255, 255, 255, 0.54) !important;
-  color: #334155 !important;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.9), 0 0 12px rgba(255, 255, 255, 0.36) !important;
-}
-
-.theme-crystal .settings-v2-page .settings-section,
-.theme-crystal .settings-v2-page .settings-zone,
-.theme-crystal .settings-v2-page .settings-inline-section,
-.theme-crystal .settings-v2-page .settings-field,
-.theme-crystal .settings-v2-page .settings-control,
-.theme-crystal .settings-v2-page .settings-color,
-.theme-crystal .settings-v2-page .settings-switch-row,
-.theme-crystal .settings-v2-page .settings-toggle,
-.theme-crystal .settings-v2-page .settings-preview-list,
-.theme-crystal .settings-v2-page .settings-rule-card,
-.theme-crystal .ai-account-inline-row,
-.theme-crystal .template-block-row,
-.theme-crystal .recognition-block-row,
-.theme-crystal .recognition-textarea,
-.theme-crystal .recognition-block-row > input:not([type='checkbox']),
-.theme-crystal .recognition-block-row select,
-.theme-crystal .recognition-prompt-input,
-.theme-crystal .block-name-input,
-.theme-crystal .render-type-select,
-.theme-crystal .block-prompt-input {
-  border-color: rgba(255, 255, 255, 0.48) !important;
-  background: rgba(255, 255, 255, 0.34) !important;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.68) !important;
-}
-
-.theme-crystal .task-subtask-row,
-.theme-crystal .task-subtask-check,
-.theme-crystal .task-subtask-delete,
-.theme-crystal .task-subtask-review {
-  border-color: rgba(255, 255, 255, 0.45) !important;
-  background: rgba(255, 255, 255, 0.28) !important;
-  color: #64748b !important;
-  box-shadow: none !important;
-}
-
-.theme-crystal .day-urgent-corner {
-  border-top-color: #d4af37 !important;
-}
-
-.theme-crystal .floating-scrollbar-thumb {
-  background: rgba(113, 128, 150, 0.42) !important;
-}
-
-.theme-crystal .task-card-completed,
-.theme-crystal .task-card-completed:hover {
-  opacity: 0.72;
-  background: rgba(255, 255, 255, 0.3) !important;
-}
-
 .review-edit-actions {
   display: flex;
   justify-content: flex-end;
@@ -5013,14 +4834,14 @@ html {
 }
 
 .dark .add-task-input {
-  border-color: rgba(148, 163, 184, 0.2);
-  background: rgba(51, 65, 85, 0.6);
-  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.24);
+  color: #f8fafc;
 }
 
 .dark .add-task-input:focus {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(51, 65, 85, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .add-task-button {
@@ -5800,6 +5621,84 @@ html {
   color: #18181b;
 }
 
+/* 2026-06-21 daily inline editor dark contrast polish */
+.dark .daily-dialog-textarea.daily-inline-textarea {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: #4f4f52 !important;
+  color: #f8fafc !important;
+}
+
+.dark .daily-dialog-textarea.daily-inline-textarea::placeholder {
+  color: rgba(248, 250, 252, 0.7) !important;
+}
+
+.dark .daily-dialog-actions .daily-dialog-cancel {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #e4e4e7 !important;
+}
+
+.dark .daily-dialog-actions .daily-dialog-save {
+  border: 1px solid rgba(255, 255, 255, 0.82) !important;
+  background: #ffffff !important;
+  color: #18181b !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22) !important;
+}
+
+.dark .daily-dialog-actions .daily-dialog-cancel:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.dark .daily-dialog-actions .daily-dialog-save:hover {
+  background: #f4f4f5 !important;
+}
+
+/* 2026-06-21 daily inline panel height tighten */
+.daily-inline-panel {
+  padding: 0.55rem 0.7rem 0.5rem !important;
+}
+
+.daily-inline-panel .daily-dialog-editor {
+  flex: 0 0 auto !important;
+}
+
+.daily-inline-bottom-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 1.9rem;
+  margin-top: 0.22rem;
+}
+
+.daily-inline-panel .daily-inline-resizer {
+  flex: 0 0 auto;
+  justify-content: center;
+  height: 0.46rem !important;
+  margin-top: 0 !important;
+}
+
+.daily-inline-panel .daily-inline-resizer-grip {
+  width: 2rem;
+}
+
+.daily-inline-panel .daily-dialog-actions {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-top: 0 !important;
+  flex-shrink: 0;
+  gap: 0.4rem;
+}
+
+.daily-inline-panel .daily-dialog-actions button {
+  min-height: 1.9rem;
+  padding: 0 0.78rem;
+}
+
 .task-list {
   position: relative;
   z-index: 1;
@@ -6490,91 +6389,6 @@ html {
   box-shadow: inset 4px 4px 8px var(--neu-d), inset -4px -4px 8px var(--neu-l);
 }
 
-.theme-neumorphism .template-editor-modal {
-  background: rgba(var(--neu-bg), calc(var(--dialog-opacity)));
-  border: none;
-  box-shadow: 12px 12px 24px var(--neu-d), -12px -12px 24px var(--neu-l);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.theme-neumorphism .template-block-row {
-  background: rgba(var(--neu-bg), calc(var(--panel-opacity)));
-  border: none;
-  box-shadow: 8px 8px 16px var(--neu-d), -8px -8px 16px var(--neu-l);
-}
-
-.theme-neumorphism .block-name-input,
-.theme-neumorphism .render-type-select,
-.theme-neumorphism .block-prompt-input {
-  background: rgba(var(--neu-bg), calc(var(--control-opacity)));
-  border: none;
-  box-shadow: inset 4px 4px 8px var(--neu-d), inset -4px -4px 8px var(--neu-l);
-  color: #52525b;
-}
-
-.theme-neumorphism .drag-handle,
-.theme-neumorphism .ai-toggle,
-.theme-neumorphism .template-editor-title,
-.theme-neumorphism .template-editor-section-label {
-  color: #52525b;
-}
-
-.theme-neumorphism .block-delete-btn,
-.theme-neumorphism .block-prompt-toggle,
-.theme-neumorphism .template-editor-actions-row button,
-.theme-neumorphism .template-editor-footer button {
-  background: rgba(var(--neu-bg), calc(var(--control-opacity)));
-  border: none;
-  box-shadow: 6px 6px 12px var(--neu-d), -6px -6px 12px var(--neu-l);
-  color: #52525b;
-}
-
-.theme-neumorphism .block-delete-btn:hover,
-.theme-neumorphism .block-prompt-toggle:hover:not(:disabled),
-.theme-neumorphism .template-editor-actions-row button:hover,
-.theme-neumorphism .template-editor-footer button:hover {
-  box-shadow: 4px 4px 8px var(--neu-d), -4px -4px 8px var(--neu-l);
-  color: var(--personal-accent);
-}
-
-.theme-neumorphism .template-editor-footer .btn-save,
-.theme-neumorphism .template-editor-footer .btn-reset {
-  background: rgba(var(--neu-bg), calc(var(--control-opacity)));
-}
-
-.theme-neumorphism .template-editor-footer .btn-save {
-  color: var(--personal-accent);
-}
-
-.theme-neumorphism .template-editor-footer .btn-reset {
-  color: #52525b;
-}
-
-.theme-neumorphism .template-editor-actions-row,
-.theme-neumorphism .template-editor-footer {
-  border-top-color: transparent;
-}
-
-.dark .theme-neumorphism .block-name-input,
-.dark .theme-neumorphism .render-type-select,
-.dark .theme-neumorphism .block-prompt-input,
-.dark .theme-neumorphism .drag-handle,
-.dark .theme-neumorphism .ai-toggle,
-.dark .theme-neumorphism .template-editor-title,
-.dark .theme-neumorphism .template-editor-section-label,
-.dark .theme-neumorphism .block-delete-btn,
-.dark .theme-neumorphism .block-prompt-toggle,
-.dark .theme-neumorphism .template-editor-actions-row button,
-.dark .theme-neumorphism .template-editor-footer button,
-.dark .theme-neumorphism .template-editor-footer .btn-reset {
-  color: #d6d8de;
-}
-
-.dark .theme-neumorphism .template-editor-footer .btn-save {
-  color: #e2e8f0;
-}
-
 .theme-neumorphism .priority-popover {
   background: rgba(var(--neu-bg), calc(var(--menu-opacity)));
   border: none;
@@ -6786,13 +6600,13 @@ html {
 .theme-dark-mode.dark .titlebar-icon-button:hover {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.5);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .theme-dark-mode.dark .titlebar-icon-active {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.6);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .theme-dark-mode.dark .app-brand h1 {
@@ -6812,7 +6626,7 @@ html {
 .theme-dark-mode.dark .header-actions button:hover {
   border-color: rgba(59, 130, 246, 0.5) !important;
   background: rgba(59, 130, 246, 0.15) !important;
-  color: #3b82f6 !important;
+  color: #71717a !important;
 }
 
 .theme-dark-mode.dark .date-card {
@@ -6830,7 +6644,7 @@ html {
 .theme-dark-mode.dark .date-stepper button:hover,
 .theme-dark-mode.dark .date-calendar-button:hover {
   background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .theme-dark-mode.dark .date-current {
@@ -6854,7 +6668,7 @@ html {
 
 .theme-dark-mode.dark .daily-panel-tab-active {
   background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  color: #71717a;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
 
@@ -6887,14 +6701,14 @@ html {
 .theme-dark-mode.dark .task-filter-button:hover {
   background: rgba(59, 130, 246, 0.15);
   border-color: rgba(59, 130, 246, 0.5);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .theme-dark-mode.dark .task-tool-active,
 .theme-dark-mode.dark .task-filter-active {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.6);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .theme-dark-mode.dark .task-search-input {
@@ -6931,12 +6745,12 @@ html {
 }
 
 .theme-dark-mode.dark .task-check:hover {
-  border-color: #3b82f6;
+  border-color: #71717a;
 }
 
 .theme-dark-mode.dark .task-check-complete {
-  border-color: #3b82f6;
-  background: #3b82f6;
+  border-color: #71717a;
+  background: #71717a;
   color: #fff;
 }
 
@@ -6956,7 +6770,7 @@ html {
 
 .theme-dark-mode.dark .task-icon-action:enabled:hover {
   background: rgba(51, 65, 85, 0.5);
-  color: #3b82f6;
+  color: #71717a;
 }
 
 .theme-dark-mode.dark .add-task {
@@ -6981,12 +6795,12 @@ html {
 }
 
 .theme-dark-mode.dark .add-task-button {
-  background: #3b82f6;
+  background: #71717a;
   color: #fff;
 }
 
 .theme-dark-mode.dark .add-task-button:hover {
-  background: #2563eb;
+  background: #52525b;
 }
 
 .theme-dark-mode.dark .settings-panel {
@@ -8438,210 +8252,7 @@ html {
 /* Task tree layout */
 .task-tree-node {
   display: grid;
-  gap: 0.12rem;
-}
-
-.task-subtask-popout-motion {
-  display: block;
-  will-change: transform, opacity;
-}
-
-.task-subtask-row-card {
-  min-height: 2.7rem;
-  border-width: 1px;
-  border-radius: calc(var(--card-radius) * 0.92);
-  background: rgba(255, 255, 255, 0.8);
-  padding-top: 0.45rem;
-  padding-bottom: 0.45rem;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
-}
-
-.task-subtask-row-card:hover {
-  background: rgba(255, 255, 255, 0.92);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
-}
-
-.dark .task-subtask-row-card {
-  min-height: 2.7rem;
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
-}
-
-.dark .task-subtask-row-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
-}
-
-.task-card-accordion-shell {
-  --accordion-layer-count: 0;
-  --accordion-max-layers: 4;
-  position: relative;
-  z-index: 1;
-  display: grid;
-  padding-bottom: 0.48rem;
-  margin-bottom: 0;
-  overflow: visible;
-  isolation: isolate;
-}
-
-.task-card-accordion-shell::before,
-.task-card-accordion-shell::after {
-  content: '';
-  pointer-events: none;
-  position: absolute;
-  left: 0.32rem;
-  right: 0.32rem;
-  border-radius: 0 0 calc(var(--card-radius) * 0.96) calc(var(--card-radius) * 0.96);
-  transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-}
-
-.task-card-accordion-shell::after {
-  bottom: -0.08rem;
-  height: 0.86rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08));
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-  opacity: 0.72;
-  z-index: 0;
-}
-
-.task-card-accordion-shell::before {
-  left: 0.54rem;
-  right: 0.54rem;
-  bottom: -0.22rem;
-  height: 0.56rem;
-  background: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
-  opacity: 0.38;
-  z-index: -1;
-}
-
-.task-card-accordion-shell-has-children {
-  margin-bottom: 0;
-}
-
-.task-card-accordion-shell-collapsed {
-  padding-bottom: 0.48rem;
-}
-
-.task-card-accordion-shell-open {
-  padding-bottom: 0.48rem;
-}
-
-.task-card-accordion-shell-has-children .task-card {
-  position: relative;
-  z-index: 2;
-  transform: translateY(0.02rem);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
-}
-
-.task-card-accordion-shell-collapsed::after {
-  opacity: 0.72;
-  transform: translateY(0);
-}
-
-.task-card-accordion-shell-collapsed::before {
-  opacity: 0.34;
-  transform: translateY(0);
-}
-
-.task-card-accordion-shell-open::after {
-  opacity: 0.28;
-  transform: translateY(0.03rem);
-}
-
-.task-card-accordion-shell-open::before {
-  opacity: 0.16;
-  transform: translateY(0.06rem);
-}
-
-.task-card-accordion-shell-layers {
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% - 0.45rem);
-  height: calc(1.05rem + (min(var(--accordion-layer-count), var(--accordion-max-layers)) - 1) * 0.18rem);
-  z-index: 1;
-  overflow: visible;
-}
-
-.task-card-accordion-shell-layer {
-  position: absolute;
-  left: 0.3rem;
-  right: 0.3rem;
-  height: 1.05rem;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  border-top: 0;
-  border-radius: 0 0 calc(var(--card-radius) * 0.96) calc(var(--card-radius) * 0.96);
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-  opacity: 0.7;
-}
-
-.task-card-accordion-shell-layer:nth-child(1) {
-  top: 0.14rem;
-}
-
-.task-card-accordion-shell-layer:nth-child(2) {
-  top: 0.3rem;
-  left: 0.52rem;
-  right: 0.52rem;
-  opacity: 0.54;
-}
-
-.task-card-accordion-shell-layer:nth-child(3) {
-  top: 0.46rem;
-  left: 0.74rem;
-  right: 0.74rem;
-  opacity: 0.4;
-}
-
-.task-card-accordion-shell-layer:nth-child(4) {
-  top: 0.62rem;
-  left: 0.96rem;
-  right: 0.96rem;
-  opacity: 0.28;
-}
-
-.task-card-accordion-shell-open .task-card-accordion-shell-layer {
-  opacity: 0.34;
-}
-
-.dark .task-card-accordion-shell::after {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
-}
-
-.dark .task-card-accordion-shell::before {
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
-}
-
-.dark .task-card-accordion-shell-open::after {
-  opacity: 0.22;
-}
-
-.dark .task-card-accordion-shell-open::before {
-  opacity: 0.1;
-}
-
-.dark .task-card-accordion-shell-layer {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
-}
-
-.dark .task-card-accordion-shell-open .task-card-accordion-shell-layer {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
-  opacity: 0.24;
-}
-
-.task-subtasks-motion {
-  overflow: hidden;
-  transform-origin: top;
-  will-change: height, opacity, transform, clip-path;
+  gap: 0.32rem;
 }
 
 .task-subtasks,
@@ -9134,7 +8745,6 @@ html {
 
 /* ===== Task list interaction stability ===== */
 .task-card {
-  --task-action-safe-space: 4.85rem;
   padding-right: var(--task-action-safe-space) !important;
   max-height: none;
   overflow: visible;
@@ -9196,7 +8806,7 @@ html {
 
 .task-action-layer {
   position: absolute;
-  right: 0.62rem;
+  right: var(--task-action-right);
   top: 50%;
   z-index: 4;
   display: grid;
@@ -9396,45 +9006,11 @@ html {
   grid-auto-flow: column !important;
 }
 
-.task-card > .task-summary-trigger,
 .task-card > .task-text-wrap,
 .task-card > .task-edit-input {
   grid-column: 5 !important;
   grid-row: 1 !important;
   align-self: center !important;
-}
-
-.task-summary-trigger {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  text-align: left;
-}
-
-.task-summary-trigger-expandable {
-  cursor: pointer;
-  border-radius: calc(var(--card-radius) - 4px);
-  transition: background 0.18s ease, box-shadow 0.18s ease, outline-color 0.18s ease;
-}
-
-.task-summary-trigger-expandable:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.task-summary-trigger-expandable:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--personal-accent) 42%, transparent);
-  outline-offset: 2px;
-}
-
-.dark .task-summary-trigger-expandable:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.dark .task-summary-trigger-expandable:focus-visible {
-  outline-color: color-mix(in srgb, var(--personal-secondary) 42%, transparent);
 }
 
 .task-card > .priority-dot-button,
@@ -9523,7 +9099,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.app-brand h1, .app-brand
 
 .app-shell[data-theme='invisible'] .task-complete-action-complete,
 .app-shell[data-theme='invisible'] .task-subtask-check-complete {
-  background: linear-gradient(135deg, #d8e1ea, #8fa4b8) !important;
+  background: linear-gradient(135deg, #e5e7eb, #71717a) !important;
   border-color: rgba(216, 225, 234, 0.9) !important;
   color: #17202a !important;
   box-shadow: 0 0 0 2px rgba(143, 164, 184, 0.22) !important;
@@ -9539,9 +9115,102 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.app-brand h1, .app-brand
   color: #f8fafc !important;
 }
 
+.dark .app-shell[data-theme='invisible'] :is(.completion-field, .completion-field select, .completion-field textarea) {
+  background: rgba(24, 24, 27, 0.86) !important;
+  background-color: rgba(24, 24, 27, 0.86) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+}
+
 .app-shell[data-theme='invisible'] .completion-field select option {
   background: #1f2a38 !important;
   color: #f8fafc !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .completion-field select option {
+  background: #18181b !important;
+  color: #f8fafc !important;
+}
+
+/* 2026-06-22 minimal white settings neutralization */
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-panel {
+  background: rgba(255, 255, 255, 0.96) !important;
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(24, 24, 27, 0.12) !important;
+  box-shadow: 0 18px 48px rgba(24, 24, 27, 0.08) !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-panel-header,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-v2-page,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-page-title,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-panel-header h2,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-panel-header p,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-section h3 {
+  color: #111111 !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-section {
+  background: rgba(250, 250, 250, 0.96) !important;
+  background-color: rgba(250, 250, 250, 0.96) !important;
+  border-color: rgba(24, 24, 27, 0.12) !important;
+  box-shadow: none !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-preview-list,
+html:not(.dark) .app-shell[data-theme='minimal'] .ai-account-summary,
+html:not(.dark) .app-shell[data-theme='minimal'] .ai-account-detail,
+html:not(.dark) .app-shell[data-theme='minimal'] .recognition-block-row,
+html:not(.dark) .app-shell[data-theme='minimal'] .template-source-card,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-control,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-switch-card,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-account-card {
+  background: rgba(250, 250, 250, 0.96) !important;
+  background-color: rgba(250, 250, 250, 0.96) !important;
+  border-color: rgba(24, 24, 27, 0.12) !important;
+  box-shadow: none !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] :is(.settings-field input, .settings-field select, .settings-field textarea) {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: rgba(24, 24, 27, 0.14) !important;
+  box-shadow: none !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] :is(.settings-field input, .settings-field select, .settings-field textarea)::placeholder {
+  color: rgba(39, 39, 42, 0.52) !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-nav-item,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-nav-item small,
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-back-button {
+  color: #3f3f46 !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-nav-item[aria-current='page'],
+html:not(.dark) .app-shell[data-theme='minimal'] .settings-nav-active {
+  background: rgba(245, 245, 245, 0.98) !important;
+  background-color: rgba(245, 245, 245, 0.98) !important;
+  border-color: rgba(24, 24, 27, 0.16) !important;
+  color: #111111 !important;
+  box-shadow: none !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] :is(.settings-reset-button, .settings-switch-row, .settings-page button:not(.settings-nav-item)) {
+  background: rgba(242, 242, 243, 0.98) !important;
+  background-color: rgba(242, 242, 243, 0.98) !important;
+  color: #18181b !important;
+  border-color: rgba(24, 24, 27, 0.14) !important;
+  box-shadow: none !important;
+}
+
+html:not(.dark) .app-shell[data-theme='minimal'] .ai-account-chip button {
+  background: rgba(242, 242, 243, 0.98) !important;
+  background-color: rgba(242, 242, 243, 0.98) !important;
+  color: #18181b !important;
+  border-color: rgba(24, 24, 27, 0.14) !important;
+  box-shadow: none !important;
 }
 
 .dark .app-shell[data-theme='minimal'] {
@@ -9569,54 +9238,6 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.app-brand h1, .app-brand
   border-radius: calc(var(--card-radius) * 1.05) !important;
   background: rgba(var(--neu-bg), var(--panel-opacity)) !important;
   box-shadow: 8px 8px 18px color-mix(in srgb, var(--neu-d) 78%, transparent), -8px -8px 18px color-mix(in srgb, var(--neu-l) 85%, transparent) !important;
-}
-
-.app-shell[data-theme='neumorphism'] .template-editor-modal {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 82%, var(--personal-accent) 18%) !important;
-  border: 1px solid color-mix(in srgb, var(--personal-accent) 24%, transparent) !important;
-  box-shadow: 12px 12px 24px color-mix(in srgb, var(--neu-d) 86%, transparent), -10px -10px 22px color-mix(in srgb, var(--neu-l) 86%, transparent) !important;
-}
-
-.app-shell[data-theme='neumorphism'] .template-block-row {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 74%, var(--personal-accent) 26%) !important;
-  border: 1px solid color-mix(in srgb, var(--personal-accent) 26%, transparent) !important;
-  box-shadow: 7px 7px 15px color-mix(in srgb, var(--neu-d) 72%, transparent), -6px -6px 14px color-mix(in srgb, var(--neu-l) 72%, transparent) !important;
-}
-
-.app-shell[data-theme='neumorphism'] :is(.block-name-input, .render-type-select, .block-prompt-input) {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 62%, var(--personal-accent) 38%) !important;
-  border: 1px solid color-mix(in srgb, var(--personal-accent) 30%, transparent) !important;
-  box-shadow: inset 4px 4px 8px color-mix(in srgb, var(--neu-d) 72%, transparent), inset -4px -4px 8px color-mix(in srgb, var(--neu-l) 70%, transparent) !important;
-}
-
-.app-shell[data-theme='neumorphism'] :is(.block-delete-btn, .block-prompt-toggle, .template-editor-actions-row button, .template-editor-footer button) {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 66%, var(--personal-accent) 34%) !important;
-  border: 1px solid color-mix(in srgb, var(--personal-accent) 24%, transparent) !important;
-  box-shadow: 6px 6px 12px color-mix(in srgb, var(--neu-d) 70%, transparent), -5px -5px 11px color-mix(in srgb, var(--neu-l) 72%, transparent) !important;
-}
-
-.app-shell[data-theme='neumorphism'] :is(.template-editor-title, .template-editor-section-label, .drag-handle, .ai-toggle, .block-name-input, .render-type-select, .block-prompt-input, .block-delete-btn, .block-prompt-toggle, .template-editor-actions-row button, .template-editor-footer button) {
-  color: #3f4f6a !important;
-}
-
-.dark .app-shell[data-theme='neumorphism'] .template-editor-modal {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 72%, var(--personal-accent) 28%) !important;
-}
-
-.dark .app-shell[data-theme='neumorphism'] .template-block-row {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 58%, var(--personal-accent) 42%) !important;
-}
-
-.dark .app-shell[data-theme='neumorphism'] :is(.block-name-input, .render-type-select, .block-prompt-input) {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 42%, var(--personal-accent) 58%) !important;
-}
-
-.dark .app-shell[data-theme='neumorphism'] :is(.block-delete-btn, .block-prompt-toggle, .template-editor-actions-row button, .template-editor-footer button) {
-  background: color-mix(in srgb, rgb(var(--neu-bg)) 46%, var(--personal-accent) 54%) !important;
-}
-
-.dark .app-shell[data-theme='neumorphism'] :is(.template-editor-title, .template-editor-section-label, .drag-handle, .ai-toggle, .block-name-input, .render-type-select, .block-prompt-input, .block-delete-btn, .block-prompt-toggle, .template-editor-actions-row button, .template-editor-footer button) {
-  color: #eef4ff !important;
 }
 
 .app-shell[data-theme='neumorphism'] .task-card {
@@ -9726,6 +9347,13 @@ html:not(.dark) .app-shell[data-theme='minimal'] .settings-panel {
   color: #ffffff !important;
 }
 
+.dark .app-shell[data-theme='minimal'] .titlebar-actions-primary .titlebar-icon-active {
+  border-color: rgba(255, 255, 255, 0.42) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+
 .dark .app-shell[data-theme='minimal'] :is(.settings-field input, .settings-field select, .settings-field textarea),
 .dark .app-shell[data-theme='invisible'] :is(.settings-field input, .settings-field select, .settings-field textarea),
 .dark .app-shell[data-theme='neumorphism'] :is(.settings-field input, .settings-field select, .settings-field textarea) {
@@ -9748,6 +9376,25 @@ html:not(.dark) .app-shell[data-theme='minimal'] .settings-panel {
   background: rgba(18, 18, 20, var(--dialog-opacity)) !important;
   color: #f9fafb !important;
   box-shadow: 0 18px 52px rgba(0, 0, 0, 0.42) !important;
+}
+
+html:not(.dark) .app-shell[data-theme='invisible'] .completion-dialog {
+  border-color: rgba(39, 39, 42, 0.1) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  color: #27272a !important;
+}
+
+html:not(.dark) .app-shell[data-theme='invisible'] :is(.completion-field, .completion-field select, .completion-field textarea) {
+  background: rgba(255, 255, 255, 0.78) !important;
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(39, 39, 42, 0.1) !important;
+  color: #27272a !important;
+}
+
+html:not(.dark) .app-shell[data-theme='invisible'] .completion-field select option {
+  background: #ffffff !important;
+  color: #27272a !important;
 }
 
 html:not(.dark) .app-shell[data-theme='invisible'] .review-entry,
@@ -9777,12 +9424,6 @@ html:not(.dark) .app-shell[data-theme='invisible'] .review-entry-text {
   color: #d1d5db !important;
 }
 
-.dark .app-shell[data-theme='watercolor'] .date-today-button {
-  background: rgba(255, 255, 255, 0.94) !important;
-  color: #1f2937 !important;
-  border-color: rgba(255, 255, 255, 0.72) !important;
-}
-
 .dark .app-shell[data-theme='watercolor'] .daily-work-textarea,
 .dark .app-shell[data-theme='watercolor'] .review-edit-textarea {
   border-color: rgba(127, 163, 201, 0.42) !important;
@@ -9798,7 +9439,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] .review-entry-text {
 
 .task-subtask-action-layer {
   position: absolute !important;
-  right: 0.1rem !important;
+  right: var(--task-action-right) !important;
   top: 50% !important;
   display: grid !important;
   grid-template-columns: 1.38rem 1.38rem !important;
@@ -9817,7 +9458,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] .review-entry-text {
 }
 
 .task-subtask-row {
-  padding-right: 3.25rem !important;
+  padding-right: var(--task-action-safe-space) !important;
 }
 
 .task-delete-zone,
@@ -9866,35 +9507,11 @@ html:not(.dark) .app-shell[data-theme='invisible'] .review-entry-text {
   --neutral-border: rgba(255, 255, 255, 0.18);
 }
 
-.dark .app-shell:not([data-theme='watercolor']) :is(.titlebar-icon-button:hover, .titlebar-icon-button:active, .titlebar-icon-button:focus-visible, .titlebar-icon-active, .titlebar-mode:hover, .titlebar-mode:active, .titlebar-mode:focus-visible, .titlebar-mode-active, .header-actions button:hover, .daily-panel-tab-active, .tabbar button.font-semibold, .task-tool-active, .task-filter-active, .settings-nav-active, .settings-switch-on) {
+.dark .app-shell:not([data-theme='watercolor']) :is(.titlebar-icon-button:hover, .titlebar-icon-active, .header-actions button:hover, .daily-panel-tab-active, .tabbar button.font-semibold, .task-tool-active, .task-filter-active, .settings-nav-active, .settings-switch-on) {
   border-color: var(--neutral-border) !important;
   background: var(--neutral-surface) !important;
   color: var(--neutral-accent-strong) !important;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
-}
-
-.dark .app-shell:not([data-theme='watercolor']) :is(.titlebar-mode-active, .titlebar-icon-active, .titlebar-state-on) {
-  border-color: rgba(255, 255, 255, 0.42) !important;
-  background: rgba(82, 82, 91, 0.96) !important;
-  color: #ffffff !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.14) !important;
-}
-
-.dark .app-shell:not([data-theme='watercolor']) :is(.titlebar-mode-active, .titlebar-icon-active, .titlebar-state-on):hover {
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  background: rgba(113, 113, 122, 0.98) !important;
-}
-
-.dark .app-shell[data-theme='minimal'] :is(.titlebar-mode-active, .titlebar-icon-active, .titlebar-state-on) {
-  border-color: rgba(255, 255, 255, 0.46) !important;
-  background: rgba(82, 82, 91, 0.98) !important;
-  color: #ffffff !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.16) !important;
-}
-
-.dark .app-shell[data-theme='minimal'] :is(.titlebar-mode-active, .titlebar-icon-active, .titlebar-state-on):hover {
-  border-color: rgba(255, 255, 255, 0.56) !important;
-  background: rgba(113, 113, 122, 1) !important;
 }
 
 .dark .app-shell:not([data-theme='watercolor']) :is(.task-complete-action-complete, .task-subtask-check-complete, .add-task-button, .review-edit-save) {
@@ -9952,16 +9569,1096 @@ html:not(.dark) .app-shell[data-theme='invisible'] .review-entry-text {
   min-height: 3.25rem;
 }
 
-.dark .app-shell :is(.titlebar-mode, .titlebar-icon-button)[data-state='on'] {
-  border-color: rgba(255, 255, 255, 0.58) !important;
-  background: #52525b !important;
-  color: #ffffff !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.18) !important;
+
+/* 2026-06-19 AI generation progress */
+.settings-progress {
+  display: grid;
+  gap: 0.38rem;
+  width: 100%;
 }
 
-.dark .app-shell :is(.titlebar-mode, .titlebar-icon-button)[data-state='on']:hover {
-  border-color: rgba(255, 255, 255, 0.66) !important;
-  background: #71717a !important;
+.settings-progress-track {
+  position: relative;
+  height: 0.42rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(113, 113, 122, 0.18);
+}
+
+.settings-progress-fill {
+  height: 100%;
+  min-width: 0.5rem;
+  border-radius: inherit;
+  background: #52525b;
+  transition: width 220ms ease, background-color 180ms ease;
+}
+
+.settings-progress small {
+  color: inherit;
+  opacity: 0.78;
+}
+
+.app-shell[data-theme='minimal'] .settings-progress-fill,
+.app-shell[data-theme='invisible'] .settings-progress-fill,
+.app-shell[data-theme='neumorphism'] .settings-progress-fill {
+  background: linear-gradient(90deg, #71717a, #27272a);
+}
+
+.dark .app-shell[data-theme='minimal'] .settings-progress-fill,
+.dark .app-shell[data-theme='invisible'] .settings-progress-fill,
+.dark .app-shell[data-theme='neumorphism'] .settings-progress-fill {
+  background: linear-gradient(90deg, #d4d4d8, #ffffff);
+}
+
+.app-shell[data-theme='watercolor'] .settings-progress-fill {
+  background: linear-gradient(90deg, var(--watercolor-blue-lighter, #a8c5e3), var(--watercolor-blue, #4a6fa5));
+}
+
+/* 2026-06-19 task/subtask action alignment */
+.task-card,
+.task-subtask-row {
+  --task-review-action-width: 2.2rem;
+  --task-delete-action-width: 2.2rem;
+  --task-action-gap: 0.18rem;
+  --task-action-right: 0.62rem;
+  --task-action-safe-space: 4.85rem;
+}
+
+.task-action-layer {
+  display: grid !important;
+  width: calc(var(--task-review-action-width) + var(--task-delete-action-width) + var(--task-action-gap)) !important;
+  min-width: calc(var(--task-review-action-width) + var(--task-delete-action-width) + var(--task-action-gap)) !important;
+  grid-template-columns: var(--task-review-action-width) var(--task-delete-action-width) !important;
+  align-items: center !important;
+  justify-content: end !important;
+  justify-items: center !important;
+  gap: var(--task-action-gap) !important;
+  margin-left: auto;
+}
+
+.task-action-slot {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-icon-action,
+.task-subtask-review,
+.task-subtask-delete {
+  width: 1.72rem;
+  height: 1.72rem;
+  min-width: 1.72rem;
+  min-height: 1.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.task-subtask-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.42rem;
+  padding-right: var(--task-action-safe-space) !important;
+}
+
+.task-subtask-text {
+  min-width: 0;
+}
+
+.task-subtask-action-layer.task-action-layer {
+  position: absolute !important;
+  right: var(--task-action-right) !important;
+  inset-block: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: calc(var(--task-review-action-width) + var(--task-delete-action-width) + var(--task-action-gap)) !important;
+  min-width: calc(var(--task-review-action-width) + var(--task-delete-action-width) + var(--task-action-gap)) !important;
+  height: 100% !important;
+  grid-template-columns: var(--task-review-action-width) var(--task-delete-action-width) !important;
+  gap: var(--task-action-gap) !important;
+  justify-content: end !important;
+  justify-items: center !important;
+  align-content: center !important;
+  align-items: center !important;
+  align-self: stretch !important;
+  transform: none !important;
+}
+
+.task-subtask-review-zone,
+.task-subtask-delete-zone {
+  height: 100% !important;
+  min-height: 100% !important;
+  align-self: stretch !important;
+  justify-self: center !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+.task-subtask-review,
+.task-subtask-delete {
+  align-self: center !important;
+  justify-self: center !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 0 !important;
+  transform: none !important;
+}
+
+.task-subtask-review svg,
+.task-subtask-delete svg {
+  display: block !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* 2026-06-19 non-watercolor neutral theme isolation */
+.app-shell:not([data-theme='watercolor']) {
+  --context-menu-accent: #52525b;
+}
+
+.app-shell[data-theme='minimal'],
+.app-shell[data-theme='neumorphism'],
+.app-shell[data-theme='invisible'] {
+  --personal-accent: #27272a;
+  --personal-secondary: #71717a;
+  --theme-neutral-surface: rgba(255, 255, 255, 0.88);
+  --theme-neutral-surface-strong: rgba(255, 255, 255, 0.96);
+  --theme-neutral-border: rgba(39, 39, 42, 0.14);
+  --theme-neutral-text: #18181b;
+  --theme-neutral-muted: #71717a;
+}
+
+.dark .app-shell[data-theme='minimal'],
+.dark .app-shell[data-theme='neumorphism'],
+.dark .app-shell[data-theme='invisible'] {
+  --personal-accent: #f4f4f5;
+  --personal-secondary: #a1a1aa;
+  --theme-neutral-surface: rgba(24, 24, 27, 0.86);
+  --theme-neutral-surface-strong: rgba(39, 39, 42, 0.94);
+  --theme-neutral-border: rgba(255, 255, 255, 0.14);
+  --theme-neutral-text: #ffffff;
+  --theme-neutral-muted: #d4d4d8;
+}
+
+.app-shell[data-theme='minimal'] :is(.titlebar-icon-active, .header-actions button[aria-pressed='true'], .settings-nav-active, .settings-switch-on),
+.app-shell[data-theme='neumorphism'] :is(.titlebar-icon-active, .header-actions button[aria-pressed='true'], .settings-nav-active, .settings-switch-on),
+.app-shell[data-theme='invisible'] :is(.titlebar-icon-active, .header-actions button[aria-pressed='true'], .settings-nav-active, .settings-switch-on) {
+  color: var(--theme-neutral-text) !important;
+  border-color: var(--theme-neutral-border) !important;
+  background: color-mix(in srgb, var(--theme-neutral-surface-strong) 88%, var(--theme-neutral-text) 12%) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-neutral-text) 18%, transparent) !important;
+}
+
+.app-shell[data-theme='minimal'] :is(.tab-active, .settings-field input, .settings-field select, .settings-field textarea, .completion-dialog, .settings-preview-list),
+.app-shell[data-theme='neumorphism'] :is(.tab-active, .settings-field input, .settings-field select, .settings-field textarea, .completion-dialog, .settings-preview-list),
+.app-shell[data-theme='invisible'] :is(.tab-active, .settings-field input, .settings-field select, .settings-field textarea, .completion-dialog, .settings-preview-list) {
+  color: var(--theme-neutral-text) !important;
+  border-color: var(--theme-neutral-border) !important;
+  background-color: var(--theme-neutral-surface) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.task-text, .task-subtask-text, .settings-page-title h2, .settings-section h3),
+.dark .app-shell[data-theme='neumorphism'] :is(.task-text, .task-subtask-text, .settings-page-title h2, .settings-section h3),
+.dark .app-shell[data-theme='invisible'] :is(.task-text, .task-subtask-text, .settings-page-title h2, .settings-section h3) {
   color: #ffffff !important;
 }
 
+.dark .app-shell[data-theme='invisible'] :is(.tab-active, .settings-nav-active) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: inset 0 -2px 0 #ffffff !important;
+}
+
+html:not(.dark) .app-shell[data-theme='invisible'] .date-current {
+  color: #000000 !important;
+}
+
+/* 2026-06-21 stable dark primary titlebar active emphasis */
+.titlebar-actions-primary .titlebar-icon-button[data-selected='true'] {
+  border-color: #ffffff !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* 2026-06-20 date navigator theme surface fix
+   date navigator themes: forest, morandi, minimal, neumorphism, invisible, watercolor, custom */
+.app-shell[data-theme='forest'] {
+  --date-nav-surface: color-mix(in srgb, var(--solid-surface) 78%, transparent);
+  --date-nav-surface-hover: color-mix(in srgb, var(--solid-surface) 92%, transparent);
+  --date-nav-border: rgba(39, 39, 42, 0.12);
+}
+
+.app-shell[data-theme='custom'] {
+  --date-nav-surface: color-mix(in srgb, var(--solid-surface) 78%, transparent);
+  --date-nav-surface-hover: color-mix(in srgb, var(--solid-surface) 92%, transparent);
+  --date-nav-border: rgba(39, 39, 42, 0.12);
+}
+
+.dark .app-shell[data-theme='forest'],
+.dark .app-shell[data-theme='custom'] {
+  --date-nav-surface: color-mix(in srgb, var(--solid-surface-dark) 78%, transparent);
+  --date-nav-surface-hover: color-mix(in srgb, var(--solid-surface-dark) 92%, transparent);
+  --date-nav-border: rgba(255, 255, 255, 0.14);
+}
+
+.app-shell[data-theme='morandi'] {
+  --date-nav-surface: rgba(244, 244, 245, var(--card-opacity));
+  --date-nav-surface-hover: rgba(255, 255, 255, var(--control-opacity));
+  --date-nav-border: rgba(63, 63, 70, 0.12);
+}
+
+.dark .app-shell[data-theme='morandi'] {
+  --date-nav-surface: rgba(24, 24, 27, var(--card-opacity));
+  --date-nav-surface-hover: rgba(39, 39, 42, var(--control-opacity));
+  --date-nav-border: rgba(255, 255, 255, 0.14);
+}
+
+.app-shell[data-theme='minimal'] {
+  --date-nav-surface: rgba(250, 250, 250, var(--card-opacity));
+  --date-nav-surface-hover: rgba(255, 255, 255, var(--control-opacity));
+  --date-nav-border: rgba(39, 39, 42, 0.1);
+}
+
+.dark .app-shell[data-theme='minimal'] {
+  --date-nav-surface: rgba(18, 18, 20, var(--card-opacity));
+  --date-nav-surface-hover: rgba(39, 39, 42, var(--control-opacity));
+  --date-nav-border: rgba(255, 255, 255, 0.16);
+}
+
+.app-shell[data-theme='neumorphism'] {
+  --date-nav-surface: rgba(var(--neu-bg), var(--card-opacity));
+  --date-nav-surface-hover: color-mix(in srgb, rgb(var(--neu-bg)) 86%, #000000 8%);
+  --date-nav-border: color-mix(in srgb, rgb(var(--neu-bg)) 64%, rgba(0, 0, 0, 0.18));
+}
+
+.dark .app-shell[data-theme='neumorphism'] {
+  --date-nav-surface: rgba(var(--neu-bg), var(--card-opacity));
+  --date-nav-surface-hover: color-mix(in srgb, rgb(var(--neu-bg)) 84%, #ffffff 10%);
+  --date-nav-border: rgba(255, 255, 255, 0.14);
+}
+
+.app-shell[data-theme='invisible'] {
+  --date-nav-surface: transparent;
+  --date-nav-surface-hover: rgba(0, 0, 0, 0.06);
+  --date-nav-border: rgba(0, 0, 0, 0.1);
+}
+
+.dark .app-shell[data-theme='invisible'] {
+  --date-nav-surface: transparent;
+  --date-nav-surface-hover: rgba(255, 255, 255, 0.08);
+  --date-nav-border: rgba(255, 255, 255, 0.12);
+}
+
+.app-shell[data-theme='watercolor'] {
+  --date-nav-surface: rgba(var(--wc-surface), var(--control-opacity, 0.72));
+  --date-nav-surface-hover: rgba(var(--wc-surface), 0.92);
+  --date-nav-border: var(--watercolor-border);
+}
+
+.dark .app-shell[data-theme='watercolor'] {
+  --date-nav-surface: rgba(var(--wc-surface), 0.72);
+  --date-nav-surface-hover: rgba(var(--wc-surface), 0.86);
+  --date-nav-border: var(--watercolor-dark-border, var(--watercolor-border));
+}
+
+.app-shell :is(.date-card, .date-stepper, .date-calendar-button) {
+  background: var(--date-nav-surface) !important;
+  background-color: var(--date-nav-surface) !important;
+  background-image: none !important;
+  border-color: var(--date-nav-border) !important;
+  box-shadow: none !important;
+}
+
+.app-shell :is(.date-current, .date-current:hover) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+html:not(.dark) .app-shell :is(.date-stepper button, .date-calendar-button, .date-current) {
+  color: #000000 !important;
+}
+
+.dark .app-shell :is(.date-stepper button, .date-calendar-button, .date-current) {
+  color: #ffffff !important;
+}
+
+.app-shell :is(.date-stepper button:hover, .date-calendar-button:hover) {
+  background: var(--date-nav-surface-hover) !important;
+}
+
+.app-shell .date-today-button {
+  border-color: var(--date-nav-border) !important;
+}
+
+.app-shell[data-theme='watercolor'].dark .date-current,
+.dark .app-shell[data-theme='watercolor'] .date-current {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.app-shell[data-theme='forest'] .date-current,
+.app-shell[data-theme='morandi'] .date-current,
+.app-shell[data-theme='minimal'] .date-current,
+.app-shell[data-theme='neumorphism'] .date-current,
+.app-shell[data-theme='invisible'] .date-current,
+.app-shell[data-theme='watercolor'] .date-current,
+.app-shell[data-theme='custom'] .date-current {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.app-shell[data-theme='forest'] :is(.date-card, .date-stepper, .date-calendar-button),
+.app-shell[data-theme='morandi'] :is(.date-card, .date-stepper, .date-calendar-button),
+.app-shell[data-theme='minimal'] :is(.date-card, .date-stepper, .date-calendar-button),
+.app-shell[data-theme='neumorphism'] :is(.date-card, .date-stepper, .date-calendar-button),
+.app-shell[data-theme='invisible'] :is(.date-card, .date-stepper, .date-calendar-button),
+.app-shell[data-theme='watercolor'] :is(.date-card, .date-stepper, .date-calendar-button),
+.app-shell[data-theme='custom'] :is(.date-card, .date-stepper, .date-calendar-button) {
+  background: var(--date-nav-surface) !important;
+  background-color: var(--date-nav-surface) !important;
+  background-image: none !important;
+  border-color: var(--date-nav-border) !important;
+  box-shadow: none !important;
+}
+
+html:not(.dark) .app-shell[data-theme='forest'] :is(.date-stepper button, .date-calendar-button, .date-current),
+html:not(.dark) .app-shell[data-theme='morandi'] :is(.date-stepper button, .date-calendar-button, .date-current),
+html:not(.dark) .app-shell[data-theme='minimal'] :is(.date-stepper button, .date-calendar-button, .date-current),
+html:not(.dark) .app-shell[data-theme='neumorphism'] :is(.date-stepper button, .date-calendar-button, .date-current),
+html:not(.dark) .app-shell[data-theme='invisible'] :is(.date-stepper button, .date-calendar-button, .date-current),
+html:not(.dark) .app-shell[data-theme='watercolor'] :is(.date-stepper button, .date-calendar-button, .date-current),
+html:not(.dark) .app-shell[data-theme='custom'] :is(.date-stepper button, .date-calendar-button, .date-current) {
+  color: #000000 !important;
+}
+
+.dark .app-shell[data-theme='forest'] :is(.date-stepper button, .date-calendar-button, .date-current),
+.dark .app-shell[data-theme='morandi'] :is(.date-stepper button, .date-calendar-button, .date-current),
+.dark .app-shell[data-theme='minimal'] :is(.date-stepper button, .date-calendar-button, .date-current),
+.dark .app-shell[data-theme='neumorphism'] :is(.date-stepper button, .date-calendar-button, .date-current),
+.dark .app-shell[data-theme='invisible'] :is(.date-stepper button, .date-calendar-button, .date-current),
+.dark .app-shell[data-theme='watercolor'] :is(.date-stepper button, .date-calendar-button, .date-current),
+.dark .app-shell[data-theme='custom'] :is(.date-stepper button, .date-calendar-button, .date-current) {
+  color: #ffffff !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .add-task-input {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: #4f4f52 !important;
+  background-color: #4f4f52 !important;
+  color: #f8fafc !important;
+  font-size: 0.86rem !important;
+  font-weight: 650 !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .add-task-input::placeholder {
+  color: rgba(248, 250, 252, 0.7) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .add-task-input:focus {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: #4f4f52 !important;
+  background-color: #4f4f52 !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field textarea {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #f8fafc !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field textarea::placeholder {
+  color: rgba(248, 250, 252, 0.7) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-input-shell {
+  border-top-color: transparent !important;
+  background: #6a6a6f !important;
+  background-color: #6a6a6f !important;
+  border-radius: 0.74rem !important;
+  padding: 0.22rem !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field:has(select) .completion-input-shell {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 0.68rem;
+  background: #6a6a6f !important;
+  background-color: #6a6a6f !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 0.08rem 0.16rem !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  border-radius: 0.9rem !important;
+  background: #4f4f52 !important;
+  background-color: #4f4f52 !important;
+  color: #f8fafc !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-percent-field .completion-input-shell {
+  border-radius: 0.74rem !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field select,
+.dark .app-shell[data-theme='minimal'] .completion-field textarea {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #f8fafc !important;
+  border-radius: 0.6rem !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field select {
+  min-height: 2rem;
+  border: 0 !important;
+  border-radius: 0.6rem;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #f8fafc !important;
+  padding: 0.28rem 2.1rem 0.28rem 0.72rem !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field:has(input[type='range']) .completion-input-shell {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field textarea::placeholder {
+  color: rgba(248, 250, 252, 0.7) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-field select option {
+  background: #4f4f52 !important;
+  color: #f8fafc !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-percent-field input[type='range'] {
+  accent-color: #d4d4d8 !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-percent-field input[type='range']::-webkit-slider-runnable-track {
+  height: 0.38rem;
+  border-radius: 999px;
+  background: rgba(228, 228, 231, 0.72);
+}
+
+.dark .app-shell[data-theme='minimal'] .completion-percent-field input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.18rem;
+  height: 1.18rem;
+  margin-top: -0.4rem;
+  border: 2px solid rgba(228, 228, 231, 0.96);
+  border-radius: 999px;
+  background: #f4f4f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.app-shell[data-theme='invisible'] :is(.daily-panel-tab-active, .tabbar button.font-semibold, .tabbar button[class*="font-semibold"]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.daily-panel-tab-active, .tabbar button.font-semibold, .tabbar button[class*="font-semibold"]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-shell[data-theme='invisible'] .tabbar-active-indicator {
+  display: block !important;
+  left: 0.55rem !important;
+  right: 0.55rem !important;
+  bottom: 0 !important;
+  height: 0.08rem !important;
+  border-radius: 999px !important;
+  background: #000000 !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .tabbar-active-indicator {
+  background: #ffffff !important;
+}
+
+/* 2026-06-19 AI settings consistent sizing */
+.settings-v2-page .settings-field :is(input, select, textarea),
+.settings-v2-page .settings-reset-button,
+.settings-v2-page .settings-switch-row {
+  min-height: 2.5rem;
+  box-sizing: border-box;
+}
+
+.settings-v2-page .settings-field :is(input, select) {
+  height: 2.5rem;
+}
+
+.settings-v2-page .settings-field textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.settings-v2-page .settings-grid,
+.settings-v2-page .settings-compact-grid,
+.ai-account-detail.settings-grid {
+  align-items: stretch;
+}
+
+/* 2026-06-22 dark minimal settings neutralization */
+/* 2026-06-23 invisible dark settings neutralization */
+.dark .app-shell[data-theme='invisible'] .settings-panel {
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-v2-sidebar {
+  border-right-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-v2-content {
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-v2-page {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-panel-header,
+.dark .app-shell[data-theme='invisible'] .settings-page-title,
+.dark .app-shell[data-theme='invisible'] .settings-panel-header h2,
+.dark .app-shell[data-theme='invisible'] .settings-panel-header p,
+.dark .app-shell[data-theme='invisible'] .settings-v2-page .settings-section h3,
+.dark .app-shell[data-theme='invisible'] .settings-v2-page .settings-zone h3,
+.dark .app-shell[data-theme='invisible'] .settings-v2-page .settings-inline-section h3 {
+  color: #f4f4f5 !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-v2-page .settings-section {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-v2-page .settings-zone,
+.dark .app-shell[data-theme='invisible'] .settings-v2-page .settings-inline-section,
+.dark .app-shell[data-theme='invisible'] .settings-preview-list,
+.dark .app-shell[data-theme='invisible'] .settings-rule-card,
+.dark .app-shell[data-theme='invisible'] .ai-account-inline-row,
+.dark .app-shell[data-theme='invisible'] .ai-account-summary,
+.dark .app-shell[data-theme='invisible'] .ai-account-detail,
+.dark .app-shell[data-theme='invisible'] .recognition-block-row,
+.dark .app-shell[data-theme='invisible'] .template-source-card {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.settings-nav-item, .settings-switch-row, .settings-reset-button) {
+  background: rgba(63, 63, 70, 0.96) !important;
+  background-color: rgba(63, 63, 70, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f4f4f5 !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.settings-nav-item:hover, .settings-switch-row:hover, .settings-reset-button:hover),
+.dark .app-shell[data-theme='invisible'] :is(.settings-nav-active, .settings-switch-on) {
+  background: rgba(82, 82, 91, 0.98) !important;
+  background-color: rgba(82, 82, 91, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.settings-field input, .settings-field select, .settings-field textarea) {
+  background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .theme-preset-card {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+/* 2026-06-23 custom dark settings neutralization */
+.dark .app-shell[data-theme='custom'] .settings-panel {
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .app-shell[data-theme='custom'] .settings-v2-sidebar {
+  border-right-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+}
+
+.dark .app-shell[data-theme='custom'] .settings-v2-content {
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+}
+
+.dark .app-shell[data-theme='custom'] .settings-v2-page {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.dark .app-shell[data-theme='custom'] .settings-panel-header,
+.dark .app-shell[data-theme='custom'] .settings-page-title,
+.dark .app-shell[data-theme='custom'] .settings-panel-header h2,
+.dark .app-shell[data-theme='custom'] .settings-panel-header p,
+.dark .app-shell[data-theme='custom'] .settings-v2-page .settings-section h3,
+.dark .app-shell[data-theme='custom'] .settings-v2-page .settings-zone h3,
+.dark .app-shell[data-theme='custom'] .settings-v2-page .settings-inline-section h3 {
+  color: #f4f4f5 !important;
+}
+
+.dark .app-shell[data-theme='custom'] .settings-v2-page .settings-section {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='custom'] .settings-v2-page .settings-zone,
+.dark .app-shell[data-theme='custom'] .settings-v2-page .settings-inline-section,
+.dark .app-shell[data-theme='custom'] .settings-preview-list,
+.dark .app-shell[data-theme='custom'] .settings-rule-card,
+.dark .app-shell[data-theme='custom'] .ai-account-inline-row,
+.dark .app-shell[data-theme='custom'] .ai-account-summary,
+.dark .app-shell[data-theme='custom'] .ai-account-detail,
+.dark .app-shell[data-theme='custom'] .recognition-block-row,
+.dark .app-shell[data-theme='custom'] .template-source-card {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='custom'] :is(.settings-nav-item, .settings-switch-row, .settings-reset-button) {
+  background: rgba(63, 63, 70, 0.96) !important;
+  background-color: rgba(63, 63, 70, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f4f4f5 !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='custom'] :is(.settings-nav-item:hover, .settings-switch-row:hover, .settings-reset-button:hover),
+.dark .app-shell[data-theme='custom'] :is(.settings-nav-active, .settings-switch-on) {
+  background: rgba(82, 82, 91, 0.98) !important;
+  background-color: rgba(82, 82, 91, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='custom'] :is(.settings-field input, .settings-field select, .settings-field textarea) {
+  background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='custom'] .theme-preset-card {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+/* 2026-06-23 dark mode settings neutralization */
+.theme-dark-mode.dark .settings-panel {
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28) !important;
+}
+
+.theme-dark-mode.dark .settings-v2-sidebar {
+  border-right-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+}
+
+.theme-dark-mode.dark .settings-panel-header,
+.theme-dark-mode.dark .settings-page-title,
+.theme-dark-mode.dark .settings-panel-header h2,
+.theme-dark-mode.dark .settings-panel-header p,
+.theme-dark-mode.dark .settings-v2-page .settings-section h3,
+.theme-dark-mode.dark .settings-v2-page .settings-zone h3,
+.theme-dark-mode.dark .settings-v2-page .settings-inline-section h3 {
+  color: #f4f4f5 !important;
+}
+
+.theme-dark-mode.dark .settings-v2-page .settings-section {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.theme-dark-mode.dark .settings-v2-page .settings-zone,
+.theme-dark-mode.dark .settings-v2-page .settings-inline-section,
+.theme-dark-mode.dark .settings-preview-list,
+.theme-dark-mode.dark .settings-rule-card,
+.theme-dark-mode.dark .ai-account-inline-row,
+.theme-dark-mode.dark .ai-account-summary,
+.theme-dark-mode.dark .ai-account-detail,
+.theme-dark-mode.dark .recognition-block-row,
+.theme-dark-mode.dark .template-source-card {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.theme-dark-mode.dark :is(.settings-nav-item, .settings-switch-row, .settings-reset-button) {
+  background: rgba(63, 63, 70, 0.96) !important;
+  background-color: rgba(63, 63, 70, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f4f4f5 !important;
+  box-shadow: none !important;
+}
+
+.theme-dark-mode.dark :is(.settings-nav-item:hover, .settings-switch-row:hover, .settings-reset-button:hover),
+.theme-dark-mode.dark :is(.settings-nav-active, .settings-switch-on) {
+  background: rgba(82, 82, 91, 0.98) !important;
+  background-color: rgba(82, 82, 91, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.theme-dark-mode.dark :is(.settings-field input, .settings-field select, .settings-field textarea) {
+  background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+.theme-dark-mode.dark .theme-preset-card {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .settings-panel {
+  background: rgba(24, 24, 27, 0.96) !important;
+  background-color: rgba(24, 24, 27, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .settings-panel-header,
+.dark .app-shell[data-theme='minimal'] .settings-page-title,
+.dark .app-shell[data-theme='minimal'] .settings-panel-header h2,
+.dark .app-shell[data-theme='minimal'] .settings-panel-header p,
+.dark .app-shell[data-theme='minimal'] .settings-section h3,
+.dark .app-shell[data-theme='minimal'] .settings-v2-page .settings-section h3,
+.dark .app-shell[data-theme='minimal'] .settings-v2-page .settings-zone h3,
+.dark .app-shell[data-theme='minimal'] .settings-v2-page .settings-inline-section h3 {
+  color: #f4f4f5 !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .settings-v2-page .settings-section {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .settings-v2-page .settings-zone,
+.dark .app-shell[data-theme='minimal'] .settings-v2-page .settings-inline-section,
+.dark .app-shell[data-theme='minimal'] .settings-preview-list,
+.dark .app-shell[data-theme='minimal'] .settings-rule-card,
+.dark .app-shell[data-theme='minimal'] .ai-account-inline-row,
+.dark .app-shell[data-theme='minimal'] .ai-account-summary,
+.dark .app-shell[data-theme='minimal'] .ai-account-detail,
+.dark .app-shell[data-theme='minimal'] .recognition-block-row,
+.dark .app-shell[data-theme='minimal'] .template-source-card {
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.settings-field input, .settings-field select, .settings-field textarea) {
+  background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .theme-preset-card {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .theme-preset-active {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.settings-reset-button, .settings-switch-row, .settings-nav-item) {
+  background: rgba(63, 63, 70, 0.96) !important;
+  background-color: rgba(63, 63, 70, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f4f4f5 !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.settings-reset-button, .settings-switch-row, .settings-nav-item):hover,
+.dark .app-shell[data-theme='minimal'] .settings-nav-active,
+.dark .app-shell[data-theme='minimal'] .settings-nav-item[aria-current='page'] {
+  background: rgba(82, 82, 91, 0.98) !important;
+  background-color: rgba(82, 82, 91, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .ai-account-inline-actions > select {
+  background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .ai-account-inline-actions > select option {
+  background: #2a2a2e !important;
+  color: #f9fafb !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .render-type-select {
+  background: rgba(63, 63, 70, 0.96) !important;
+  background-color: rgba(63, 63, 70, 0.96) !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .render-type-select option {
+  background: #2a2a2e !important;
+  color: #f9fafb !important;
+}
+
+/* 2026-06-22 neumorphism dark settings unified surface */
+.dark .app-shell[data-theme='neumorphism'] .settings-panel {
+  background: rgba(var(--neu-bg), calc(var(--settings-panel-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--settings-panel-opacity))) !important;
+  border: none !important;
+  box-shadow: 12px 12px 24px var(--neu-d), -12px -12px 24px var(--neu-l) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .settings-panel-header {
+  background: rgba(var(--neu-bg), calc(var(--settings-panel-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--settings-panel-opacity))) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .settings-v2-sidebar {
+  border-right-color: color-mix(in srgb, var(--neu-d) 55%, transparent) !important;
+  background: rgba(var(--neu-bg), calc(var(--settings-panel-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--settings-panel-opacity))) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .settings-nav-item {
+  background: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  border: none !important;
+  color: #e2e8f0 !important;
+  box-shadow: 6px 6px 12px var(--neu-d), -6px -6px 12px var(--neu-l) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .settings-nav-primary {
+  background: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  border: none !important;
+  box-shadow: inset 4px 4px 8px var(--neu-d), inset -4px -4px 8px var(--neu-l) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .settings-v2-page .settings-section {
+  background: rgba(var(--neu-bg), calc(var(--panel-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--panel-opacity))) !important;
+  border: none !important;
+  box-shadow: 8px 8px 18px var(--neu-d), -8px -8px 18px var(--neu-l) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .settings-v2-page .settings-zone,
+.dark .app-shell[data-theme='neumorphism'] .settings-v2-page .settings-inline-section,
+.dark .app-shell[data-theme='neumorphism'] .settings-preview-list,
+.dark .app-shell[data-theme='neumorphism'] .settings-rule-card,
+.dark .app-shell[data-theme='neumorphism'] .ai-account-inline-row,
+.dark .app-shell[data-theme='neumorphism'] .ai-account-summary,
+.dark .app-shell[data-theme='neumorphism'] .ai-account-detail,
+.dark .app-shell[data-theme='neumorphism'] .recognition-block-row,
+.dark .app-shell[data-theme='neumorphism'] .template-source-card {
+  background: rgba(var(--neu-bg), calc(var(--panel-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--panel-opacity))) !important;
+  border: none !important;
+  box-shadow: 8px 8px 18px var(--neu-d), -8px -8px 18px var(--neu-l) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] :is(.settings-nav-item, .settings-switch-row, .settings-reset-button) {
+  background: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  border: none !important;
+  color: #e2e8f0 !important;
+  box-shadow: 6px 6px 12px var(--neu-d), -6px -6px 12px var(--neu-l) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] :is(.settings-nav-item:hover, .settings-switch-row:hover, .settings-reset-button:hover),
+.dark .app-shell[data-theme='neumorphism'] :is(.settings-nav-active, .settings-switch-on) {
+  background: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  box-shadow: inset 4px 4px 8px var(--neu-d), inset -4px -4px 8px var(--neu-l) !important;
+  color: #f8fafc !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] :is(.settings-field input, .settings-field select, .settings-field textarea) {
+  background: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--control-opacity))) !important;
+  color: #e2e8f0 !important;
+  border: none !important;
+  box-shadow: inset 4px 4px 8px var(--neu-d), inset -4px -4px 8px var(--neu-l) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .theme-preset-card {
+  background: rgba(var(--neu-bg), calc(var(--panel-opacity))) !important;
+  background-color: rgba(var(--neu-bg), calc(var(--panel-opacity))) !important;
+  border: none !important;
+  box-shadow: 8px 8px 18px var(--neu-d), -8px -8px 18px var(--neu-l) !important;
+}
+
+.dark .app-shell[data-theme='neumorphism'] .theme-preset-active {
+  box-shadow: inset 4px 4px 8px var(--neu-d), inset -4px -4px 8px var(--neu-l), 0 0 0 1px color-mix(in srgb, var(--neu-l) 18%, transparent) !important;
+}
+
+/* 2026-06-22 dark minimal template editor neutralization */
+/* 2026-06-23 generic dark template editor neutralization */
+.dark .template-editor-overlay {
+  background: rgba(24, 24, 27, 0.42) !important;
+  background-color: rgba(24, 24, 27, 0.42) !important;
+}
+
+.dark .template-editor-modal {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(24, 24, 27, 0.98) !important;
+  background-color: rgba(24, 24, 27, 0.98) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34) !important;
+}
+
+.dark .template-editor-title,
+.dark .template-editor-section-label,
+.dark .template-block-custom-controls,
+.dark .ai-toggle {
+  color: #f4f4f5 !important;
+}
+
+.dark .template-block-row {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+}
+
+.dark :is(.block-name-input, .render-type-select, .block-prompt-input) {
+  background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.dark :is(.block-delete-btn, .block-prompt-toggle, .template-editor-actions-row button, .template-editor-footer button) {
+  background: rgba(63, 63, 70, 0.96) !important;
+  background-color: rgba(63, 63, 70, 0.96) !important;
+  color: #f4f4f5 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .template-editor-overlay {
+  background: rgba(24, 24, 27, 0.42) !important;
+  background-color: rgba(24, 24, 27, 0.42) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .template-editor-modal {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(24, 24, 27, 0.98) !important;
+  background-color: rgba(24, 24, 27, 0.98) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .template-editor-title,
+.dark .app-shell[data-theme='minimal'] .template-editor-section-label,
+.dark .app-shell[data-theme='minimal'] .template-block-custom-controls,
+.dark .app-shell[data-theme='minimal'] .ai-toggle {
+  color: #f4f4f5 !important;
+}
+
+.dark .app-shell[data-theme='minimal'] .template-block-row {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(39, 39, 42, 0.92) !important;
+  background-color: rgba(39, 39, 42, 0.92) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.block-name-input, .render-type-select, .block-prompt-input) {
+  background: #3f3f46 !important;
+  background-color: #3f3f46 !important;
+  color: #f9fafb !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.dark .app-shell[data-theme='minimal'] :is(.block-delete-btn, .block-prompt-toggle, .template-editor-actions-row button, .template-editor-footer button) {
+  background: rgba(63, 63, 70, 0.96) !important;
+  background-color: rgba(63, 63, 70, 0.96) !important;
+  color: #f4f4f5 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}

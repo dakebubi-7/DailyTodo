@@ -29,8 +29,9 @@ html:has(.tm-popup) body::after,
 /* popup 窗口 hasShadow:false（避免 Windows 黑边），阴影全部由 CSS 在 .tm-card 上画。
    .tm-popup 留出 14px 内边距给 box-shadow 渲染空间。 */
 .tm-popup {
-  --menu-accent: #3b82f6;
-  --menu-secondary: #8b5cf6;
+  --context-menu-accent: #52525b;
+  --menu-accent: var(--context-menu-accent);
+  --menu-secondary: #a1a1aa;
   --menu-surface-opacity: 0.96;
   --menu-blur: 22px;
   --menu-radius: 14px;
@@ -410,7 +411,7 @@ html:has(.tm-popup) body::after,
 
 .context-menu-item:hover {
   background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
+  color: var(--menu-accent);
 }
 
 .context-menu-item-danger:hover {
@@ -469,7 +470,7 @@ html:has(.tm-popup) body::after,
 
 .date-picker-button:hover {
   background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
+  color: var(--menu-accent);
   border-color: rgba(59, 130, 246, 0.2);
 }
 
@@ -593,7 +594,7 @@ html:has(.tm-popup) body::after,
 
 .tag-suggestion:hover {
   background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
+  color: var(--menu-accent);
 }
 
 .dark .tag-suggestion {
@@ -651,7 +652,7 @@ html:has(.tm-popup) body::after,
   gap: 0.3rem;
   padding: 0.15rem 0.45rem;
   background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
+  color: var(--menu-accent);
   font-size: 0.72rem;
   font-weight: 700;
   border-radius: 999px;

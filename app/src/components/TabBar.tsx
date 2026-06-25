@@ -30,7 +30,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
           {activeTab === tab.key && (
             <motion.div
               layoutId="activeTab"
-              className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-forest dark:bg-gold"
+              className="tabbar-active-indicator absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-forest dark:bg-gold"
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             />
           )}
