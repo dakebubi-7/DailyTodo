@@ -250,6 +250,38 @@ function progressDisplay(currentProgress: AiReviewProgressEvent | null, fallback
   return progressStatusLabel(currentProgress) || fallback;
 }
 
+const AI_PROGRESS_PERCENT: Record<string, number> = {
+  inspectDaily: 12,
+  prepareMaterials: 28,
+  buildPrompt: 44,
+  requestAi: 68,
+  writeObsidian: 88,
+  confirmResult: 100,
+};
+
+function progressPercent(currentProgress: AiReviewProgressEvent | null) {
+  if (!currentProgress) return 0;
+  if (currentProgress.status === 'failed') {
+    if (currentProgress.stageKey === 'confirmResult') return 92;
+    return AI_PROGRESS_PERCENT[currentProgress.stageKey] ?? 8;
+  }
+  if (currentProgress.status === 'completed' && currentProgress.stageKey === 'confirmResult') return 100;
+  return AI_PROGRESS_PERCENT[currentProgress.stageKey] ?? 8;
+}
+
+function GenerationProgress({ currentProgress, fallback }: { currentProgress: AiReviewProgressEvent | null; fallback: string }) {
+  const percent = progressPercent(currentProgress);
+  const label = progressDisplay(currentProgress, fallback);
+  return (
+    <div className="settings-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={label}>
+      <div className="settings-progress-track">
+        <div className="settings-progress-fill" style={{ width: `${percent}%` }} />
+      </div>
+      <small>{label}</small>
+    </div>
+  );
+}
+
 function initialProgressForAction(action: GenerationAction): AiReviewProgressEvent {
   const reportKind = action === 'daily' ? 'daily' : action.includes('Monthly') ? 'monthly' : 'weekly';
   return {
@@ -761,12 +793,14 @@ export function SettingsPanel({
     setGenerationStatus(text.aiReview.generating);
     try {
       if (action === 'daily') {
-        if (!window.confirm(confirmDailyRegeneration)) {
+        const inspection = await window.electronAPI?.aiReview.inspectDaily(selectedDate);
+        const shouldRegenerate = Boolean(inspection?.hasAiContent);
+        if (shouldRegenerate && !window.confirm(confirmDailyRegeneration)) {
           setCurrentProgress(finishProgress(action, false));
           setGenerationStatus(zh ? '已取消重新生成日报' : 'Daily regeneration canceled');
           return;
         }
-        const result = await window.electronAPI?.aiReview.runForDate(selectedDate, tasks, true);
+        const result = await window.electronAPI?.aiReview.runForDate(selectedDate, tasks, shouldRegenerate);
         if (!result) throw new Error('AI Review API unavailable');
         if (result.diagnostic) setLastDiagnostic(result.diagnostic);
         setCurrentProgress(finishProgress(action, result.ok));
@@ -1185,7 +1219,12 @@ export function SettingsPanel({
                   </button>
                 ))}
               </div>
-              {generationStatus && <div className="settings-preview-list settings-generation-status"><p>{generationStatus}</p>{currentProgress && <small>{progressStatusLabel(currentProgress)}</small>}</div>}
+              {generationStatus && (
+                <div className="settings-preview-list settings-generation-status">
+                  <p>{generationStatus}</p>
+                  <GenerationProgress currentProgress={currentProgress} fallback={waitingForRealProgress} />
+                </div>
+              )}
               {lastDiagnostic && <DiagnosticCard diagnostic={lastDiagnostic} onClose={() => setLastDiagnostic(null)} />}
             </section>
 
@@ -1361,6 +1400,22 @@ export function SettingsPanel({
                 <option value="en-US">English</option>
               </select>
             </label>
+          </section>
+
+          <section className="settings-section">
+            <h3>{zh ? '完成记录' : 'Completion Records'}</h3>
+            <ToggleRow
+              title={zh ? '主任务完成时填写完成记录' : 'Ask for main task completion record'}
+              description={zh ? '开启后，主任务点击完成时会先填写完成情况；关闭后直接完成。' : 'When enabled, completing a main task opens the completion record dialog.'}
+              checked={appSettings.mainTaskCompletionReviewEnabled}
+              onChange={(value) => updateApp('mainTaskCompletionReviewEnabled', value)}
+            />
+            <ToggleRow
+              title={zh ? '子任务完成时填写完成记录' : 'Ask for subtask completion record'}
+              description={zh ? '开启后，子任务点击完成时会先填写完成情况；关闭后直接完成。' : 'When enabled, completing a subtask opens the completion record dialog.'}
+              checked={appSettings.subtaskCompletionReviewEnabled}
+              onChange={(value) => updateApp('subtaskCompletionReviewEnabled', value)}
+            />
           </section>
 
           <section className="settings-section">

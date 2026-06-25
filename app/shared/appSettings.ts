@@ -15,6 +15,8 @@ export interface AppBehaviorSettings {
   autoCarryForward: boolean;
   syncDeletedReviewsToObsidian: boolean;
   confirmBeforeDeletingReview: boolean;
+  mainTaskCompletionReviewEnabled: boolean;
+  subtaskCompletionReviewEnabled: boolean;
   lockWindowPosition: boolean;
   minimizeToTrayOnClose: boolean;
 }
@@ -56,6 +58,8 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
     autoCarryForward: true,
     syncDeletedReviewsToObsidian: true,
     confirmBeforeDeletingReview: false,
+    mainTaskCompletionReviewEnabled: true,
+    subtaskCompletionReviewEnabled: true,
     lockWindowPosition: false,
     minimizeToTrayOnClose: true,
   };
@@ -64,7 +68,7 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
 export function createDefaultObsidianTemplateSettings(): ObsidianTemplateSettings {
   return {
     obsidianPath: '',
-    dailyPath: 'logs/daily/{{date}}.md',
+    dailyPath: 'logs/daily/DailyTodo/{{date}}.md',
     weeklyPath: 'logs/weekly/personal/{{year}}-W{{week}}.md',
     monthlyPath: 'logs/monthly/personal/{{year}}-{{month}}.md',
     externalWeeklyPath: 'logs/weekly/external/{{year}}-W{{week}}.md',
@@ -107,6 +111,14 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
       typeof value.confirmBeforeDeletingReview === 'boolean'
         ? value.confirmBeforeDeletingReview
         : defaults.confirmBeforeDeletingReview,
+    mainTaskCompletionReviewEnabled:
+      typeof value.mainTaskCompletionReviewEnabled === 'boolean'
+        ? value.mainTaskCompletionReviewEnabled
+        : defaults.mainTaskCompletionReviewEnabled,
+    subtaskCompletionReviewEnabled:
+      typeof value.subtaskCompletionReviewEnabled === 'boolean'
+        ? value.subtaskCompletionReviewEnabled
+        : defaults.subtaskCompletionReviewEnabled,
     lockWindowPosition:
       typeof value.lockWindowPosition === 'boolean' ? value.lockWindowPosition : defaults.lockWindowPosition,
     minimizeToTrayOnClose:

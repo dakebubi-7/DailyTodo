@@ -23,8 +23,24 @@ export function TitleBar({
   onToggleLockWindowPosition,
 }: TitleBarProps) {
   const [pinned, setPinned] = useState(true);
+  const [visualLockActive, setVisualLockActive] = useState(lockWindowPosition);
+  const [visualSettingsActive, setVisualSettingsActive] = useState(settingsOpen);
   const [moreOpen, setMoreOpen] = useState(false);
   const text = getShellText(language).titlebar;
+  const titlebarPrimaryActiveStyle = {
+    borderColor: '#ffffff',
+    backgroundColor: '#ffffff',
+    color: '#000000',
+    boxShadow: '0 0 0 2px rgba(255, 255, 255, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22)',
+  } satisfies React.CSSProperties;
+
+  useEffect(() => {
+    setVisualLockActive(lockWindowPosition);
+  }, [lockWindowPosition]);
+
+  useEffect(() => {
+    setVisualSettingsActive(settingsOpen);
+  }, [settingsOpen]);
 
   useEffect(() => {
     // 图钉只反映「置顶」态：onTop 时点亮；normal / desktop 时熄灭。
@@ -58,7 +74,13 @@ export function TitleBar({
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [moreOpen]);
 
-  const handleTogglePin = async () => {
+  const togglePrimarySelected = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const button = event.currentTarget;
+    button.dataset.selected = button.dataset.selected === 'true' ? 'false' : 'true';
+  };
+
+  const handleTogglePin = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    togglePrimarySelected(event);
     // 图钉在 normal ↔ onTop 间切；若当前在 desktop 模式，主进程会按图钉语义退出到 onTop。
     const isOnTop = await window.electronAPI?.toggleAlwaysOnTop();
     if (typeof isOnTop === 'boolean') {
@@ -73,6 +95,18 @@ export function TitleBar({
   const handleResetPosition = () => {
     window.electronAPI?.resetPosition();
     setMoreOpen(false);
+  };
+
+  const handleToggleLock = (event: React.MouseEvent<HTMLButtonElement>) => {
+    togglePrimarySelected(event);
+    setVisualLockActive((prev) => !prev);
+    onToggleLockWindowPosition();
+  };
+
+  const handleToggleSettings = (event: React.MouseEvent<HTMLButtonElement>) => {
+    togglePrimarySelected(event);
+    setVisualSettingsActive((prev) => !prev);
+    onToggleSettings();
   };
 
   return (
@@ -102,8 +136,11 @@ export function TitleBar({
             whileTap={{ scale: 0.95 }}
             onClick={handleTogglePin}
             className={`titlebar-icon-button ${pinned ? 'titlebar-icon-active' : ''}`}
+            data-titlebar-primary="true"
+            data-selected={pinned ? 'true' : 'false'}
             title={pinned ? text.unpin : text.pin}
             aria-label={pinned ? text.unpin : text.pin}
+            style={pinned ? titlebarPrimaryActiveStyle : undefined}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M14 4l6 6-4 1-5 8-2-2 8-5 1-4-6-6z" />
@@ -114,10 +151,13 @@ export function TitleBar({
           <motion.button
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.95 }}
-            onClick={onToggleLockWindowPosition}
-            className={`titlebar-icon-button ${lockWindowPosition ? 'titlebar-icon-active' : ''}`}
+            onClick={handleToggleLock}
+            className={`titlebar-icon-button ${visualLockActive ? 'titlebar-icon-active' : ''}`}
+            data-titlebar-primary="true"
+            data-selected={visualLockActive ? 'true' : 'false'}
             title={lockWindowPosition ? text.unlock : text.lock}
             aria-label={lockWindowPosition ? text.unlock : text.lock}
+            style={visualLockActive ? titlebarPrimaryActiveStyle : undefined}
           >
             {lockWindowPosition ? (
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -135,10 +175,13 @@ export function TitleBar({
           <motion.button
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.95 }}
-            onClick={onToggleSettings}
-            className={`titlebar-icon-button ${settingsOpen ? 'titlebar-icon-active' : ''}`}
+            onClick={handleToggleSettings}
+            className={`titlebar-icon-button ${visualSettingsActive ? 'titlebar-icon-active' : ''}`}
+            data-titlebar-primary="true"
+            data-selected={visualSettingsActive ? 'true' : 'false'}
             title={text.settings}
             aria-label={text.settings}
+            style={visualSettingsActive ? titlebarPrimaryActiveStyle : undefined}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
               <path d="M12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4Z" />

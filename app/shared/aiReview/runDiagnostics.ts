@@ -27,6 +27,7 @@ export interface AiReviewProfileDiagnostic {
 }
 
 export type AiReviewStageKey =
+  | 'inspectDaily'
   | 'prepareMaterials'
   | 'buildPrompt'
   | 'requestAi'

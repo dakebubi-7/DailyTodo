@@ -86,7 +86,8 @@ export function TaskItem({
           e.preventDefault();
           const viewport = document.querySelector('.app-viewport');
           const shell = document.querySelector('.app-shell');
-          const cs = viewport ? getComputedStyle(viewport) : null;
+          const themeStyle = shell ? getComputedStyle(shell) : null;
+          const viewportStyle = viewport ? getComputedStyle(viewport) : null;
           const num = (v: string, fallback: number) => {
             const n = parseFloat(v);
             return Number.isFinite(n) ? n : fallback;
@@ -102,11 +103,11 @@ export function TaskItem({
             isDark: document.documentElement.classList.contains('dark'),
             theme: {
               themeId,
-              accent: cs?.getPropertyValue('--personal-accent').trim() || '#3b82f6',
-              secondary: cs?.getPropertyValue('--personal-secondary').trim() || '#8b5cf6',
-              menuOpacity: cs ? num(cs.getPropertyValue('--menu-opacity'), 0.96) : 0.96,
-              blurStrength: cs ? num(cs.getPropertyValue('--blur-strength'), 18) : 18,
-              cardRadius: cs ? num(cs.getPropertyValue('--card-radius'), 12) : 12,
+              accent: themeStyle?.getPropertyValue('--personal-accent').trim() || '#52525b',
+              secondary: themeStyle?.getPropertyValue('--personal-secondary').trim() || '#a1a1aa',
+              menuOpacity: viewportStyle ? num(viewportStyle.getPropertyValue('--menu-opacity'), 0.96) : 0.96,
+              blurStrength: viewportStyle ? num(viewportStyle.getPropertyValue('--blur-strength'), 18) : 18,
+              cardRadius: viewportStyle ? num(viewportStyle.getPropertyValue('--card-radius'), 12) : 12,
             },
           });
         }}
@@ -198,7 +199,7 @@ export function TaskItem({
         )}
 
         <span className="task-action-layer" aria-hidden={false}>
-          <span className="task-review-zone">
+          <span className="task-action-slot task-action-slot-review task-review-zone">
             {canOpenReviewAction && (
               <ReviewActionButton
                 hasReview={hasReview}
@@ -208,7 +209,7 @@ export function TaskItem({
             )}
           </span>
 
-          <span className="task-delete-zone">
+          <span className="task-action-slot task-action-slot-delete task-delete-zone">
             <motion.button
               whileHover={{ scale: 1.06 }}
               whileTap={{ scale: 0.94 }}
@@ -280,12 +281,12 @@ function renderSubtaskTree(
             )}
           </button>
           <span className="task-subtask-text">{subtask.text}</span>
-          <span className="task-subtask-action-layer">
-            <span className="task-subtask-review-zone">
+          <span className="task-subtask-action-layer task-action-layer">
+            <span className="task-action-slot task-action-slot-review task-subtask-review-zone">
               {hasTaskReview(subtask) && (
                 <button
                   type="button"
-                  className="task-subtask-review task-subtask-review-active"
+                  className="task-subtask-review task-icon-action task-review-action task-review-action-visible"
                   onClick={() => onViewSubtaskReview(subtask)}
                   aria-label="查看子任务完成情况"
                   title="查看子任务完成情况"
@@ -294,12 +295,13 @@ function renderSubtaskTree(
                 </button>
               )}
             </span>
-            <span className="task-subtask-delete-zone">
+            <span className="task-action-slot task-action-slot-delete task-subtask-delete-zone">
               <button
                 type="button"
-                className="task-subtask-delete"
+                className="task-subtask-delete task-icon-action task-delete-action"
                 onClick={() => onDeleteSubtask(subtask.id)}
                 aria-label="删除子任务"
+                title="删除子任务"
               >
                 <TrashIcon />
               </button>

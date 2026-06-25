@@ -79,6 +79,7 @@ interface Window {
       getSections: () => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
       setSections: (sections: import('../shared/aiReview/sectionConfig').SectionConfig[]) => Promise<import('../shared/aiReview/sectionConfig').SectionConfig[]>;
       runForDate: (date: string, tasks: import('./types/task').Task[], force?: boolean) => Promise<{ ok: boolean; error?: string; filledMarkers: string[]; skippedMarkers: string[]; diagnostic?: import('../shared/aiReview/runDiagnostics').AiReviewRunDiagnostic }>;
+      inspectDaily: (date: string) => Promise<{ exists: boolean; hasAiContent: boolean; filePath: string; error?: string }>;
       backfill: (tasks: import('./types/task').Task[]) => Promise<{ processed: string[]; filled: string[]; errors: Array<{ date: string; error: string }> }>;
       generateWeekly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean; diagnostic?: import('../shared/aiReview/runDiagnostics').AiReviewRunDiagnostic }>;
       generateMonthly: (date: string, tasks: import('./types/task').Task[]) => Promise<{ ok: boolean; filePath?: string; error?: string; truncated?: boolean; diagnostic?: import('../shared/aiReview/runDiagnostics').AiReviewRunDiagnostic }>;

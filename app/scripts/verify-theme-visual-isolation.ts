@@ -32,8 +32,8 @@ assert.ok(
   'Invisible dark completion dialog should use a neutral black-gray readable surface.',
 );
 assert.ok(
-  globals.includes(".app-shell[data-theme='invisible'] .task-complete-action-complete") && globals.includes('linear-gradient(135deg, #d8e1ea, #8fa4b8)'),
-  'Invisible completed circles should use a neutral blue-gray completion color, not amber.',
+  globals.includes(".app-shell[data-theme='invisible'] .task-complete-action-complete") && globals.includes('linear-gradient(135deg, #e5e7eb, #71717a)'),
+  'Invisible completed circles should use a neutral gray completion color, not amber or blue.',
 );
 
 assert.ok(

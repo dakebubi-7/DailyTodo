@@ -50,8 +50,8 @@ export const THEME_PRESETS: ThemePreset[] = [
       settingsPanelOpacity: 90,
       blurStrength: 14,
       radius: 16,
-      accentColor: '#6E7F92',
-      secondaryColor: '#A8AEB8',
+      accentColor: '#6F747C',
+      secondaryColor: '#B8B8B8',
       layoutDensity: 'balanced',
       texture: false,
       animations: true,
@@ -92,8 +92,8 @@ export const THEME_PRESETS: ThemePreset[] = [
       panelOpacity: 95,
       blurStrength: 6,
       radius: 20,
-      accentColor: '#8B9DC3',
-      secondaryColor: '#DFE4EC',
+      accentColor: '#6F747C',
+      secondaryColor: '#D7DADF',
       layoutDensity: 'balanced',
       texture: false,
       animations: true,
@@ -117,8 +117,8 @@ export const THEME_PRESETS: ThemePreset[] = [
       panelOpacity: 30,
       blurStrength: 14,
       radius: 18,
-      accentColor: '#9CA3AF',
-      secondaryColor: '#C0C4CC',
+      accentColor: '#111827',
+      secondaryColor: '#9CA3AF',
       layoutDensity: 'comfortable',
       texture: false,
       animations: true,
@@ -160,9 +160,8 @@ export const THEME_PRESETS: ThemePreset[] = [
 ];
 
 /** 判断当前外观参数是否与某个预设完全一致(用于卡片高亮) */
-export function matchThemePreset(settings: PersonalizationSettings, isDark: boolean): string | null {
+export function matchThemePreset(settings: PersonalizationSettings): string | null {
   const found = THEME_PRESETS.find((preset) => {
-    if (preset.dark !== isDark) return false;
     const s = preset.settings;
     return (
       s.windowOpacity === settings.windowOpacity &&

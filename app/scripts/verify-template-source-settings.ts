@@ -9,27 +9,23 @@ import {
 } from '../shared/aiReview/aiReviewSettings';
 
 const obsidianDefaults = createDefaultObsidianTemplateSettings();
-assert.equal(obsidianDefaults.dailyNotePath, 'logs/daily/DailyTodo/{{date}}.md');
-assert.ok(obsidianDefaults.dailyMarkdownTemplate.includes('{{work}}'));
-assert.ok(obsidianDefaults.dailyMarkdownTemplate.includes('{{inspiration}}'));
-assert.ok(obsidianDefaults.dailyMarkdownTemplate.includes('{{tasks}}'));
-assert.deepEqual(obsidianDefaults.dailySourceRules, [
-  { id: 'daily-note-path', label: '每日记录文件位置', path: 'logs/daily/DailyTodo/{{date}}.md', enabled: true },
-]);
+assert.equal(obsidianDefaults.dailyPath, 'logs/daily/DailyTodo/{{date}}.md');
+assert.deepEqual(
+  obsidianDefaults.dailyTemplate.fixedBlocks.map((block) => block.id),
+  ['work', 'inspire', 'tasks'],
+);
+assert.equal(obsidianDefaults.dailyTemplate.blockOrder.some((item) => item.type === 'fixed' && item.id === 'tasks'), true);
 
 const normalizedObsidian = normalizeObsidianTemplateSettings({ dailyNotePath: 'journal/{{date}}.md' });
-assert.equal(normalizedObsidian.dailyNotePath, 'journal/{{date}}.md');
-assert.equal(normalizedObsidian.dailySourceRules[0].path, 'journal/{{date}}.md');
-assert.ok(normalizedObsidian.dailyMarkdownTemplate.includes('{{tasks}}'));
+assert.equal(normalizedObsidian.dailyPath, 'journal/{{date}}.md');
+assert.equal(normalizedObsidian.dailyTemplate.blockOrder.some((item) => item.type === 'fixed' && item.id === 'tasks'), true);
 
-// Explicit dailySourceRules survive normalization.
-const withRules = normalizeObsidianTemplateSettings({
-  dailyNotePath: 'journal/{{date}}.md',
-  dailySourceRules: [{ id: 'r1', label: '历史日记', path: 'archive/{{date}}.md', enabled: false }],
+const legacyMarkdown = normalizeObsidianTemplateSettings({
+  dailyMarkdownTemplate: '{{work}}\n{{inspiration}}\n{{tasks}}',
 });
-assert.equal(withRules.dailySourceRules.length, 1);
-assert.equal(withRules.dailySourceRules[0].path, 'archive/{{date}}.md');
-assert.equal(withRules.dailySourceRules[0].enabled, false);
+assert.equal(legacyMarkdown.dailyTemplate.blockOrder.some((item) => item.type === 'fixed' && item.id === 'work'), true);
+assert.equal(legacyMarkdown.dailyTemplate.blockOrder.some((item) => item.type === 'fixed' && item.id === 'inspire'), true);
+assert.equal(legacyMarkdown.dailyTemplate.blockOrder.some((item) => item.type === 'fixed' && item.id === 'tasks'), true);
 
 const aiDefaults = createDefaultAiReviewSettings();
 assert.equal(aiDefaults.weeklySourceMode, 'daily-notes');

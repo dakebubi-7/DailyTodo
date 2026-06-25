@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_WINDOW_MODE,
   isAlwaysOnTop,
@@ -45,5 +48,11 @@ assert(setDesktopMode('desktop', true) === 'desktop', 'desktop + pin → desktop
 assert(setDesktopMode('desktop', false) === 'normal', 'desktop + unpin → normal');
 assert(setDesktopMode('normal', false) === 'normal', 'normal + unpin → normal (no change)');
 assert(setDesktopMode('onTop', false) === 'onTop', 'onTop + unpin → onTop (no change)');
+
+const here = dirname(fileURLToPath(import.meta.url));
+const mainSource = readFileSync(join(here, 'main.ts'), 'utf8');
+assert(mainSource.includes('function reapplyWindowZOrder'), 'main.ts should define reapplyWindowZOrder helper');
+assert(mainSource.includes('setTimeout(() => reapplyWindowZOrder(win)'), 'window mode changes should reapply z-order after Windows flag changes');
+assert(mainSource.includes('reapplyWindowZOrder(mainWindow)'), 'lock window position changes should reapply z-order for the main window');
 
 console.log('windowMode.verify: all assertions passed');
