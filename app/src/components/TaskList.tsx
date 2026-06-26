@@ -30,6 +30,8 @@ interface TaskListProps {
   onDeleteSubtask: (id: string) => void;
   onToggleCollapse: (id: string) => void;
   onViewSubtaskReview: (task: Task) => void;
+  onEditSubtask: (id: string, text: string) => void;
+  onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   editRequest?: { id: string; nonce: number } | null;
 }
 
@@ -140,6 +142,8 @@ export function TaskList({
   onDeleteSubtask,
   onToggleCollapse,
   onViewSubtaskReview,
+  onEditSubtask,
+  onChangeSubtaskPriority,
   editRequest,
 }: TaskListProps) {
   const filtersActive = Boolean(searchQuery.trim() || showOpenOnly || priorityFilter !== 'all');
@@ -252,6 +256,8 @@ export function TaskList({
       onDeleteSubtask={onDeleteSubtask}
       onToggleCollapse={onToggleCollapse}
       onViewSubtaskReview={onViewSubtaskReview}
+      onEditSubtask={onEditSubtask}
+      onChangeSubtaskPriority={onChangeSubtaskPriority}
       allTags={allTags}
       editTrigger={editRequest && editRequest.id === task.id ? editRequest.nonce : undefined}
     />
@@ -471,6 +477,8 @@ function SortableTaskItem({
   onDeleteSubtask,
   onToggleCollapse,
   onViewSubtaskReview,
+  onEditSubtask,
+  onChangeSubtaskPriority,
   allTags,
   editTrigger,
 }: {
@@ -487,6 +495,8 @@ function SortableTaskItem({
   onDeleteSubtask: (id: string) => void;
   onToggleCollapse: (id: string) => void;
   onViewSubtaskReview: (task: Task) => void;
+  onEditSubtask: (id: string, text: string) => void;
+  onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   allTags: string[];
   editTrigger?: number;
 }) {
@@ -562,6 +572,8 @@ function SortableTaskItem({
           onDeleteSubtask={onDeleteSubtask}
           onToggleCollapse={onToggleCollapse}
           onViewSubtaskReview={onViewSubtaskReview}
+          onEditSubtask={onEditSubtask}
+          onChangeSubtaskPriority={onChangeSubtaskPriority}
           allTags={allTags}
           editTrigger={editTrigger}
         />

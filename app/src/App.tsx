@@ -409,6 +409,10 @@ export default function App() {
     setCompletionTask(subtask);
   };
 
+  const handleChangeSubtaskPriority = (id: string, priority: Task['priority']) => {
+    updateTask(id, { priority });
+  };
+
   const handleCompleteWithReview = (taskId: string, review: Omit<TaskCompletionReview, 'reviewedAt' | 'id'>) => {
     const target = completionTarget?.id === taskId ? completionTarget : { mode: 'task' as const, id: taskId };
     if (target.mode === 'subtask') {
@@ -781,6 +785,8 @@ export default function App() {
                 onDeleteSubtask={deleteSubtask}
                 onToggleCollapse={toggleTaskCollapse}
                 onViewSubtaskReview={handleViewCompletion}
+                onEditSubtask={editTask}
+                onChangeSubtaskPriority={handleChangeSubtaskPriority}
                 editRequest={editRequest}
               />
             )}

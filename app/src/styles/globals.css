@@ -8382,7 +8382,199 @@ html {
   color: #a1a1aa;
 }
 
-/* Targeted dark-theme readability fixes */
+/* Task cluster stack/cascade structure: preserves existing theme surfaces. */
+.task-cluster {
+  position: relative;
+  display: grid;
+  gap: 0.38rem;
+  isolation: isolate;
+}
+
+.task-cluster-stack-shell {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  padding-bottom: 0;
+}
+
+.task-cluster-collapsed.task-cluster-has-children .task-cluster-stack-shell {
+  padding-bottom: 1.05rem;
+}
+
+.task-cluster-main-card {
+  --task-subtask-badge-safe-space: 7.9rem;
+  position: relative;
+  z-index: 50;
+  cursor: pointer;
+}
+
+.task-cluster-main-card.task-cluster-main-card {
+  padding-right: calc(var(--task-action-safe-space, 4.85rem) + var(--task-subtask-badge-safe-space)) !important;
+}
+
+.task-cluster-no-children .task-cluster-main-card {
+  cursor: default;
+}
+
+.task-stack-layer {
+  position: absolute;
+  inset: 0;
+  min-height: 100%;
+  border-radius: var(--card-radius);
+  background: inherit;
+  border: inherit;
+  box-shadow: inherit;
+  opacity: 0.72;
+  pointer-events: none;
+  transform-origin: center top;
+  will-change: transform, opacity;
+}
+
+.task-stack-layer-2 {
+  z-index: 40;
+  transform: translateY(8px) scale(0.98);
+}
+
+.task-stack-layer-3 {
+  z-index: 30;
+  transform: translateY(16px) scale(0.96);
+  opacity: 0.56;
+}
+
+.task-subtask-count-badge {
+  position: absolute;
+  right: calc(var(--task-action-safe-space, 4.85rem) + 0.28rem);
+  top: 50%;
+  z-index: 2;
+  max-width: min(7.4rem, 28%);
+  overflow: hidden;
+  border: 1px solid rgba(39, 39, 42, 0.08);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--solid-surface, rgba(255, 255, 255, 0.92)) 58%, transparent);
+  color: color-mix(in srgb, currentColor 82%, transparent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  padding: 0.28rem 0.48rem;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.dark .task-subtask-count-badge {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--solid-surface-dark, rgba(15, 23, 42, 0.95)) 54%, transparent);
+}
+
+.task-priority-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-cluster-main-spacer {
+  display: inline-flex;
+}
+
+.task-subtasks-scroll-viewport {
+  position: relative;
+  z-index: 20;
+  display: block;
+  max-height: 400px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: -0.16rem 0 0;
+  padding: 0.18rem 0.2rem 0.2rem 0.38rem;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.task-subtasks-scroll-viewport::-webkit-scrollbar {
+  width: 5px;
+}
+
+.task-subtasks-scroll-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-subtasks-scroll-viewport::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--personal-accent) 24%, transparent);
+}
+
+.dark .task-subtasks-scroll-viewport::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--personal-secondary) 28%, transparent);
+}
+
+.task-subtask-virtual-list {
+  position: relative;
+  display: grid;
+  gap: 0.34rem;
+  min-width: 0;
+}
+
+.task-subtask-virtual-list-active {
+  display: block;
+}
+
+.task-subtask-virtual-spacer {
+  display: block;
+  min-width: 0;
+}
+
+.task-subtask-virtual-list-active .task-subtask-virtual-spacer {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.task-subtask-card {
+  grid-template-columns: auto auto minmax(0, 1fr) !important;
+  margin-left: 1.55rem;
+  min-height: 2.55rem;
+  padding-left: 0.54rem;
+  transform-origin: center top;
+  will-change: transform, opacity;
+}
+
+.task-subtask-card::before {
+  display: none;
+  content: none;
+}
+
+.task-subtask-complete {
+  height: 1.12rem !important;
+  width: 1.12rem !important;
+  min-width: 1.12rem !important;
+}
+
+.task-subtask-edit-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.task-cluster-expanded .task-stack-layer {
+  opacity: 0.18;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-stack-layer,
+  .task-subtask-card,
+  .task-subtask-virtual-spacer {
+    transition: none !important;
+  }
+}
+
+.app-shell[data-theme='invisible'] .task-cluster .task-stack-layer {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+
 .dark.theme-watercolor .daily-work-textarea,
 .dark .theme-watercolor .daily-work-textarea,
 .dark.theme-watercolor .daily-work-panel textarea,

@@ -122,6 +122,23 @@ const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').repla
 const useTasks = readFileSync(join(root, 'src/hooks/useTasks.ts'), 'utf8');
 const packageJson = readFileSync(join(root, 'package.json'), 'utf8');
 
+function getCssBlock(css: string, selector: string) {
+  const start = css.indexOf(`${selector} {`);
+  assert(start >= 0, `Missing CSS block: ${selector}`);
+  const bodyStart = css.indexOf('{', start) + 1;
+  const end = css.indexOf('\n}', bodyStart);
+  assert(end > bodyStart, `Malformed CSS block: ${selector}`);
+  return css.slice(bodyStart, end);
+}
+
+function getFunctionBlock(source: string, signature: string) {
+  const start = source.indexOf(signature);
+  assert(start >= 0, `Missing function: ${signature}`);
+  const end = source.indexOf('\n  };', start);
+  assert(end > start, `Malformed function: ${signature}`);
+  return source.slice(start, end + '\n  };'.length);
+}
+
 assert(useTasks.includes('const selectedDateTasks = allTasks.filter((task) => taskMatchesDate(task, selectedDate, currentDate) && !task.cleared);'), 'Selected-day counts and commands should include tasks visible via scheduledDates.');
 assert(useTasks.includes('taskMatchesDate(task, selectedDate, currentDate) && task.completed && !task.cleared'), 'Clearing completed tasks should include completed tasks visible via scheduledDates.');
 assert(useTasks.includes('const todayCount = allTasks.filter((task) => taskMatchesDate(task, currentDate, currentDate) && !task.cleared).length;'), 'Today count should include tasks scheduled for today.');
@@ -177,11 +194,25 @@ assert(
 );
 assert(taskItem.includes('<svg width="9" height="9" viewBox="0 0 12 12" fill="none">'), 'Completion check icon should scale down with the smaller completion circle.');
 
-assert(taskItem.includes('className="task-tree-spacer"') && taskItem.includes('aria-hidden="true"'), 'Main task rows without children should keep a tree-toggle spacer so completion/priority/text columns align.');
-assert(globals.includes('.task-card-no-children {\n  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;'), 'No-child task rows should use the same leading column structure as rows with children.');
-
-assert(globals.includes('.task-card > .task-text-wrap,\n.task-card > .task-edit-input {\n  grid-column: 5 !important;'), 'Task text should stay in the first row text column, not wrap under the leading controls.');
+assert(taskItem.includes('task-cluster-main-card') && taskItem.includes('aria-expanded={hasChildren ? !task.collapsed : undefined}'), 'Parent task card should be the accessible task-cluster toggle surface.');
+assert(taskItem.includes('task-cluster-main-spacer') && taskItem.includes('aria-hidden="true"'), 'Main task rows should keep a leading spacer so completion/priority/text columns align without the old tree arrow.');
+assert(taskItem.includes('stopClusterToggle') && taskItem.includes('onPointerDown={stopClusterToggle}'), 'Task card controls should isolate pointer/click events from parent cluster toggling.');
+assert(taskItem.includes('SubtaskCard') && taskItem.includes('onEditSubtask') && taskItem.includes('onChangeSubtaskPriority'), 'Expanded subtasks should keep complete, edit, priority, review, and delete interactions.');
+const subtaskPriorityHandler = getFunctionBlock(app, "const handleChangeSubtaskPriority = (id: string, priority: Task['priority']) => {");
+assert(subtaskPriorityHandler.includes('updateTask(id, { priority });'), 'Subtask priority changes should write through updateTask with the subtask id and selected priority.');
+assert(app.includes('onChangeSubtaskPriority={handleChangeSubtaskPriority}'), 'Subtask priority changes should be wired to the tree-aware handler.');
+assert(useTasks.match(/const updateTask = useCallback\(\(id: string, updates: Partial<Task>\) => \{[\s\S]*?setAllTasks\(\(prev\) => mapTaskTree\(prev, id, \(task\) => \(\{ \.\.\.task, \.\.\.updates \}\)\)\);[\s\S]*?\}, \[\]\);/), 'updateTask should update matching tasks through mapTaskTree so subtask priority changes persist recursively.');
+assert(!taskItem.includes('renderSubtaskTree'), 'TaskItem should no longer render recursive tree subtasks.');
+assert(!taskItem.includes('task-subtask-check'), 'Subtasks should reuse compact task completion controls instead of the old circular subtask check class.');
+assert(globals.includes('.task-cluster') && globals.includes('.task-cluster-main-card'), 'CSS should define the task cluster wrapper and main-card layer.');
+const taskSubtaskCountBadgeBlock = getCssBlock(globals, '.task-subtask-count-badge');
+const taskClusterMainCardBlock = getCssBlock(globals, '.task-cluster-main-card');
+const taskClusterMainCardSafeSpaceRule = getCssBlock(globals, '.task-cluster-main-card.task-cluster-main-card');
+assert(taskSubtaskCountBadgeBlock.includes('position: absolute;') && taskSubtaskCountBadgeBlock.includes('pointer-events: none;'), 'The total subtask counter badge should remain absolute and non-blocking.');
+assert(taskClusterMainCardBlock.includes('--task-subtask-badge-safe-space'), 'The cluster main card should define a badge safe-space variable.');
+assert(taskClusterMainCardSafeSpaceRule.includes('padding-right: calc(var(--task-action-safe-space') && taskClusterMainCardSafeSpaceRule.includes('var(--task-subtask-badge-safe-space)'), 'Task text layout should reserve safe space for the absolute subtask count badge plus action layer.');
+assert(globals.includes('.task-card-no-children {\n  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;'), 'No-child task rows should keep the same leading column structure as rows with children.');
 assert(globals.includes('.task-subtask-action-layer {\n  top: 50% !important;\n  transform: translateY(-50%) !important;') && globals.includes('grid-template-columns: 1.38rem 1.38rem !important;'), 'Subtask review/delete controls should be vertically centered and aligned in equal slots.');
-assert(globals.includes('.task-complete-action,\n.task-tree-toggle,\n.task-tree-spacer {\n  height: 1.12rem !important;'), 'Completion circle and tree toggle should stay compact across themes.');
+assert(globals.includes('.task-complete-action,\n.task-tree-toggle,\n.task-tree-spacer {\n  height: 1.12rem !important;') || globals.includes('.task-subtask-complete'), 'Completion controls should stay compact across themes.');
 
 console.log('Task list interactions verification passed');

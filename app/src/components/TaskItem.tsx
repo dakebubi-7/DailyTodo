@@ -1,5 +1,14 @@
-import { useState, useEffect, type ButtonHTMLAttributes, type CSSProperties } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 import { Task } from '../types/task';
 import { PriorityPicker } from './PriorityPicker';
 
@@ -22,6 +31,8 @@ interface TaskItemProps {
   onDeleteSubtask: (id: string) => void;
   onToggleCollapse: (id: string) => void;
   onViewSubtaskReview: (task: Task) => void;
+  onEditSubtask: (id: string, text: string) => void;
+  onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   allTags?: string[];
   editTrigger?: number;
 }
@@ -31,6 +42,29 @@ const priorityTitles: Record<Task['priority'], string> = {
   medium: '中优先级',
   low: '低优先级',
 };
+
+export const TASK_CLUSTER_SPRING = {
+  stiffness: 180,
+  damping: 25,
+  mass: 1,
+};
+
+const TASK_CLUSTER_REDUCED_TRANSITION = {
+  duration: 0.01,
+};
+
+const TASK_SUBTASK_STAGGER_MS = 50;
+export const TASK_SUBTASK_VIEWPORT_HEIGHT = 400;
+const TASK_SUBTASK_ROW_HEIGHT = 46;
+const TASK_SUBTASK_OVERSCAN = 4;
+const TASK_SUBTASK_VIRTUAL_THRESHOLD = 30;
+const TASK_STACK_LAYER_CLASSES = ['task-stack-layer-2', 'task-stack-layer-3'] as const;
+
+interface VirtualSubtaskItem {
+  task: Task;
+  index: number;
+  top: number;
+}
 
 export function TaskItem({
   task,
@@ -44,11 +78,25 @@ export function TaskItem({
   onDeleteSubtask,
   onToggleCollapse,
   onViewSubtaskReview,
+  onEditSubtask,
+  onChangeSubtaskPriority,
   allTags = [],
   editTrigger,
 }: TaskItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
+  const shouldReduceMotion = useReducedMotion();
+  const directSubtasks = task.subtasks || [];
+  const subtaskCount = directSubtasks.length;
+  const totalSubtaskCount = subtaskCount;
+  const completedSubtaskCount = directSubtasks.filter((subtask) => subtask.completed).length;
+  const hasChildren = totalSubtaskCount > 0;
+  const hasTags = Boolean(task.tags?.length);
+  const hasReview = hasTaskReview(task);
+  const canOpenReviewAction = task.completed || hasReview;
+  const stackLayerCount = getStackLayerCount(subtaskCount);
+  const isExpanded = hasChildren && !task.collapsed;
+  const virtualSubtasks = useVirtualSubtasks(directSubtasks, isExpanded);
 
   useEffect(() => {
     if (editTrigger && !task.completed) {
@@ -62,7 +110,7 @@ export function TaskItem({
     setIsEditing(false);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') handleSubmit();
     if (event.key === 'Escape') {
       setEditText(task.text);
@@ -70,254 +118,402 @@ export function TaskItem({
     }
   };
 
-  const hasChildren = Boolean(task.subtasks?.length);
-  const hasTags = Boolean(task.tags?.length);
-  const hasReview = hasTaskReview(task);
-  const canOpenReviewAction = task.completed || hasReview;
+  const toggleCluster = () => {
+    if (!hasChildren) return;
+    onToggleCollapse(task.id);
+  };
+
+  const handleClusterKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!hasChildren) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    onToggleCollapse(task.id);
+  };
 
   return (
-    <span className="task-tree-node">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, x: 48 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          const viewport = document.querySelector('.app-viewport');
-          const shell = document.querySelector('.app-shell');
-          const themeStyle = shell ? getComputedStyle(shell) : null;
-          const viewportStyle = viewport ? getComputedStyle(viewport) : null;
-          const num = (v: string, fallback: number) => {
-            const n = parseFloat(v);
-            return Number.isFinite(n) ? n : fallback;
-          };
-          const themeId = shell
-            ? (Array.from(shell.classList).find((c) => c.startsWith('theme-'))?.slice('theme-'.length) || '')
-            : '';
-          void window.electronAPI?.openTaskContextMenu({
-            task,
-            allTags,
-            screenX: e.screenX,
-            screenY: e.screenY,
-            isDark: document.documentElement.classList.contains('dark'),
-            theme: {
-              themeId,
-              accent: themeStyle?.getPropertyValue('--personal-accent').trim() || '#52525b',
-              secondary: themeStyle?.getPropertyValue('--personal-secondary').trim() || '#a1a1aa',
-              menuOpacity: viewportStyle ? num(viewportStyle.getPropertyValue('--menu-opacity'), 0.96) : 0.96,
-              blurStrength: viewportStyle ? num(viewportStyle.getPropertyValue('--blur-strength'), 18) : 18,
-              cardRadius: viewportStyle ? num(viewportStyle.getPropertyValue('--card-radius'), 12) : 12,
-            },
-          });
-        }}
-        className={`task-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasTags ? 'task-card-has-tags' : 'task-card-no-tags'} ${canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
-        data-priority={task.priority}
-      >
-        <button
-          type="button"
-          ref={dragHandleProps?.setActivatorNodeRef}
-          className="task-drag-handle"
-          disabled={dragHandleProps?.disabled ?? true}
-          aria-label="拖动调整任务顺序"
-          {...(dragHandleProps?.attributes || {})}
-          {...(dragHandleProps?.listeners || {})}
-          aria-disabled={dragHandleProps?.disabled ?? true}
-        >
-          <DragDotsIcon />
-        </button>
+    <span className={`task-cluster ${hasChildren ? 'task-cluster-has-children' : 'task-cluster-no-children'} ${isExpanded ? 'task-cluster-expanded' : 'task-cluster-collapsed'}`}>
+      <span className="task-cluster-stack-shell">
+        <AnimatePresence initial={false}>
+          {!isExpanded && Array.from({ length: stackLayerCount }).map((_, layerIndex) => (
+            <motion.span
+              key={`stack-${layerIndex}`}
+              className={`task-stack-layer ${TASK_STACK_LAYER_CLASSES[layerIndex]}`}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 0, scale: layerIndex === 0 ? 0.98 : 0.96 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: layerIndex === 0 ? 8 : 16, scale: layerIndex === 0 ? 0.98 : 0.96 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 0, scale: 0.98 }}
+              transition={shouldReduceMotion ? TASK_CLUSTER_REDUCED_TRANSITION : TASK_CLUSTER_SPRING}
+              aria-hidden="true"
+            />
+          ))}
+        </AnimatePresence>
 
-        {hasChildren ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, x: 48 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          onClick={toggleCluster}
+          onKeyDown={handleClusterKeyDown}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            const viewport = document.querySelector('.app-viewport');
+            const shell = document.querySelector('.app-shell');
+            const themeStyle = shell ? getComputedStyle(shell) : null;
+            const viewportStyle = viewport ? getComputedStyle(viewport) : null;
+            const num = (value: string, fallback: number) => {
+              const parsed = parseFloat(value);
+              return Number.isFinite(parsed) ? parsed : fallback;
+            };
+            const themeId = shell
+              ? (Array.from(shell.classList).find((className) => className.startsWith('theme-'))?.slice('theme-'.length) || '')
+              : '';
+            void window.electronAPI?.openTaskContextMenu({
+              task,
+              allTags,
+              screenX: e.screenX,
+              screenY: e.screenY,
+              isDark: document.documentElement.classList.contains('dark'),
+              theme: {
+                themeId,
+                accent: themeStyle?.getPropertyValue('--personal-accent').trim() || '#52525b',
+                secondary: themeStyle?.getPropertyValue('--personal-secondary').trim() || '#a1a1aa',
+                menuOpacity: viewportStyle ? num(viewportStyle.getPropertyValue('--menu-opacity'), 0.96) : 0.96,
+                blurStrength: viewportStyle ? num(viewportStyle.getPropertyValue('--blur-strength'), 18) : 18,
+                cardRadius: viewportStyle ? num(viewportStyle.getPropertyValue('--card-radius'), 12) : 12,
+              },
+            });
+          }}
+          className={`task-card task-cluster-main-card group ${hasChildren ? 'task-card-has-children' : 'task-card-no-children'} ${hasTags ? 'task-card-has-tags' : 'task-card-no-tags'} ${canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'} ${task.completed ? 'task-card-completed' : ''}`}
+          data-priority={task.priority}
+          role={hasChildren ? 'button' : undefined}
+          tabIndex={hasChildren ? 0 : undefined}
+          aria-expanded={hasChildren ? !task.collapsed : undefined}
+          aria-controls={hasChildren ? `task-subtasks-${task.id}` : undefined}
+        >
           <button
             type="button"
-            className={`task-tree-toggle ${task.collapsed ? 'task-tree-toggle-collapsed' : ''}`}
-            onClick={() => onToggleCollapse(task.id)}
-            aria-label={task.collapsed ? '展开子任务' : '收起子任务'}
+            ref={dragHandleProps?.setActivatorNodeRef}
+            className="task-drag-handle"
+            disabled={dragHandleProps?.disabled ?? true}
+            aria-label="拖动调整任务顺序"
+            onClick={stopClusterToggle}
+            onPointerDown={stopClusterToggle}
+            {...(dragHandleProps?.attributes || {})}
+            {...(dragHandleProps?.listeners || {})}
+            aria-disabled={dragHandleProps?.disabled ?? true}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 5l8 7-8 7" />
-            </svg>
+            <DragDotsIcon />
           </button>
-        ) : (
-          <span className="task-tree-spacer" aria-hidden="true" />
-        )}
 
-        <button
-          type="button"
-          onClick={onToggle}
-          className={`task-complete-action ${task.completed ? 'task-complete-action-complete' : ''}`}
-          aria-label={task.completed ? '标记为未完成' : '标记为完成'}
-          title={task.completed ? '标记为未完成' : '标记为完成'}
-        >
-          {task.completed && (
-            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </button>
+          <span className="task-cluster-main-spacer task-cluster-leading-spacer" aria-hidden="true" />
 
-        <PriorityPicker value={task.priority} onChange={onPriorityChange} />
-
-        {isEditing ? (
-          <input
-            type="text"
-            value={editText}
-            onChange={(event) => setEditText(event.target.value)}
-            onBlur={handleSubmit}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            className="task-edit-input"
-            aria-label="编辑任务"
-          />
-        ) : (
-          <span className="task-text-wrap">
-            <span className="task-text-row">
-              <span
-                onDoubleClick={() => !task.completed && setIsEditing(true)}
-                className="task-text"
-                title={`${task.text} · ${priorityTitles[task.priority]}`}
-              >
-                {task.text}
-              </span>
-            </span>
-
-            {task.tags && task.tags.length > 0 && (
-              <span className="task-tags task-inline-tags">
-                {task.tags.slice(0, 2).map((tag) => (
-                  <span key={tag} className="tag-pill-small">{tag}</span>
-                ))}
-                {task.tags.length > 2 && <span className="tag-more">+{task.tags.length - 2}</span>}
-              </span>
-            )}
-            {task.scheduledDates && task.scheduledDates.length > 0 && (
-              <span className="scheduled-dates">
-                📅 {task.scheduledDates.slice(0, 3).join(' · ')}
-                {task.scheduledDates.length > 3 && ` +${task.scheduledDates.length - 3}`}
-              </span>
-            )}
-          </span>
-        )}
-
-        <span className="task-action-layer" aria-hidden={false}>
-          <span className="task-action-slot task-action-slot-review task-review-zone">
-            {canOpenReviewAction && (
-              <ReviewActionButton
-                hasReview={hasReview}
-                label={hasReview ? '查看完成情况' : '补写完成情况'}
-                onClick={onViewReview}
-              />
-            )}
-          </span>
-
-          <span className="task-action-slot task-action-slot-delete task-delete-zone">
-            <motion.button
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.94 }}
-              onClick={onDelete}
-              className="task-icon-action task-delete-action"
-              aria-label="删除任务"
-              title="删除任务"
-            >
-              <TrashIcon />
-            </motion.button>
-          </span>
-        </span>
-      </motion.div>
-      {task.subtasks && task.subtasks.length > 0 && !task.collapsed && (
-        <span className="task-subtasks task-subtasks-nested" aria-label="子任务">
-          {renderSubtaskTree(task.subtasks, {
-            depth: 1,
-            onToggleSubtask,
-            onDeleteSubtask,
-            onToggleCollapse,
-            onViewSubtaskReview,
-          })}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function renderSubtaskTree(
-  subtasks: Task[],
-  handlers: {
-    depth: number;
-    onToggleSubtask: (id: string) => void;
-    onDeleteSubtask: (id: string) => void;
-    onToggleCollapse: (id: string) => void;
-    onViewSubtaskReview: (task: Task) => void;
-  },
-) {
-  const { depth, onToggleSubtask, onDeleteSubtask, onToggleCollapse, onViewSubtaskReview } = handlers;
-  return subtasks.map((subtask) => {
-    const hasChildren = Boolean(subtask.subtasks?.length);
-    return (
-      <span key={subtask.id} className="task-subtask-branch" style={{ ['--subtask-depth' as const]: depth } as CSSProperties}>
-        <span className={`task-subtask-row ${subtask.completed ? 'task-subtask-row-completed' : ''}`}>
-          {hasChildren ? (
-            <button
-              type="button"
-              className={`task-tree-toggle task-tree-toggle-subtask ${subtask.collapsed ? 'task-tree-toggle-collapsed' : ''}`}
-              onClick={() => onToggleCollapse(subtask.id)}
-              aria-label={subtask.collapsed ? '展开子任务' : '收起子任务'}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 5l8 7-8 7" />
-              </svg>
-            </button>
-          ) : (
-            <span className="task-tree-spacer task-tree-spacer-subtask" aria-hidden="true" />
-          )}
           <button
             type="button"
-            className={`task-subtask-check ${subtask.completed ? 'task-subtask-check-complete' : ''}`}
-            onClick={() => onToggleSubtask(subtask.id)}
-            aria-label={subtask.completed ? '标记子任务为未完成' : '标记子任务为完成'}
+            onClick={(event) => {
+              stopClusterToggle(event);
+              onToggle();
+            }}
+            onPointerDown={stopClusterToggle}
+            className={`task-complete-action ${task.completed ? 'task-complete-action-complete' : ''}`}
+            aria-label={task.completed ? '标记为未完成' : '标记为完成'}
+            title={task.completed ? '标记为未完成' : '标记为完成'}
           >
-            {subtask.completed && (
+            {task.completed && (
               <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
                 <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}
           </button>
-          <span className="task-subtask-text">{subtask.text}</span>
-          <span className="task-subtask-action-layer task-action-layer">
-            <span className="task-action-slot task-action-slot-review task-subtask-review-zone">
-              {hasTaskReview(subtask) && (
-                <button
-                  type="button"
-                  className="task-subtask-review task-icon-action task-review-action task-review-action-visible"
-                  onClick={() => onViewSubtaskReview(subtask)}
-                  aria-label="查看子任务完成情况"
-                  title="查看子任务完成情况"
+
+          <span className="task-priority-stop" onClick={stopClusterToggle} onPointerDown={stopClusterToggle}>
+            <PriorityPicker value={task.priority} onChange={onPriorityChange} />
+          </span>
+
+          {isEditing ? (
+            <input
+              type="text"
+              value={editText}
+              onChange={(event) => setEditText(event.target.value)}
+              onBlur={handleSubmit}
+              onKeyDown={handleKeyDown}
+              onClick={stopClusterToggle}
+              onPointerDown={stopClusterToggle}
+              autoFocus
+              className="task-edit-input"
+              aria-label="编辑任务"
+            />
+          ) : (
+            <span className="task-text-wrap">
+              <span className="task-text-row">
+                <span
+                  onDoubleClick={(event) => {
+                    stopClusterToggle(event);
+                    if (!task.completed) setIsEditing(true);
+                  }}
+                  className="task-text"
+                  title={`${task.text} · ${priorityTitles[task.priority]}`}
                 >
-                  <ReviewIcon hasReview />
-                </button>
+                  {task.text}
+                </span>
+              </span>
+
+              {task.tags && task.tags.length > 0 && (
+                <span className="task-tags task-inline-tags">
+                  {task.tags.slice(0, 2).map((tag) => (
+                    <span key={tag} className="tag-pill-small">{tag}</span>
+                  ))}
+                  {task.tags.length > 2 && <span className="tag-more">+{task.tags.length - 2}</span>}
+                </span>
+              )}
+              {task.scheduledDates && task.scheduledDates.length > 0 && (
+                <span className="scheduled-dates">
+                  📅 {task.scheduledDates.slice(0, 3).join(' · ')}
+                  {task.scheduledDates.length > 3 && ` +${task.scheduledDates.length - 3}`}
+                </span>
               )}
             </span>
-            <span className="task-action-slot task-action-slot-delete task-subtask-delete-zone">
-              <button
-                type="button"
-                className="task-subtask-delete task-icon-action task-delete-action"
-                onClick={() => onDeleteSubtask(subtask.id)}
-                aria-label="删除子任务"
-                title="删除子任务"
+          )}
+
+          {hasChildren && (
+            <span
+              className="task-subtask-count-badge"
+              title={`${completedSubtaskCount}/${totalSubtaskCount} completed`}
+              aria-label={`${formatSubtaskCount(totalSubtaskCount)}，已完成 ${completedSubtaskCount}`}
+            >
+              {formatSubtaskCount(totalSubtaskCount)}
+            </span>
+          )}
+
+          <span className="task-action-layer" aria-hidden={false} onClick={stopClusterToggle} onPointerDown={stopClusterToggle}>
+            <span className="task-action-slot task-action-slot-review task-review-zone">
+              {canOpenReviewAction && (
+                <ReviewActionButton
+                  hasReview={hasReview}
+                  label={hasReview ? '查看完成情况' : '补写完成情况'}
+                  onClick={onViewReview}
+                />
+              )}
+            </span>
+
+            <span className="task-action-slot task-action-slot-delete task-delete-zone">
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={onDelete}
+                className="task-icon-action task-delete-action"
+                aria-label="删除任务"
+                title="删除任务"
               >
                 <TrashIcon />
-              </button>
+              </motion.button>
             </span>
           </span>
-        </span>
-        {hasChildren && !subtask.collapsed && renderSubtaskTree(subtask.subtasks || [], {
-          depth: depth + 1,
-          onToggleSubtask,
-          onDeleteSubtask,
-          onToggleCollapse,
-          onViewSubtaskReview,
-        })}
+        </motion.div>
       </span>
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.span
+            id={`task-subtasks-${task.id}`}
+            className="task-subtasks task-subtasks-scroll-viewport"
+            aria-label="子任务"
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            transition={shouldReduceMotion ? TASK_CLUSTER_REDUCED_TRANSITION : TASK_CLUSTER_SPRING}
+            style={{ maxHeight: TASK_SUBTASK_VIEWPORT_HEIGHT }}
+            ref={virtualSubtasks.viewportRef}
+            onClick={stopClusterToggle}
+            onPointerDown={stopClusterToggle}
+          >
+            <span
+              className={`task-subtask-virtual-list ${virtualSubtasks.isVirtual ? 'task-subtask-virtual-list-active' : ''}`}
+              style={virtualSubtasks.isVirtual ? { height: virtualSubtasks.totalHeight } : undefined}
+            >
+              {virtualSubtasks.visibleVirtualItems.map((virtualItem) => (
+                <motion.span
+                  key={virtualItem.task.id}
+                  className="task-subtask-virtual-spacer"
+                  style={virtualSubtasks.isVirtual ? { top: virtualItem.top } : undefined}
+                  initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.96 }}
+                  animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+                  exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.96 }}
+                  transition={shouldReduceMotion ? TASK_CLUSTER_REDUCED_TRANSITION : {
+                    ...TASK_CLUSTER_SPRING,
+                    delay: virtualItem.index * TASK_SUBTASK_STAGGER_MS * 0.001,
+                  }}
+                >
+                  <SubtaskCard
+                    subtask={virtualItem.task}
+                    onToggleSubtask={onToggleSubtask}
+                    onDeleteSubtask={onDeleteSubtask}
+                    onViewSubtaskReview={onViewSubtaskReview}
+                    onEditSubtask={onEditSubtask}
+                    onChangeSubtaskPriority={onChangeSubtaskPriority}
+                  />
+                </motion.span>
+              ))}
+            </span>
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+}
+
+function SubtaskCard({
+  subtask,
+  onToggleSubtask,
+  onDeleteSubtask,
+  onViewSubtaskReview,
+  onEditSubtask,
+  onChangeSubtaskPriority,
+}: {
+  subtask: Task;
+  onToggleSubtask: (id: string) => void;
+  onDeleteSubtask: (id: string) => void;
+  onViewSubtaskReview: (task: Task) => void;
+  onEditSubtask: (id: string, text: string) => void;
+  onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(subtask.text);
+  const hasReview = hasTaskReview(subtask);
+  const canOpenReviewAction = subtask.completed || hasReview;
+
+  useEffect(() => {
+    setEditText(subtask.text);
+  }, [subtask.text]);
+
+  const submitEdit = () => {
+    if (editText.trim()) onEditSubtask(subtask.id, editText.trim());
+    setIsEditing(false);
+  };
+
+  const handleEditKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') submitEdit();
+    if (event.key === 'Escape') {
+      setEditText(subtask.text);
+      setIsEditing(false);
+    }
+  };
+
+  return (
+    <span className={`task-subtask-row task-subtask-card ${subtask.completed ? 'task-subtask-row-completed' : ''}`} data-priority={subtask.priority}>
+      <button
+        type="button"
+        className={`task-complete-action task-subtask-complete ${subtask.completed ? 'task-complete-action-complete' : ''}`}
+        onClick={() => onToggleSubtask(subtask.id)}
+        aria-label={subtask.completed ? '标记子任务为未完成' : '标记子任务为完成'}
+      >
+        {subtask.completed && (
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </button>
+
+      <PriorityPicker value={subtask.priority} onChange={(priority) => onChangeSubtaskPriority(subtask.id, priority)} title="调整子任务优先级" />
+
+      {isEditing ? (
+        <input
+          type="text"
+          value={editText}
+          onChange={(event) => setEditText(event.target.value)}
+          onBlur={submitEdit}
+          onKeyDown={handleEditKeyDown}
+          autoFocus
+          className="task-edit-input task-subtask-edit-input"
+          aria-label="编辑子任务"
+        />
+      ) : (
+        <span
+          className="task-subtask-text"
+          title={`${subtask.text} · ${priorityTitles[subtask.priority]}`}
+          onDoubleClick={() => !subtask.completed && setIsEditing(true)}
+        >
+          {subtask.text}
+        </span>
+      )}
+
+      <span className="task-subtask-action-layer task-action-layer">
+        <span className="task-action-slot task-action-slot-review task-subtask-review-zone">
+          {canOpenReviewAction && (
+            <button
+              type="button"
+              className="task-subtask-review task-icon-action task-review-action task-review-action-visible"
+              onClick={() => onViewSubtaskReview(subtask)}
+              aria-label={hasReview ? '查看子任务完成情况' : '补写子任务完成情况'}
+              title={hasReview ? '查看子任务完成情况' : '补写子任务完成情况'}
+            >
+              <ReviewIcon hasReview={hasReview} />
+            </button>
+          )}
+        </span>
+        <span className="task-action-slot task-action-slot-delete task-subtask-delete-zone">
+          <button
+            type="button"
+            className="task-subtask-delete task-icon-action task-delete-action"
+            onClick={() => onDeleteSubtask(subtask.id)}
+            aria-label="删除子任务"
+            title="删除子任务"
+          >
+            <TrashIcon />
+          </button>
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function useVirtualSubtasks(subtasks: Task[], isExpanded: boolean) {
+  const viewportRef = useRef<HTMLSpanElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const isVirtual = subtasks.length > TASK_SUBTASK_VIRTUAL_THRESHOLD;
+  const totalHeight = isVirtual ? subtasks.length * TASK_SUBTASK_ROW_HEIGHT : undefined;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !isVirtual || !isExpanded) return;
+
+    const handleScroll = () => setScrollTop(viewport.scrollTop);
+    handleScroll();
+    viewport.addEventListener('scroll', handleScroll, { passive: true });
+    return () => viewport.removeEventListener('scroll', handleScroll);
+  }, [isExpanded, isVirtual]);
+
+  const visibleVirtualItems = useMemo<VirtualSubtaskItem[]>(() => {
+    if (!isVirtual) {
+      return subtasks.map((subtask, index) => ({ task: subtask, index, top: 0 }));
+    }
+
+    const viewportHeight = TASK_SUBTASK_VIEWPORT_HEIGHT;
+    const startIndex = Math.max(0, Math.floor(scrollTop / TASK_SUBTASK_ROW_HEIGHT) - TASK_SUBTASK_OVERSCAN);
+    const endIndex = Math.min(
+      subtasks.length,
+      Math.ceil((scrollTop + viewportHeight) / TASK_SUBTASK_ROW_HEIGHT) + TASK_SUBTASK_OVERSCAN,
     );
-  });
+
+    return subtasks.slice(startIndex, endIndex).map((subtask, sliceIndex) => {
+      const index = startIndex + sliceIndex;
+      return { task: subtask, index, top: index * TASK_SUBTASK_ROW_HEIGHT };
+    });
+  }, [isVirtual, scrollTop, subtasks]);
+
+  return { viewportRef, isVirtual, totalHeight, visibleVirtualItems };
+}
+
+export function getStackLayerCount(subtaskCount: number) {
+  if (subtaskCount <= 0) return 0;
+  return Math.min(subtaskCount, 2);
+}
+
+function formatSubtaskCount(totalSubtaskCount: number) {
+  return `${totalSubtaskCount} ${totalSubtaskCount === 1 ? 'Sub-task' : 'Sub-tasks'}`;
+}
+
+function stopClusterToggle(event: Pick<MouseEvent<HTMLElement>, 'stopPropagation'> | Pick<PointerEvent<HTMLElement>, 'stopPropagation'>) {
+  event.stopPropagation();
 }
 
 function hasTaskReview(task: Task) {
