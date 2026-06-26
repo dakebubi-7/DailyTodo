@@ -19,7 +19,8 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
         <motion.button
           key={tab.key}
           onClick={() => onTabChange(tab.key)}
-          className={`relative rounded-lg px-3 py-1.5 font-sans text-[0.84rem] transition-colors ${
+          aria-current={activeTab === tab.key ? 'page' : undefined}
+          className={`tabbar-tab relative rounded-lg px-3 py-1.5 font-sans text-[0.84rem] transition-colors ${
             activeTab === tab.key
               ? 'bg-white/50 font-semibold text-black dark:bg-white/10 dark:text-white'
               : 'text-black hover:text-black dark:text-white dark:hover:text-white'
