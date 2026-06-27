@@ -205,12 +205,12 @@ assert(useTasks.match(/const updateTask = useCallback\(\(id: string, updates: Pa
 assert(!taskItem.includes('renderSubtaskTree'), 'TaskItem should no longer render recursive tree subtasks.');
 assert(!taskItem.includes('task-subtask-check'), 'Subtasks should reuse compact task completion controls instead of the old circular subtask check class.');
 assert(globals.includes('.task-cluster') && globals.includes('.task-cluster-main-card'), 'CSS should define the task cluster wrapper and main-card layer.');
-const taskSubtaskCountBadgeBlock = getCssBlock(globals, '.task-subtask-count-badge');
 const taskClusterMainCardBlock = getCssBlock(globals, '.task-cluster-main-card');
 const taskClusterMainCardSafeSpaceRule = getCssBlock(globals, '.task-cluster-main-card.task-cluster-main-card');
-assert(taskSubtaskCountBadgeBlock.includes('position: absolute;') && taskSubtaskCountBadgeBlock.includes('pointer-events: none;'), 'The total subtask counter badge should remain absolute and non-blocking.');
-assert(taskClusterMainCardBlock.includes('--task-subtask-badge-safe-space'), 'The cluster main card should define a badge safe-space variable.');
-assert(taskClusterMainCardSafeSpaceRule.includes('padding-right: calc(var(--task-action-safe-space') && taskClusterMainCardSafeSpaceRule.includes('var(--task-subtask-badge-safe-space)'), 'Task text layout should reserve safe space for the absolute subtask count badge plus action layer.');
+assert(!taskItem.includes('task-subtask-count-badge'), 'Collapsed cluster cards should not render a subtask count badge.');
+assert(!globals.includes('.task-subtask-count-badge'), 'CSS should no longer define the removed subtask count badge block.');
+assert(!taskClusterMainCardBlock.includes('--task-subtask-badge-safe-space'), 'The cluster main card should not reserve badge-only safe space once the count badge is removed.');
+assert(taskClusterMainCardSafeSpaceRule.includes('padding-right: var(--task-action-safe-space'), 'Task text layout should reserve only the action-layer safe space once the count badge is removed.');
 assert(globals.includes('.task-card-no-children {\n  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;'), 'No-child task rows should keep the same leading column structure as rows with children.');
 assert(globals.includes('.task-subtask-action-layer {\n  top: 50% !important;\n  transform: translateY(-50%) !important;') && globals.includes('grid-template-columns: 1.38rem 1.38rem !important;'), 'Subtask review/delete controls should be vertically centered and aligned in equal slots.');
 assert(globals.includes('.task-complete-action,\n.task-tree-toggle,\n.task-tree-spacer {\n  height: 1.12rem !important;') || globals.includes('.task-subtask-complete'), 'Completion controls should stay compact across themes.');

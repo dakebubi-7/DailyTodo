@@ -10,6 +10,15 @@ function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
+function getCssBlock(css: string, selector: string) {
+  const start = css.indexOf(`${selector} {`);
+  assert(start >= 0, `Missing CSS block: ${selector}`);
+  const bodyStart = css.indexOf('{', start) + 1;
+  const end = css.indexOf('\n}', bodyStart);
+  assert(end > bodyStart, `Malformed CSS block: ${selector}`);
+  return css.slice(bodyStart, end);
+}
+
 assert(taskItem.includes('TASK_CLUSTER_SPRING'), 'TaskItem should define a shared spring config for the cluster cascade.');
 assert(taskItem.includes('stiffness: 180') && taskItem.includes('damping: 25') && taskItem.includes('mass: 1'), 'Task cluster animation should use the requested spring parameters.');
 assert(taskItem.includes('getStackLayerCount(subtaskCount)'), 'Collapsed stack should derive faux layer count from actual subtask count.');
@@ -20,18 +29,14 @@ assert(taskItem.includes('useVirtualSubtasks'), 'Expanded subtasks should use lo
 assert(taskItem.includes('visibleVirtualItems'), 'Only visible initialized subtask items should be rendered in the scroll viewport.');
 assert(taskItem.includes('TASK_SUBTASK_VIEWPORT_HEIGHT'), 'Expanded subtask viewport should have a capped internal height.');
 assert(taskItem.includes('TASK_SUBTASK_STAGGER_MS') && taskItem.includes('* 0.001'), 'Subtask cards should stagger by millisecond constants converted to seconds.');
-assert(taskItem.includes('totalSubtaskCount') && taskItem.includes('completedSubtaskCount'), 'Main card should show an absolute subtask counter.');
-assert(taskItem.includes('aria-expanded={hasChildren ? !task.collapsed : undefined}'), 'Parent card should expose expanded state only when subtasks exist.');
-
-assert(globals.includes('.task-cluster'), 'CSS should style the task cluster wrapper.');
-assert(globals.includes('.task-stack-layer'), 'CSS should style faux collapsed stack layers.');
-assert(globals.includes('pointer-events: none'), 'Faux stack layers should be pointer-events none.');
-assert(globals.includes('.task-stack-layer-2') && globals.includes('translateY(8px) scale(0.98)'), 'Layer 2 should be scaled to 98% and translated by 8px.');
-assert(globals.includes('.task-stack-layer-3') && globals.includes('translateY(16px) scale(0.96)'), 'Layer 3 should be scaled to 96% and translated by 16px.');
-assert(globals.includes('.task-subtasks-scroll-viewport'), 'CSS should cap expanded subtask list with an internal scroll viewport.');
-assert(globals.includes('max-height: 400px'), 'Expanded subtask viewport should cap at 400px.');
-assert(globals.includes('.task-subtasks-scroll-viewport::-webkit-scrollbar'), 'Expanded subtask viewport should customize its scrollbar.');
-assert(globals.includes('.task-subtask-virtual-list'), 'CSS should style the virtualized subtask list.');
-assert(globals.includes('.task-subtask-virtual-spacer'), 'CSS should reserve virtualized offscreen space.');
+assert(!taskItem.includes('task-subtask-count-badge'), 'Collapsed main task should not render a subtask count badge.');
+assert(taskItem.includes('task-subtask-delete task-icon-action task-delete-action'), 'Expanded subtasks should show delete buttons again.');
+assert(globals.includes('.task-cluster-main-card.task-card') && globals.includes('background: var(--solid-surface, rgba(255, 255, 255, 0.92)) !important;'), 'Main cluster card should use an opaque solid surface instead of a transparent glass layer.');
+assert(globals.includes('.dark .task-cluster-main-card.task-card') && globals.includes('background: var(--solid-surface-dark, rgba(15, 23, 42, 0.95)) !important;'), 'Dark theme main cluster card should also use an opaque solid surface.');
+assert(globals.includes('.task-cluster-collapsed.task-cluster-has-children .task-cluster-stack-shell') && globals.includes('padding-bottom: 0.64rem;'), 'Collapsed stack shell should keep only a tight two-layer reveal.');
+assert(globals.includes('.task-stack-layer-2') && globals.includes('translateY(3px) scale(0.992)'), 'Layer 2 should sit very close under the main card.');
+assert(globals.includes('.task-stack-layer-3') && globals.includes('translateY(6px) scale(0.984)'), 'Layer 3 should sit the same distance below layer 2.');
+assert(globals.includes('.task-stack-layer-2') && globals.includes('box-shadow: 0 12px 24px rgba(31, 41, 55, 0.14) !important;'), 'Layer 2 should keep its own visible shadow without spreading too far downward.');
+assert(globals.includes('.task-stack-layer-3') && globals.includes('box-shadow: 0 16px 28px rgba(31, 41, 55, 0.18) !important;'), 'Layer 3 should keep a deeper visible shadow without swallowing the next task.');
 
 console.log('Task cluster stack verification passed');

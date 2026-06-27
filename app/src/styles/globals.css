@@ -8398,18 +8398,25 @@ html {
 }
 
 .task-cluster-collapsed.task-cluster-has-children .task-cluster-stack-shell {
-  padding-bottom: 1.05rem;
+  padding-bottom: 0.64rem;
 }
 
 .task-cluster-main-card {
-  --task-subtask-badge-safe-space: 7.9rem;
   position: relative;
   z-index: 50;
   cursor: pointer;
 }
 
+.task-cluster-main-card.task-card {
+  background: var(--solid-surface, rgba(255, 255, 255, 0.92)) !important;
+}
+
+.dark .task-cluster-main-card.task-card {
+  background: var(--solid-surface-dark, rgba(15, 23, 42, 0.95)) !important;
+}
+
 .task-cluster-main-card.task-cluster-main-card {
-  padding-right: calc(var(--task-action-safe-space, 4.85rem) + var(--task-subtask-badge-safe-space)) !important;
+  padding-right: var(--task-action-safe-space, 4.85rem) !important;
 }
 
 .task-cluster-no-children .task-cluster-main-card {
@@ -8430,42 +8437,33 @@ html {
   will-change: transform, opacity;
 }
 
+.task-stack-layer.task-cluster-faux-card {
+  display: block !important;
+  min-height: 100% !important;
+  padding: 0 !important;
+  background: color-mix(in srgb, rgba(255, 255, 255, var(--card-opacity)) 44%, transparent) !important;
+  border: 1px solid rgba(39, 39, 42, 0.11) !important;
+  box-shadow: 0 12px 28px rgba(31, 41, 55, 0.12) !important;
+}
+
+.dark .task-stack-layer.task-cluster-faux-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
 .task-stack-layer-2 {
   z-index: 40;
-  transform: translateY(8px) scale(0.98);
+  transform: translateY(3px) scale(0.992);
+  opacity: 0.94;
+  box-shadow: 0 12px 24px rgba(31, 41, 55, 0.14) !important;
 }
 
 .task-stack-layer-3 {
   z-index: 30;
-  transform: translateY(16px) scale(0.96);
-  opacity: 0.56;
-}
-
-.task-subtask-count-badge {
-  position: absolute;
-  right: calc(var(--task-action-safe-space, 4.85rem) + 0.28rem);
-  top: 50%;
-  z-index: 2;
-  max-width: min(7.4rem, 28%);
-  overflow: hidden;
-  border: 1px solid rgba(39, 39, 42, 0.08);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--solid-surface, rgba(255, 255, 255, 0.92)) 58%, transparent);
-  color: color-mix(in srgb, currentColor 82%, transparent);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  padding: 0.28rem 0.48rem;
-  pointer-events: none;
-  text-overflow: ellipsis;
-  transform: translateY(-50%);
-  white-space: nowrap;
-}
-
-.dark .task-subtask-count-badge {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: color-mix(in srgb, var(--solid-surface-dark, rgba(15, 23, 42, 0.95)) 54%, transparent);
+  transform: translateY(6px) scale(0.984);
+  opacity: 0.88;
+  box-shadow: 0 16px 28px rgba(31, 41, 55, 0.18) !important;
 }
 
 .task-priority-stop {

@@ -88,9 +88,7 @@ export function TaskItem({
   const shouldReduceMotion = useReducedMotion();
   const directSubtasks = task.subtasks || [];
   const subtaskCount = directSubtasks.length;
-  const totalSubtaskCount = subtaskCount;
-  const completedSubtaskCount = directSubtasks.filter((subtask) => subtask.completed).length;
-  const hasChildren = totalSubtaskCount > 0;
+  const hasChildren = subtaskCount > 0;
   const hasTags = Boolean(task.tags?.length);
   const hasReview = hasTaskReview(task);
   const canOpenReviewAction = task.completed || hasReview;
@@ -137,7 +135,7 @@ export function TaskItem({
           {!isExpanded && Array.from({ length: stackLayerCount }).map((_, layerIndex) => (
             <motion.span
               key={`stack-${layerIndex}`}
-              className={`task-stack-layer ${TASK_STACK_LAYER_CLASSES[layerIndex]}`}
+              className={`task-stack-layer task-cluster-faux-card task-card ${TASK_STACK_LAYER_CLASSES[layerIndex]}`}
               initial={shouldReduceMotion ? false : { opacity: 0, y: 0, scale: layerIndex === 0 ? 0.98 : 0.96 }}
               animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: layerIndex === 0 ? 8 : 16, scale: layerIndex === 0 ? 0.98 : 0.96 }}
               exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 0, scale: 0.98 }}
@@ -271,16 +269,6 @@ export function TaskItem({
                   {task.scheduledDates.length > 3 && ` +${task.scheduledDates.length - 3}`}
                 </span>
               )}
-            </span>
-          )}
-
-          {hasChildren && (
-            <span
-              className="task-subtask-count-badge"
-              title={`${completedSubtaskCount}/${totalSubtaskCount} completed`}
-              aria-label={`${formatSubtaskCount(totalSubtaskCount)}，已完成 ${completedSubtaskCount}`}
-            >
-              {formatSubtaskCount(totalSubtaskCount)}
             </span>
           )}
 
@@ -506,10 +494,6 @@ function useVirtualSubtasks(subtasks: Task[], isExpanded: boolean) {
 export function getStackLayerCount(subtaskCount: number) {
   if (subtaskCount <= 0) return 0;
   return Math.min(subtaskCount, 2);
-}
-
-function formatSubtaskCount(totalSubtaskCount: number) {
-  return `${totalSubtaskCount} ${totalSubtaskCount === 1 ? 'Sub-task' : 'Sub-tasks'}`;
 }
 
 function stopClusterToggle(event: Pick<MouseEvent<HTMLElement>, 'stopPropagation'> | Pick<PointerEvent<HTMLElement>, 'stopPropagation'>) {
