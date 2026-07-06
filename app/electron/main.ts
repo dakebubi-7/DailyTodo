@@ -1,8 +1,7 @@
-import { app, BrowserWindow, Menu, Tray, crashReporter, dialog, ipcMain, nativeImage, screen, shell } from 'electron';
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, screen, shell } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
-import Store from 'electron-store';
 import { buildSyncPlan, importMobileInbox, writeSyncPlan } from './obsidianCompanion';
 import {
   APP_SETTINGS_KEY,
@@ -92,6 +91,19 @@ import {
   type AiReviewRunReportKind,
   type AiReviewStageDiagnostic,
 } from '../shared/aiReview/runDiagnostics';
+import { createAppIcon, createTrayIcon, type IconPathOptions } from './appIcons';
+import {
+  DEFAULT_WINDOW_HEIGHT,
+  DEFAULT_WINDOW_WIDTH,
+  MIN_WINDOW_WIDTH,
+  RESET_WINDOW_HEIGHT,
+  RESET_WINDOW_WIDTH,
+  getSettingsWindowWidth,
+  normalizeRestoredWindowState,
+  type WindowState,
+} from './windowState';
+import { createSafeStore } from './safeStore';
+import { createDiagLogger, startCrashDiagnostics } from './diagnostics';
 
 // 关闭 Chromium 在 Windows 上的原生窗口遮挡计算：透明无边框窗口在 Win+D / 点击桌面后
 // 会被判定为「被遮挡」而暂停合成，表现为窗口空白/消失，直到系统弹窗触发重绘。关闭后所有
@@ -112,31 +124,6 @@ try {
     app.setPath('userData', DEV_APPDATA_ROOT);
   }
 } catch {}
-
-function getStoreConfigPath() {
-  try {
-    return path.join(app.getPath('userData'), 'config.json');
-  } catch {
-    return path.join(process.env.APPDATA || '', 'daily-todo', 'config.json');
-  }
-}
-
-function createSafeStore() {
-  try {
-    return new Store();
-  } catch (error) {
-    const configPath = getStoreConfigPath();
-    if (configPath && fs.existsSync(configPath)) {
-      const backupPath = path.join(
-        path.dirname(configPath),
-        `config.corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
-      );
-      fs.copyFileSync(configPath, backupPath);
-      fs.writeFileSync(configPath, '{}', 'utf-8');
-    }
-    return new Store();
-  }
-}
 
 const store = createSafeStore();
 
@@ -172,13 +159,6 @@ type Task = {
   subtasks?: Task[];
 };
 
-type WindowState = {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-};
-
 type DesktopWidgetState = 'desktop-visible' | 'app-background' | 'dt-active';
 
 const OBSIDIAN_PATH_KEY = 'obsidianVaultPath';
@@ -186,52 +166,12 @@ const COMPANION_SETTINGS_KEY = 'obsidianCompanionSettings';
 const WINDOW_STATE_KEY = 'windowState';
 const COMPACT_MODE_KEY = 'compactMode';
 const AUTO_START_KEY = 'autoStart';
-const MIN_WINDOW_WIDTH = 240;
-const DEFAULT_WINDOW_WIDTH = 240;
-const DEFAULT_WINDOW_HEIGHT = 480;
-const RESET_WINDOW_WIDTH = 240;
-const RESET_WINDOW_HEIGHT = 480;
-const SETTINGS_WINDOW_WIDTH = 720;
-
-function getSettingsWindowWidth(workAreaWidth: number) {
-  return Math.min(SETTINGS_WINDOW_WIDTH, Math.max(MIN_WINDOW_WIDTH, workAreaWidth - 40));
-}
-
-function normalizeRestoredWindowState(saved: WindowState | undefined): WindowState | undefined {
-  if (!saved) return undefined;
-  const settingsLikeWidth = saved.width && saved.width >= SETTINGS_WINDOW_WIDTH - 8;
-  if (!settingsLikeWidth) return saved;
-  return { ...saved, width: DEFAULT_WINDOW_WIDTH, height: saved.height || DEFAULT_WINDOW_HEIGHT };
-}
-const APP_ICON_PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABiklEQVR4nO3bQRKCMAwFUM7BHbgCB0Dv4PW8ijdx6ca1rpxhFCFpkv6kDTPZgc1/QumCDgPxmJb5FamouZoLrgaBbhwKgW4WioBuEoqAbg6KgG4KjoBuCAqAbgaOgG4ECoBuAl3qAM/H3bRcA1iHt0BQA6gVXhtBBaB2eE0EMQAqvBZCAiRAAiSAGcC0zBetSoAECAjQ/RyQAAmQAOoBQwFMy3wqrb1wXQBQx2wVgDymawCrSa1rgFCToHX4pgBKx2kCQDJGeADpGO4AtJvXAKwGwAmhdXeFAOCcRwl/u543yzXA+tzS8P+CSyCqAkj+eWp4LoL5JFg7/DiOLAST1yAy/KeoCGbrgNoA6/AuADgIVuEpCOYrQcn1R8/4Vnh3ANwF0h7Ad0hKeBcAWwiUa45udUp4cwAOArcoz/tR+CoAVgilkx4EAIUgXRG6/1CSsxByAWBRVuGnSN8Lm4WPAsBBoP5e2D0D0uA/4aMBaFTX+4a63jm2G751BFL4VhFY4VuCKA4eHYKa6w3BqOZexsuoaQAAAABJRU5ErkJggg==';
-
-function resolveIconPath(fileName: string) {
-  const candidates = isDevelopmentBuild()
-    ? [path.join(__dirname, '..', 'build', fileName)]
-    : [path.join(process.resourcesPath, fileName)];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return '';
-}
-
-function createAppIcon() {
-  const iconPath = resolveIconPath('icon.png');
-  if (iconPath) {
-    const image = nativeImage.createFromPath(iconPath);
-    if (!image.isEmpty()) return image;
-  }
-  return nativeImage.createFromBuffer(Buffer.from(APP_ICON_PNG_BASE64, 'base64'));
-}
-
-function createTrayIcon() {
-  const iconPath = resolveIconPath('tray.png');
-  if (iconPath) {
-    const image = nativeImage.createFromPath(iconPath);
-    if (!image.isEmpty()) return image.resize({ width: 16, height: 16 });
-  }
-  return nativeImage.createFromBuffer(Buffer.from(APP_ICON_PNG_BASE64, 'base64')).resize({ width: 16, height: 16 });
+function getIconPathOptions(): IconPathOptions {
+  return {
+    isDevelopment: isDevelopmentBuild(),
+    appDirname: __dirname,
+    resourcesPath: process.resourcesPath,
+  };
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -245,33 +185,15 @@ let settingsModeRestoreWidth = RESET_WINDOW_WIDTH;
 let windowMode: WindowMode = 'onTop';
 
 // ===== 崩溃诊断（轻量，仅写文件，不改窗口行为） =====
-const DIAG_LOG = (() => {
-  try {
-    return path.join(app.getPath('userData'), 'diag.log');
-  } catch {
-    return path.join(process.env.APPDATA || process.cwd(), 'daily-todo-diag.log');
-  }
-})();
-
-function diag(message: string) {
-  try {
-    fs.appendFileSync(DIAG_LOG, `[${new Date().toISOString()}] ${message}\n`, 'utf-8');
-  } catch {}
-}
+const diag = createDiagLogger();
 
 try {
   // 本地 minidump（userData/Crashpad），仅本地保存，不上传。原生崩溃时留证据。
-  crashReporter.start({ submitURL: '', uploadToServer: false, compress: false });
+  startCrashDiagnostics(diag);
 } catch (error) {
-  diag(`crashReporter.start failed: ${String(error)}`);
+  diag(`crash diagnostics startup failed: ${String(error)}`);
 }
 
-process.on('uncaughtException', (error) => {
-  diag(`uncaughtException: ${error?.stack || String(error)}`);
-});
-process.on('unhandledRejection', (reason) => {
-  diag(`unhandledRejection: ${String(reason)}`);
-});
 diag('=== app starting ===');
 
 // ===== Win32 原生：给窗口加 WS_EX_TOOLWINDOW（不上任务栏 / 不进 Alt+Tab） =====
@@ -1460,7 +1382,7 @@ function refreshTrayMenu() {
 function createTray() {
   if (tray) return;
 
-  tray = new Tray(createTrayIcon());
+  tray = new Tray(createTrayIcon(getIconPathOptions()));
   tray.setToolTip('DailyTodo');
   refreshTrayMenu();
   tray.on('click', showMainWindow);
@@ -1570,7 +1492,7 @@ function createWindow() {
     resizable: true,
     show: false,
     alwaysOnTop: isAlwaysOnTop(initialMode),
-    icon: createAppIcon(),
+    icon: createAppIcon(getIconPathOptions()),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,

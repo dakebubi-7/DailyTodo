@@ -1,8 +1,9 @@
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { createAppViewportStyle } from './app/appViewportStyle';
 import { useTasks } from './hooks/useTasks';
 import { useFloatingScrollbar } from './hooks/useFloatingScrollbar';
-import './styles/context-menu.css';
+import { findTaskInTree, isSubtask } from './utils/taskTree';
 import { TitleBar } from './components/TitleBar';
 import { Header } from './components/Header';
 import { DateNavigator } from './components/DateNavigator';
@@ -54,6 +55,7 @@ import {
   createDefaultDailyTemplate,
   createDefaultReportTemplate,
 } from '../shared/aiReview/sectionConfig';
+import { shiftDateKey } from '../shared/taskRollover';
 
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low';
 const PERSONALIZATION_KEY = 'personalizationSettings';
@@ -61,27 +63,6 @@ const THEME_OVERRIDES_KEY = 'themeOpacityOverrides';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function shiftDate(date: string, days: number) {
-  const next = new Date(`${date}T00:00:00`);
-  next.setDate(next.getDate() + days);
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
-}
-
-function findTaskInTree(tasks: Task[], taskId: string): Task | null {
-  for (const task of tasks) {
-    if (task.id === taskId) return task;
-    if (task.subtasks?.length) {
-      const found = findTaskInTree(task.subtasks, taskId);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-function isSubtask(task: Task) {
-  return Boolean(task.parentTaskId);
 }
 
 export default function App() {
@@ -329,11 +310,11 @@ export default function App() {
       }
 
       if (!isTyping && event.key === '[') {
-        setSelectedDate((prev) => shiftDate(prev, -1));
+        setSelectedDate((prev) => shiftDateKey(prev, -1));
       }
 
       if (!isTyping && event.key === ']') {
-        setSelectedDate((prev) => shiftDate(prev, 1));
+        setSelectedDate((prev) => shiftDateKey(prev, 1));
       }
     };
 
@@ -536,48 +517,15 @@ export default function App() {
     );
   };
 
-  const windowOpacity = clamp(personalization.windowOpacity / 100, 0, 1);
-  const panelOpacity = isInvisibleTheme ? windowOpacity : clamp(personalization.panelOpacity / 100, 0, 1);
-  const topOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.topOpacity ?? 90) / 100, 0, 1);
-  const cardOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.cardOpacity ?? 86) / 100, 0, 1);
-  const controlOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.controlOpacity ?? 90) / 100, 0, 1);
-  const menuOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.menuOpacity ?? 96) / 100, 0, 1);
-  const inputOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.inputOpacity ?? personalization.controlOpacity ?? personalization.panelOpacity) / 100, 0, 1);
-  const dialogOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.dialogOpacity ?? personalization.menuOpacity ?? 94) / 100, 0, 1);
-  const settingsPanelOpacity = isInvisibleTheme ? windowOpacity : clamp((personalization.settingsPanelOpacity ?? personalization.menuOpacity ?? 92) / 100, 0, 1);
-  const blurStrength = clamp(personalization.blurStrength, 0, 80);
-  const shellRadius = clamp(personalization.radius, 4, 36);
-  const cardRadius = clamp(personalization.radius - 4, 4, 28);
-  const controlRadius = clamp(personalization.radius - 8, 4, 24);
-  const glassSaturation = clamp(1.08 + (1 - Math.min(windowOpacity, panelOpacity)) * 0.32, 1.08, 1.4);
-
   return (
     <div
       className={`app-viewport transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-      style={{
-        '--personal-accent': personalization.accentColor,
-        '--personal-secondary': personalization.secondaryColor,
-        '--window-opacity': windowOpacity,
-        '--panel-opacity': panelOpacity,
-        '--top-opacity': topOpacity,
-        '--card-opacity': cardOpacity,
-        '--control-opacity': controlOpacity,
-        '--menu-opacity': menuOpacity,
-        '--input-opacity': inputOpacity,
-        '--dialog-opacity': dialogOpacity,
-        '--settings-panel-opacity': settingsPanelOpacity,
-        '--readable-surface-opacity': clamp(panelOpacity + 0.16, 0.62, 0.98),
-        '--glass-saturation': glassSaturation,
-        '--blur-strength': `${blurStrength}px`,
-        '--shell-radius': `${shellRadius}px`,
-        '--card-radius': `${cardRadius}px`,
-        '--control-radius': `${controlRadius}px`,
-      } as CSSProperties}
+      style={createAppViewportStyle(personalization, isInvisibleTheme)}
     >
       <div
         className={`app-shell ${activeThemeClass} density-${personalization.layoutDensity} ${personalization.texture ? 'texture-on' : 'texture-off'} ${personalization.animations ? 'motion-on' : 'motion-off'} ${compactMode ? 'task-priority-mode' : ''} relative flex h-full flex-col overflow-hidden border border-white/45 text-zinc-900 backdrop-blur-2xl dark:border-white/10 dark:text-zinc-100`}
         data-theme={activeThemeId || 'custom'}
-        data-low-opacity={isInvisibleTheme || windowOpacity <= 0.4 ? 'true' : undefined}
+        data-low-opacity={isInvisibleTheme || personalization.windowOpacity <= 40 ? 'true' : undefined}
       >
         <TitleBar
           compactMode={compactMode}

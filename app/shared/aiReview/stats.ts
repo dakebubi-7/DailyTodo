@@ -1,3 +1,5 @@
+import { shiftDateKey } from '../taskRollover';
+
 export interface StatTask {
   completed: boolean;
   taskDate?: string;
@@ -25,15 +27,6 @@ function dateOf(task: StatTask): string {
   return task.taskDate || task.createdAt?.slice(0, 10) || '';
 }
 
-function shiftDate(date: string, days: number): string {
-  const next = new Date(`${date}T00:00:00`);
-  next.setDate(next.getDate() + days);
-  const y = next.getFullYear();
-  const m = String(next.getMonth() + 1).padStart(2, '0');
-  const d = String(next.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 export function computeDailyStats(tasks: StatTask[], date: string): DailyStats {
   const ofDay = tasks.filter((t) => dateOf(t) === date);
   const completed = ofDay.filter((t) => t.completed).length;
@@ -57,7 +50,7 @@ export function computeRangeStats(tasks: StatTask[], start: string, end: string)
   let cursor = end;
   while (activeDates.has(cursor) && cursor >= start) {
     streak += 1;
-    cursor = shiftDate(cursor, -1);
+    cursor = shiftDateKey(cursor, -1);
   }
 
   return {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { deleteReviewFromTask } from '../src/hooks/useTasks';
+import { deleteReviewFromTask } from '../src/hooks/taskMutations';
 import type { Task } from '../src/types/task';
 
 const baseTask: Task = {

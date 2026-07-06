@@ -2,23 +2,44 @@ import { CSSProperties, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AppBehaviorSettings,
-  AppLanguage,
   ObsidianTemplateSettings,
 } from '../../shared/appSettings';
-import { PersonalizationSettings, OPACITY_KEYS, OpacityKey } from '../types/personalization';
+import { PersonalizationSettings } from '../types/personalization';
 import { Task } from '../types/task';
 import { THEME_PRESETS, ThemePreset } from '../types/themePresets';
 import { getShellText } from '../i18n';
 import {
   AiReviewSettings,
-  AiProfile,
   WeeklySourceMode,
   MonthlySourceMode,
   createDefaultAiReviewSettings,
-  createDefaultAiProfile,
 } from '../../shared/aiReview/aiReviewSettings';
 import type { SyncPreview } from '../../shared/obsidianTemplates';
 import type { AiReviewProgressEvent, AiReviewRunDiagnostic } from '../../shared/aiReview/runDiagnostics';
+import { Field, RangeControl, ToggleRow } from './settings/SettingsControls';
+import {
+  OPACITY_SLIDER_MAX,
+  OPACITY_SLIDER_MIN,
+  getThemeRecommendation,
+  glassOpacityValue,
+  opacityValue,
+  withUnifiedGlassOpacity,
+} from './settings/appearanceSettings';
+import {
+  AiAccountZone,
+  DiagnosticCard,
+  GenerationProgress,
+  finishProgress,
+  initialProgressForAction,
+  previousMonthStart,
+  previousWeekDate,
+  progressDisplay,
+  resultMessage,
+  type GenerationAction,
+} from './settings/AiReviewSettingsWidgets';
+import { TemplatesSettingsSection } from './settings/TemplatesSettingsSection';
+import { ScheduleSettingsSection } from './settings/ScheduleSettingsSection';
+import { GeneralSettingsSection } from './settings/GeneralSettingsSection';
 
 type SettingsSection = 'appearance' | 'sync' | 'templates' | 'aiReview' | 'schedule' | 'general';
 
@@ -50,630 +71,7 @@ interface SettingsPanelProps {
 type NavSection = SettingsSection;
 
 type SectionEntry = { key: NavSection; title: string; description: string; primary?: boolean };
-function RangeControl({
-  label,
-  hint,
-  value,
-  min,
-  max,
-  unit = '',
-  onChange,
-  defaultValue,
-  resetTitle,
-}: {
-  label: string;
-  hint?: string;
-  value: number;
-  min: number;
-  max: number;
-  unit?: string;
-  onChange: (value: number) => void;
-  defaultValue?: number;
-  resetTitle?: string;
-}) {
-  const handleReset = () => {
-    if (typeof defaultValue === 'number') onChange(defaultValue);
-  };
-  const title = typeof defaultValue === 'number' ? resetTitle : undefined;
-
-  return (
-    <label className="settings-control" onDoubleClick={handleReset} title={title}>
-      <span>
-        <strong>{label}</strong>
-        {hint && <small>{hint}</small>}
-      </span>
-      <div className="settings-range-row">
-        <input
-          className="settings-range-input"
-          type="range"
-          min={min}
-          max={max}
-          value={value}
-          onDoubleClick={handleReset}
-          onChange={(event) => onChange(Number(event.target.value))}
-          title={title}
-        />
-        <b>{value}{unit}</b>
-      </div>
-    </label>
-  );
-}
-
-/** 当前主题的推荐设置（用于透明度建议与"恢复建议值"）。 */
-function getThemeRecommendation(settings: PersonalizationSettings): PersonalizationSettings {
-  const preset =
-    THEME_PRESETS.find((item) => item.id === settings.themeId) ||
-    THEME_PRESETS.find((item) => item.id === 'minimal');
-  return preset?.settings || settings;
-}
-
-/** 读取某个透明度字段，按旧数据兼容规则回退到 control/panel。 */
-function opacityValue(settings: PersonalizationSettings, key: OpacityKey): number {
-  return settings[key] ?? settings.controlOpacity ?? settings.panelOpacity;
-}
-
-/** 全局玻璃透明度以窗口透明度为主，缺失时回退到内容透明度。 */
-function glassOpacityValue(settings: PersonalizationSettings): number {
-  return settings.windowOpacity ?? settings.panelOpacity;
-}
-
-function withUnifiedGlassOpacity(settings: PersonalizationSettings, value: number): PersonalizationSettings {
-  const next = { ...settings };
-  for (const key of OPACITY_KEYS) {
-    next[key] = value;
-  }
-  return next;
-}
-
-const OPACITY_SLIDER_MIN = 20;
-const OPACITY_SLIDER_MAX = 100;
-
-function Field({
-  label,
-  value,
-  onChange,
-  multiline = false,
-  hint,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  multiline?: boolean;
-  hint?: string;
-  placeholder?: string;
-}) {
-  return (
-    <label className="settings-field">
-      <span>
-        <strong>{label}</strong>
-        {hint && <small>{hint}</small>}
-      </span>
-      {multiline ? (
-        <textarea value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
-      ) : (
-        <input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
-      )}
-    </label>
-  );
-}
-
-function AutoStartToggle() {
-  const [autoStart, setAutoStart] = useState(false);
-
-  useEffect(() => {
-    window.electronAPI?.getAutoStart().then(setAutoStart);
-  }, []);
-
-  const handleChange = (enabled: boolean) => {
-    window.electronAPI?.setAutoStart(enabled).then((ok) => {
-      if (ok) setAutoStart(enabled);
-    });
-  };
-
-  return (
-    <button
-      type="button"
-      className={`settings-switch-row ${autoStart ? 'settings-switch-on' : ''}`}
-      onClick={() => handleChange(!autoStart)}
-      aria-pressed={autoStart}
-    >
-      <span>
-        <strong>开机自启</strong>
-        <small>启动系统时自动运行 Daily Todo</small>
-      </span>
-      <i aria-hidden="true" />
-    </button>
-  );
-}
-
-function ToggleRow({
-  title,
-  description,
-  checked,
-  onChange,
-}: {
-  title: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`settings-switch-row ${checked ? 'settings-switch-on' : ''}`}
-      onClick={() => onChange(!checked)}
-      aria-pressed={checked}
-    >
-      <span>
-        <strong>{title}</strong>
-        <small>{description}</small>
-      </span>
-      <i aria-hidden="true" />
-    </button>
-  );
-}
-
-type AiReviewText = ReturnType<typeof getShellText>['settings']['aiReview'];
-type GenerationAction = 'daily' | 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly';
 type ReportProfileKey = 'dailyReviewProfileId' | 'weeklyReportProfileId' | 'monthlyReportProfileId';
-
-function formatLocalDate(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function previousWeekDate() {
-  const date = new Date();
-  date.setDate(date.getDate() - 7);
-  return formatLocalDate(date);
-}
-
-function previousMonthStart() {
-  const date = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
-  return formatLocalDate(date);
-}
-
-function resultMessage(text: AiReviewText, result: { ok: boolean; error?: string; filePath?: string; truncated?: boolean }) {
-  if (!result.ok) return `${text.genFailed}${result.error ?? '未知错误'}`;
-  const prefix = result.truncated ? text.genTruncated : text.genSuccess;
-  return `${prefix}${result.filePath ?? '完成'}`;
-}
-
-function progressStatusLabel(event: AiReviewProgressEvent | null) {
-  if (!event) return '';
-  if (event.message) return event.message;
-  if (event.stageKey === 'requestAi') return '正在请求 AI / Requesting AI';
-  return event.label;
-}
-
-function progressDisplay(currentProgress: AiReviewProgressEvent | null, fallback: string) {
-  return progressStatusLabel(currentProgress) || fallback;
-}
-
-const AI_PROGRESS_PERCENT: Record<string, number> = {
-  inspectDaily: 12,
-  prepareMaterials: 28,
-  buildPrompt: 44,
-  requestAi: 68,
-  writeObsidian: 88,
-  confirmResult: 100,
-};
-
-function progressPercent(currentProgress: AiReviewProgressEvent | null) {
-  if (!currentProgress) return 0;
-  if (currentProgress.status === 'failed') {
-    if (currentProgress.stageKey === 'confirmResult') return 92;
-    return AI_PROGRESS_PERCENT[currentProgress.stageKey] ?? 8;
-  }
-  if (currentProgress.status === 'completed' && currentProgress.stageKey === 'confirmResult') return 100;
-  return AI_PROGRESS_PERCENT[currentProgress.stageKey] ?? 8;
-}
-
-function GenerationProgress({ currentProgress, fallback }: { currentProgress: AiReviewProgressEvent | null; fallback: string }) {
-  const percent = progressPercent(currentProgress);
-  const label = progressDisplay(currentProgress, fallback);
-  return (
-    <div className="settings-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={label}>
-      <div className="settings-progress-track">
-        <div className="settings-progress-fill" style={{ width: `${percent}%` }} />
-      </div>
-      <small>{label}</small>
-    </div>
-  );
-}
-
-function initialProgressForAction(action: GenerationAction): AiReviewProgressEvent {
-  const reportKind = action === 'daily' ? 'daily' : action.includes('Monthly') ? 'monthly' : 'weekly';
-  return {
-    reportKind,
-    stageKey: 'prepareMaterials',
-    label: '准备素材',
-    status: 'running',
-    message: '准备真实进度',
-    at: new Date().toISOString(),
-  };
-}
-
-function DiagnosticCard({ diagnostic, onClose }: { diagnostic: AiReviewRunDiagnostic; onClose: () => void }) {
-  const usage = diagnostic.usage;
-  return (
-    <div className="settings-preview-list settings-generation-status">
-      <div className="settings-row-header">
-        <strong>运行诊断</strong>
-        <button type="button" className="settings-reset-button" onClick={onClose}>关闭</button>
-      </div>
-      <p>{diagnostic.profile.profileName || diagnostic.profile.model} · {diagnostic.profile.provider} · {diagnostic.finalStatus}</p>
-      <p>{usage && usage.source !== 'missing' ? `Token：${usage.totalTokens ?? '-'}（输入 ${usage.promptTokens ?? '-'} / 输出 ${usage.completionTokens ?? '-'}）` : '服务未返回 token 用量'}</p>
-      {diagnostic.error && <p>{diagnostic.error}</p>}
-    </div>
-  );
-}
-
-function finishProgress(action: GenerationAction, ok: boolean): AiReviewProgressEvent {
-  return {
-    reportKind: action === 'daily' ? 'daily' : action.includes('Monthly') ? 'monthly' : 'weekly',
-    stageKey: 'confirmResult',
-    label: ok ? '完成' : '失败',
-    status: ok ? 'completed' : 'failed',
-    message: ok ? '完成' : '失败',
-    at: new Date().toISOString(),
-  };
-}
-
-const AI_PRESETS: Array<{ id: string; label: string; baseUrl: string; provider: AiProfile['provider']; model: string }> = [
-  { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', provider: 'auto', model: 'deepseek-chat' },
-  { id: 'openai', label: 'OpenAI (GPT)', baseUrl: 'https://api.openai.com/v1', provider: 'auto', model: 'gpt-4o-mini' },
-  { id: 'glm', label: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', provider: 'auto', model: 'glm-4-flash' },
-  { id: 'minimax', label: 'MiniMax', baseUrl: 'https://api.minimax.chat/v1', provider: 'auto', model: 'abab6.5s-chat' },
-  { id: 'claude', label: 'Claude (Anthropic)', baseUrl: 'https://api.anthropic.com', provider: 'anthropic', model: 'claude-3-5-haiku-latest' },
-  { id: 'gemini', label: 'Gemini (Google)', baseUrl: 'https://generativelanguage.googleapis.com', provider: 'gemini', model: 'gemini-1.5-flash' },
-];
-
-/** CC Switch 式账号管理弹窗：左侧账号列表，右侧选中账号的完整设置。 */
-function AiAccountManager({
-  text,
-  profiles,
-  activeId,
-  editingId,
-  onSelectEditing,
-  onSetActive,
-  onUpdate,
-  onAdd,
-  onDuplicate,
-  onDelete,
-  onClose,
-}: {
-  text: AiReviewText;
-  profiles: AiProfile[];
-  activeId: string;
-  editingId: string;
-  onSelectEditing: (id: string) => void;
-  onSetActive: (id: string) => void;
-  onUpdate: (id: string, patch: Partial<AiProfile>) => void;
-  onAdd: () => void;
-  onDuplicate: (id: string) => void;
-  onDelete: (id: string) => void;
-  onClose: () => void;
-}) {
-  const editing =
-    profiles.find((p) => p.id === editingId) ?? profiles.find((p) => p.id === activeId) ?? profiles[0];
-  const activePreset = AI_PRESETS.find((p) => p.baseUrl === editing.baseUrl)?.id ?? 'custom';
-
-  // 一键拉模型：按账号 id 缓存结果，切换账号时各看各的。
-  const [modelsByProfile, setModelsByProfile] = useState<Record<string, string[]>>({});
-  const [modelStatus, setModelStatus] = useState('');
-  const [fetchingModels, setFetchingModels] = useState(false);
-  const fetchedModels = modelsByProfile[editing.id] ?? [];
-
-  const fetchModels = async () => {
-    setFetchingModels(true);
-    setModelStatus(text.modelFetching);
-    try {
-      const res = await window.electronAPI?.aiReview.listModels({
-        baseUrl: editing.baseUrl,
-        apiKey: editing.apiKey,
-        provider: editing.provider,
-      });
-      if (!res || !res.ok) {
-        setModelStatus(`${text.modelFetchFailed}${res?.error ?? ''}`);
-        return;
-      }
-      setModelsByProfile((prev) => ({ ...prev, [editing.id]: res.models }));
-      setModelStatus(`${text.modelFetchOk}${res.models.length}`);
-    } catch (error) {
-      setModelStatus(`${text.modelFetchFailed}${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setFetchingModels(false);
-    }
-  };
-
-  return (
-    <div className="ai-account-backdrop" onClick={onClose}>
-      <div className="ai-account-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="ai-account-header">
-          <div>
-            <h3>{text.manageTitle}</h3>
-            {editing && <p>{editing.name || editing.model || editing.id}</p>}
-          </div>
-          <div className="ai-account-header-actions">
-            <button type="button" className="settings-reset-button" onClick={onAdd}>{text.accountAdd}</button>
-            <button type="button" className="settings-reset-button" onClick={() => onDuplicate(editing.id)}>{text.accountCopy}</button>
-            <button
-              type="button"
-              className="settings-reset-button"
-              disabled={editing.id === activeId}
-              onClick={() => onSetActive(editing.id)}
-            >
-              {editing.id === activeId ? text.accountIsActive : text.setActive}
-            </button>
-            <button
-              type="button"
-              className="settings-reset-button settings-danger-button"
-              disabled={profiles.length <= 1}
-              onClick={() => onDelete(editing.id)}
-            >
-              {text.accountDelete}
-            </button>
-            <button type="button" className="ai-account-close" onClick={onClose} aria-label={text.close}>✕</button>
-          </div>
-        </div>
-        <div className="ai-account-body">
-          <div className="ai-account-list">
-            {profiles.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`ai-account-item ${p.id === editing.id ? 'ai-account-item-selected' : ''}`}
-                onClick={() => onSelectEditing(p.id)}
-              >
-                <span className="ai-account-item-name">
-                  {p.id === activeId ? '● ' : '○ '}{p.name || p.id}
-                </span>
-                <small>{p.model}</small>
-              </button>
-            ))}
-            <div className="ai-account-list-actions">
-              <button type="button" className="settings-reset-button" onClick={onAdd}>{text.accountAdd}</button>
-              <button type="button" className="settings-reset-button" onClick={() => onDuplicate(editing.id)}>{text.accountCopy}</button>
-            </div>
-          </div>
-
-          <div className="ai-account-detail settings-grid">
-            <Field
-              label={text.accountName}
-              hint={text.accountNameHint}
-              value={editing.name}
-              onChange={(v) => onUpdate(editing.id, { name: v })}
-            />
-            <label className="settings-field">
-              <span>
-                <strong>{text.preset}</strong>
-                <small>{text.presetHint}</small>
-              </span>
-              <select
-                value={activePreset}
-                onChange={(event) => {
-                  const preset = AI_PRESETS.find((p) => p.id === event.target.value);
-                  if (preset) onUpdate(editing.id, { baseUrl: preset.baseUrl, provider: preset.provider, model: preset.model });
-                }}
-              >
-                {AI_PRESETS.map((p) => (
-                  <option key={p.id} value={p.id}>{p.label}</option>
-                ))}
-                <option value="custom">{text.presetCustom}</option>
-              </select>
-            </label>
-            <label className="settings-field">
-              <span>
-                <strong>{text.provider}</strong>
-                <small>{text.providerHint}</small>
-              </span>
-              <select
-                value={editing.provider}
-                onChange={(event) => onUpdate(editing.id, { provider: event.target.value as AiProfile['provider'] })}
-              >
-                <option value="auto">{text.providerAuto}</option>
-                <option value="openai">{text.providerOpenai}</option>
-                <option value="anthropic">{text.providerAnthropic}</option>
-                <option value="gemini">{text.providerGemini}</option>
-              </select>
-            </label>
-            <Field
-              label={text.baseUrl}
-              hint={text.baseUrlHint}
-              value={editing.baseUrl}
-              onChange={(v) => onUpdate(editing.id, { baseUrl: v })}
-            />
-            <label className="settings-field">
-              <span>
-                <strong>{text.apiKey}</strong>
-                <small>{text.apiKeyHint}</small>
-              </span>
-              <input
-                type="password"
-                value={editing.apiKey}
-                onChange={(event) => onUpdate(editing.id, { apiKey: event.target.value })}
-              />
-            </label>
-            <Field
-              label={text.model}
-              hint={text.modelHint}
-              value={editing.model}
-              onChange={(v) => onUpdate(editing.id, { model: v })}
-            />
-            <div className="settings-field">
-              <span>
-                <strong>{text.modelFetch}</strong>
-                <small>{text.modelFetchHint}</small>
-              </span>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className="settings-reset-button"
-                  disabled={fetchingModels || !editing.apiKey || !editing.baseUrl}
-                  onClick={fetchModels}
-                >
-                  {fetchingModels ? text.modelFetching : text.modelFetch}
-                </button>
-                {fetchedModels.length > 0 && (
-                  <select
-                    value={fetchedModels.includes(editing.model) ? editing.model : ''}
-                    onChange={(e) => e.target.value && onUpdate(editing.id, { model: e.target.value })}
-                    style={{ flex: '1 1 180px' }}
-                    aria-label={text.modelFetch}
-                  >
-                    <option value="">{text.modelPick}</option>
-                    {fetchedModels.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              {modelStatus && <small style={{ wordBreak: 'break-all' }}>{modelStatus}</small>}
-            </div>
-            <label className="settings-field">
-              <span>
-                <strong>{text.requestTimeout}</strong>
-                <small>{text.requestTimeoutHint}</small>
-              </span>
-              <input
-                type="number"
-                min={10}
-                max={600}
-                value={editing.timeoutSeconds}
-                onChange={(event) => {
-                  const raw = Number(event.target.value);
-                  if (!Number.isFinite(raw)) return;
-                  onUpdate(editing.id, { timeoutSeconds: Math.min(600, Math.max(10, Math.round(raw))) });
-                }}
-              />
-            </label>
-            <label className="settings-field">
-              <span>
-                <strong>{text.maxTokens}</strong>
-                <small>{text.maxTokensHint}</small>
-              </span>
-              <input
-                type="number"
-                min={256}
-                max={32768}
-                step={256}
-                value={editing.maxTokens ?? 8192}
-                onChange={(event) => {
-                  const raw = Number(event.target.value);
-                  if (!Number.isFinite(raw)) return;
-                  onUpdate(editing.id, { maxTokens: Math.min(32768, Math.max(256, Math.round(raw))) });
-                }}
-              />
-            </label>
-            <Field
-              label={text.accountNote}
-              hint={text.accountNoteHint}
-              value={editing.note ?? ''}
-              onChange={(v) => onUpdate(editing.id, { note: v })}
-            />
-            <p className="ai-account-balance">{text.balancePlaceholder}</p>
-            <div className="ai-account-detail-actions">
-              <button
-                type="button"
-                className="settings-reset-button"
-                disabled={editing.id === activeId}
-                onClick={() => {
-                  onSetActive(editing.id);
-                  onClose();
-                }}
-              >
-                {editing.id === activeId ? text.accountIsActive : text.setActive}
-              </button>
-              <button
-                type="button"
-                className="settings-reset-button"
-                disabled={profiles.length <= 1}
-                onClick={() => onDelete(editing.id)}
-              >
-                {text.accountDelete}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** 轻量 AI 账号区，仅展示当前账号 + 管理按钮，不依赖 AiReviewSection 的复杂状态。 */
-function AiAccountZone({ text, settings, onChange }: { text: AiReviewText; settings: AiReviewSettings; onChange: (settings: AiReviewSettings) => void }) {
-  const [showManager, setShowManager] = useState(false);
-  const [editingId, setEditingId] = useState('');
-
-  const profiles = settings.profiles?.length ? settings.profiles : [];
-  const active = profiles.find((p) => p.id === settings.activeProfileId) ?? profiles[0];
-
-  const saveSettings = (next: AiReviewSettings) => {
-    onChange(next);
-    window.electronAPI?.aiReview.setSettings(next);
-  };
-
-  return (
-    <>
-      <div className="settings-field ai-account-inline-row">
-        <span className="ai-account-inline-copy">
-          <strong>{text.account}</strong>
-          <small>{text.accountHint}</small>
-        </span>
-        <div className="ai-account-inline-actions">
-          <select
-            value={active?.id ?? ''}
-            onChange={(event) => saveSettings({ ...settings, activeProfileId: event.target.value })}
-            aria-label={text.currentAccount}
-          >
-            {profiles.length === 0 && <option value="">—</option>}
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>{profile.name || profile.model || profile.id}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="settings-reset-button"
-            onClick={() => { setEditingId(active?.id ?? ''); setShowManager(true); }}
-          >
-            {text.manageAccounts ?? '管理'}
-          </button>
-        </div>
-      </div>
-      {showManager && (
-        <AiAccountManager
-          text={text}
-          profiles={profiles}
-          activeId={active?.id ?? ''}
-          editingId={editingId}
-          onSelectEditing={setEditingId}
-          onSetActive={(id) => saveSettings({ ...settings, activeProfileId: id })}
-          onUpdate={(id, patch) => saveSettings({ ...settings, profiles: profiles.map((p) => p.id === id ? { ...p, ...patch } : p) })}
-          onAdd={() => {
-            const newP: AiProfile = { ...createDefaultAiProfile(), name: text.accountNewName ?? '新账号' };
-            saveSettings({ ...settings, profiles: [...profiles, newP], activeProfileId: newP.id });
-            setEditingId(newP.id);
-          }}
-          onDuplicate={(id) => {
-            const src = profiles.find((p) => p.id === id);
-            if (!src) return;
-            const newId = Math.random().toString(36).slice(2);
-            saveSettings({ ...settings, profiles: [...profiles, { ...src, id: newId, name: `${src.name} ${text.accountCopySuffix ?? '副本'}` }] });
-            setEditingId(newId);
-          }}
-          onDelete={(id) => {
-            if (profiles.length <= 1) return;
-            const next = profiles.filter((p) => p.id !== id);
-            saveSettings({ ...settings, profiles: next, activeProfileId: next[0]?.id ?? '' });
-            setEditingId(next[0]?.id ?? '');
-          }}
-          onClose={() => setShowManager(false)}
-        />
-      )}
-    </>
-  );
-}
 
 export function SettingsPanel({
   isOpen,
@@ -753,10 +151,6 @@ export function SettingsPanel({
 
   const recommendation = getThemeRecommendation(settings);
   const resetToThemeDefaultTitle = zh ? '双击恢复当前主题默认值' : 'Double-click to reset to the current theme default';
-
-  const updateApp = <K extends keyof AppBehaviorSettings>(key: K, value: AppBehaviorSettings[K]) => {
-    onAppSettingsChange({ ...appSettings, [key]: value });
-  };
 
   const title = sectionEntries.find((entry) => entry.key === section)?.title || (zh ? '设置' : 'Settings');
   const sectionDescription = sectionEntries.find((entry) => entry.key === section)?.description || text.intro;
@@ -1090,68 +484,18 @@ export function SettingsPanel({
       )}
 
       {section === 'templates' && (
-        <div className="settings-section-content">
-          <section className="settings-zone">
-            <h3>{zh ? '模板' : text.settingsZones.templateSettings}</h3>
-            {[
-              { label: zh ? '日报模板' : 'Daily template', kind: 'daily' as const },
-              { label: zh ? '个人周报模板' : 'Personal weekly template', kind: 'personalWeekly' as const },
-              { label: zh ? '个人月报模板' : 'Personal monthly template', kind: 'personalMonthly' as const },
-              { label: zh ? '对外周报模板' : 'External weekly template', kind: 'externalWeekly' as const },
-              { label: zh ? '对外月报模板' : 'External monthly template', kind: 'externalMonthly' as const },
-            ].map(({ label, kind }) => (
-              <div className="settings-field" key={kind}>
-                <span><strong>{label}</strong></span>
-                <button
-                  type="button"
-                  className="settings-reset-button"
-                  onClick={() => onEditTemplate?.(kind)}
-                >
-                  {zh ? '编辑 →' : 'Edit →'}
-                </button>
-              </div>
-            ))}
-          </section>
-        </div>
+        <TemplatesSettingsSection zh={zh} text={text} onEditTemplate={onEditTemplate} />
       )}
 
       {section === 'schedule' && (
-        <>
-          <section className="settings-section">
-            <h3>{text.rollover}</h3>
-            <Field label="Rollover time" hint={text.rolloverHint} value={appSettings.rolloverTime} onChange={(value) => updateApp('rolloverTime', value)} />
-            <ToggleRow
-              title={text.autoCarry}
-              description={text.autoCarryHint}
-              checked={appSettings.autoCarryForward}
-              onChange={(value) => updateApp('autoCarryForward', value)}
-            />
-            <div className="settings-preview-list">
-              <p>{text.carryRule}</p>
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3>{appSettings.language === 'zh-CN' ? '清理已完成' : 'Clear Completed'}</h3>
-            <div className="settings-preview-list">
-              <p>
-                {appSettings.language === 'zh-CN'
-                  ? '只把当前日期的已完成任务从应用列表中隐藏，任务本身和 Obsidian 记录都会完整保留。'
-                  : 'Only hides completed tasks of the current date from the app list. The tasks and their Obsidian records stay intact.'}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="settings-reset-button"
-              onClick={onClearCompleted}
-              disabled={completedCount === 0}
-            >
-              {appSettings.language === 'zh-CN'
-                ? `清理「${selectedDate}」的已完成（${completedCount}）`
-                : `Clear completed on ${selectedDate} (${completedCount})`}
-            </button>
-          </section>
-        </>
+        <ScheduleSettingsSection
+          text={text}
+          appSettings={appSettings}
+          selectedDate={selectedDate}
+          completedCount={completedCount}
+          onClearCompleted={onClearCompleted}
+          onAppSettingsChange={onAppSettingsChange}
+        />
       )}
 
       {section === 'aiReview' && (
@@ -1387,54 +731,13 @@ export function SettingsPanel({
       )}
 
       {section === 'general' && (
-        <>
-          <section className="settings-section">
-            <h3>{text.language}</h3>
-            <label className="settings-field">
-              <span>
-                <strong>{zh ? '语言' : 'Language'}</strong>
-                <small>{text.languageHint}</small>
-              </span>
-              <select value={appSettings.language} onChange={(event) => updateApp('language', event.target.value as AppLanguage)}>
-                <option value="zh-CN">中文</option>
-                <option value="en-US">English</option>
-              </select>
-            </label>
-          </section>
-
-          <section className="settings-section">
-            <h3>{zh ? '完成记录' : 'Completion Records'}</h3>
-            <ToggleRow
-              title={zh ? '主任务完成时填写完成记录' : 'Ask for main task completion record'}
-              description={zh ? '开启后，主任务点击完成时会先填写完成情况；关闭后直接完成。' : 'When enabled, completing a main task opens the completion record dialog.'}
-              checked={appSettings.mainTaskCompletionReviewEnabled}
-              onChange={(value) => updateApp('mainTaskCompletionReviewEnabled', value)}
-            />
-            <ToggleRow
-              title={zh ? '子任务完成时填写完成记录' : 'Ask for subtask completion record'}
-              description={zh ? '开启后，子任务点击完成时会先填写完成情况；关闭后直接完成。' : 'When enabled, completing a subtask opens the completion record dialog.'}
-              checked={appSettings.subtaskCompletionReviewEnabled}
-              onChange={(value) => updateApp('subtaskCompletionReviewEnabled', value)}
-            />
-          </section>
-
-          <section className="settings-section">
-            <h3>{zh ? '窗口行为' : 'Window Behavior'}</h3>
-            <AutoStartToggle />
-            <ToggleRow
-              title={zh ? '关闭时最小化到托盘' : 'Minimize to tray on close'}
-              description={zh ? '点关闭按钮时隐藏到系统托盘；关闭后仍可从托盘恢复。' : 'Hide the app to the system tray when the close button is clicked.'}
-              checked={appSettings.minimizeToTrayOnClose}
-              onChange={(value) => updateApp('minimizeToTrayOnClose', value)}
-            />
-            <ToggleRow
-              title={zh ? '启动时窗口置顶' : 'Always on top on start'}
-              description={zh ? '应用启动时自动置顶' : 'Keep window always on top'}
-              checked={settings.alwaysOnTop ?? false}
-              onChange={(value) => onChange({ ...settings, alwaysOnTop: value })}
-            />
-          </section>
-        </>
+        <GeneralSettingsSection
+          text={text}
+          settings={settings}
+          appSettings={appSettings}
+          onChange={onChange}
+          onAppSettingsChange={onAppSettingsChange}
+        />
       )}
           </div>
         </div>

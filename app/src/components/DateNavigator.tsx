@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Task } from '../types/task';
+import { formatLocalDateKey, shiftDateKey } from '../../shared/taskRollover';
+import {
+  buildMonthCells,
+  formatDisplayDate,
+  getTaskDate,
+  heatBackground,
+  shiftMonth,
+  weekDays,
+} from './dateNavigator/dateNavigatorUtils';
 
 interface DateNavigatorProps {
   selectedDate: string;
@@ -8,68 +17,8 @@ interface DateNavigatorProps {
   onDateChange: (date: string) => void;
 }
 
-const weekDays = ['一', '二', '三', '四', '五', '六', '日'];
-
-function getLocalDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function dateKey(year: number, monthIndex: number, day: number) {
-  return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function parseDateKey(date: string) {
-  const [year, month, day] = date.split('-').map(Number);
-  return { year, monthIndex: month - 1, day };
-}
-
-function shiftDate(date: string, days: number) {
-  const next = new Date(`${date}T00:00:00`);
-  next.setDate(next.getDate() + days);
-  return getLocalDateKey(next);
-}
-
-function shiftMonth(date: string, months: number) {
-  const { year, monthIndex } = parseDateKey(date);
-  const next = new Date(year, monthIndex + months, 1);
-  return dateKey(next.getFullYear(), next.getMonth(), 1);
-}
-
-function formatDisplayDate(date: string) {
-  return date.replaceAll('-', '/');
-}
-
-function getTaskDate(task: Task) {
-  return task.taskDate || task.createdAt?.slice(0, 10) || getLocalDateKey();
-}
-
-type DaySummary = { total: number; done: number; urgent: boolean };
-
-/** 一天的完成情况汇总：总数 / 已完成数 / 是否有高优先级未完成（紧急）。 */
-function getDaySummary(dayTasks: Task[]): DaySummary {
-  let done = 0;
-  let urgent = false;
-  dayTasks.forEach((task) => {
-    if (task.completed) done += 1;
-    else if (task.priority === 'high') urgent = true;
-  });
-  return { total: dayTasks.length, done, urgent };
-}
-
-/** 整格热力底色：无任务不着色；有任务未做=极浅灰；按完成比例加深柔和绿。 */
-function heatBackground(summary: DaySummary): string | undefined {
-  if (summary.total === 0) return undefined;
-  if (summary.done === 0) return 'rgba(161, 161, 170, 0.14)';
-  const ratio = summary.done / summary.total;
-  const pct = Math.round(16 + 30 * ratio); // 16%（刚开始做）→ 46%（全做完）
-  return `color-mix(in srgb, var(--color-priority-low) ${pct}%, transparent)`;
-}
-
 export function DateNavigator({ selectedDate, allDates, tasks, onDateChange }: DateNavigatorProps) {
-  const today = getLocalDateKey();
+  const today = formatLocalDateKey();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(selectedDate.slice(0, 7) + '-01');
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -105,32 +54,7 @@ export function DateNavigator({ selectedDate, allDates, tasks, onDateChange }: D
   }, [tasks]);
 
   const monthCells = useMemo(() => {
-    const { year, monthIndex } = parseDateKey(visibleMonth);
-    const firstDay = new Date(year, monthIndex, 1);
-    const firstWeekday = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-    const cells: Array<{ key: string; day?: number; inMonth: boolean; summary: DaySummary }> = [];
-    const emptySummary: DaySummary = { total: 0, done: 0, urgent: false };
-
-    for (let i = 0; i < firstWeekday; i += 1) {
-      cells.push({ key: `blank-${i}`, inMonth: false, summary: emptySummary });
-    }
-
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const key = dateKey(year, monthIndex, day);
-      cells.push({
-        key,
-        day,
-        inMonth: true,
-        summary: getDaySummary(tasksByDate.get(key) || []),
-      });
-    }
-
-    while (cells.length % 7 !== 0) {
-      cells.push({ key: `tail-${cells.length}`, inMonth: false, summary: emptySummary });
-    }
-
-    return cells;
+    return buildMonthCells(visibleMonth, tasksByDate);
   }, [tasksByDate, visibleMonth]);
 
   const monthLabel = new Intl.DateTimeFormat('zh-CN', {
@@ -144,7 +68,7 @@ export function DateNavigator({ selectedDate, allDates, tasks, onDateChange }: D
         <div className="date-stepper" aria-label="日期切换">
           <button
             type="button"
-            onClick={() => onDateChange(shiftDate(selectedDate, -1))}
+            onClick={() => onDateChange(shiftDateKey(selectedDate, -1))}
             aria-label="查看前一天"
             title="查看前一天"
           >
@@ -164,7 +88,7 @@ export function DateNavigator({ selectedDate, allDates, tasks, onDateChange }: D
 
           <button
             type="button"
-            onClick={() => onDateChange(shiftDate(selectedDate, 1))}
+            onClick={() => onDateChange(shiftDateKey(selectedDate, 1))}
             aria-label="查看后一天"
             title="查看后一天"
           >

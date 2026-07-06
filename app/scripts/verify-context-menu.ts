@@ -10,6 +10,9 @@ const useTasks = readFileSync(join(root, 'src/hooks/useTasks.ts'), 'utf8');
 const mainProcess = readFileSync(join(root, 'electron/main.ts'), 'utf8');
 const preload = readFileSync(join(root, 'electron/preload.ts'), 'utf8');
 const appTsx = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+const styleEntry = readFileSync(join(root, 'src/styles/index.css'), 'utf8');
+const taskTransforms = readFileSync(join(root, 'src/hooks/taskTransforms.ts'), 'utf8');
+const taskSelectors = readFileSync(join(root, 'src/hooks/taskSelectors.ts'), 'utf8');
 const contextMenuCss = readFileSync(join(root, 'src/styles/context-menu.css'), 'utf8');
 const globalsCss = readFileSync(join(root, 'src/styles/globals.css'), 'utf8');
 const mainTsx = readFileSync(join(root, 'src/main.tsx'), 'utf8');
@@ -58,8 +61,8 @@ assert(!taskItem.includes('<TaskContextMenu'), 'TaskItem should no longer render
 assert(taskItem.includes('scheduledDates'), 'TaskItem should display scheduledDates.');
 assert(taskItem.includes('task.tags'), 'TaskItem should display tags.');
 assert(taskItem.includes('task.subtasks') && taskItem.includes('task-subtasks'), 'TaskItem should display persisted subtasks below the parent task.');
-assert(taskItem.includes('task-tree-toggle'), 'TaskItem should render a collapse toggle for task trees.');
-assert(taskItem.includes('renderSubtaskTree'), 'TaskItem should render subtasks recursively as a tree.');
+assert(taskItem.includes('task-cluster-has-children') && taskItem.includes('onToggleCollapse'), 'TaskItem should make child task clusters collapsible.');
+assert(taskItem.includes('SubtaskCard') && taskItem.includes('useVirtualSubtasks'), 'TaskItem should render compact subtask cards with virtualization support.');
 assert(taskItem.includes('onToggleSubtask') && taskItem.includes('onDeleteSubtask'), 'TaskItem should support subtask completion and deletion actions.');
 assert(taskItem.includes('onViewSubtaskReview'), 'TaskItem should expose subtask completion review actions.');
 
@@ -81,13 +84,17 @@ assert(appTsx.includes('editRequest'), 'App should route the popup edit action v
 
 // Renderer routes the popup view
 assert(mainTsx.includes("'task-menu'") || mainTsx.includes('task-menu'), 'Renderer entry should route the task-menu view.');
+assert(mainTsx.includes("import './styles/index.css';"), 'Renderer entry should import the shared style entry.');
+assert(styleEntry.includes("@import './context-menu.css';"), 'Style entry should import context-menu.css once.');
+assert(!appTsx.includes("import './styles/context-menu.css';"), 'App should not duplicate the global context-menu.css import.');
 
 // useTasks update method + multi-date visibility
 assert(useTasks.includes('addSubtask'), 'useTasks should expose addSubtask.');
 assert(useTasks.includes('toggleSubtask') && useTasks.includes('deleteSubtask'), 'useTasks should manage subtask completion and deletion.');
 assert(useTasks.includes('updateSubtaskReview') || useTasks.includes('completeSubtaskWithReview'), 'useTasks should support subtask completion review persistence.');
 assert(useTasks.includes('toggleTaskCollapse'), 'useTasks should persist tree collapse state.');
-assert(useTasks.includes('scheduledDates'), 'useTasks should consider scheduledDates for date visibility.');
+assert(taskTransforms.includes('scheduledDates?.includes(date)'), 'Task transforms should consider scheduledDates for date visibility.');
+assert(taskSelectors.includes('taskMatchesDate(task, selectedDate, currentDate)'), 'Task selectors should use taskMatchesDate for selected-day visibility.');
 
 // Styling
 assert(contextMenuCss.includes('.tm-card'), 'CSS should style the popup glass card.');

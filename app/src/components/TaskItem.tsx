@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
@@ -43,11 +44,18 @@ const priorityTitles: Record<Task['priority'], string> = {
   low: '低优先级',
 };
 
+const TASK_STACK_SEGMENT_CLASSES = ['task-stack-segment-1', 'task-stack-segment-2', 'task-stack-segment-3'] as const;
+
 export const TASK_CLUSTER_SPRING = {
   stiffness: 180,
   damping: 25,
   mass: 1,
 };
+
+const TASK_STACK_SEGMENT_TRANSITIONS = TASK_STACK_SEGMENT_CLASSES.map((_, segmentIndex) => ({
+  ...TASK_CLUSTER_SPRING,
+  delay: segmentIndex * 0.025,
+}));
 
 const TASK_CLUSTER_REDUCED_TRANSITION = {
   duration: 0.01,
@@ -58,7 +66,6 @@ export const TASK_SUBTASK_VIEWPORT_HEIGHT = 400;
 const TASK_SUBTASK_ROW_HEIGHT = 46;
 const TASK_SUBTASK_OVERSCAN = 4;
 const TASK_SUBTASK_VIRTUAL_THRESHOLD = 30;
-const TASK_STACK_LAYER_CLASSES = ['task-stack-layer-2', 'task-stack-layer-3'] as const;
 
 interface VirtualSubtaskItem {
   task: Task;
@@ -92,9 +99,12 @@ export function TaskItem({
   const hasTags = Boolean(task.tags?.length);
   const hasReview = hasTaskReview(task);
   const canOpenReviewAction = task.completed || hasReview;
-  const stackLayerCount = getStackLayerCount(subtaskCount);
   const isExpanded = hasChildren && !task.collapsed;
   const virtualSubtasks = useVirtualSubtasks(directSubtasks, isExpanded);
+  const stackSegmentCount = getStackSegmentCount(subtaskCount);
+  const stackSegmentStyle = !isExpanded && stackSegmentCount > 0
+    ? getStackSegmentStyle(stackSegmentCount)
+    : undefined;
 
   useEffect(() => {
     if (editTrigger && !task.completed) {
@@ -130,19 +140,22 @@ export function TaskItem({
 
   return (
     <span className={`task-cluster ${hasChildren ? 'task-cluster-has-children' : 'task-cluster-no-children'} ${isExpanded ? 'task-cluster-expanded' : 'task-cluster-collapsed'}`}>
-      <span className="task-cluster-stack-shell">
+      <span className="task-cluster-stack-shell" style={stackSegmentStyle}>
         <AnimatePresence initial={false}>
-          {!isExpanded && Array.from({ length: stackLayerCount }).map((_, layerIndex) => (
-            <motion.span
-              key={`stack-${layerIndex}`}
-              className={`task-stack-layer task-cluster-faux-card task-card ${TASK_STACK_LAYER_CLASSES[layerIndex]}`}
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 0, scale: layerIndex === 0 ? 0.98 : 0.96 }}
-              animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: layerIndex === 0 ? 8 : 16, scale: layerIndex === 0 ? 0.98 : 0.96 }}
-              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 0, scale: 0.98 }}
-              transition={shouldReduceMotion ? TASK_CLUSTER_REDUCED_TRANSITION : TASK_CLUSTER_SPRING}
-              aria-hidden="true"
-            />
-          ))}
+          {!isExpanded && stackSegmentCount > 0 && (
+            <span className="task-stack-segments" aria-hidden="true">
+              {TASK_STACK_SEGMENT_CLASSES.slice(0, stackSegmentCount).map((segmentClass, segmentIndex) => (
+                <motion.span
+                  key={segmentClass}
+                  className={`task-stack-segment ${segmentClass}`}
+                  initial={shouldReduceMotion ? false : { opacity: 0 }}
+                  animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1 }}
+                  exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0 }}
+                  transition={shouldReduceMotion ? TASK_CLUSTER_REDUCED_TRANSITION : TASK_STACK_SEGMENT_TRANSITIONS[segmentIndex]}
+                />
+              ))}
+            </span>
+          )}
         </AnimatePresence>
 
         <motion.div
@@ -491,9 +504,15 @@ function useVirtualSubtasks(subtasks: Task[], isExpanded: boolean) {
   return { viewportRef, isVirtual, totalHeight, visibleVirtualItems };
 }
 
-export function getStackLayerCount(subtaskCount: number) {
+export function getStackSegmentCount(subtaskCount: number) {
   if (subtaskCount <= 0) return 0;
-  return Math.min(subtaskCount, 2);
+  return Math.min(subtaskCount, TASK_STACK_SEGMENT_CLASSES.length);
+}
+
+function getStackSegmentStyle(segmentCount: number): CSSProperties {
+  return {
+    '--task-stack-segment-count': segmentCount,
+  } as CSSProperties;
 }
 
 function stopClusterToggle(event: Pick<MouseEvent<HTMLElement>, 'stopPropagation'> | Pick<PointerEvent<HTMLElement>, 'stopPropagation'>) {

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const main = readFileSync(join(root, 'electron/main.ts'), 'utf8');
+const windowState = readFileSync(join(root, 'electron/windowState.ts'), 'utf8');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
 const addTaskInput = readFileSync(join(root, 'src/components/AddTaskInput.tsx'), 'utf8');
@@ -26,11 +27,12 @@ function expectNotIncludes(source: string, needle: string, message: string) {
   assert.ok(!source.includes(needle), message);
 }
 
-expectIncludes(main, 'function normalizeRestoredWindowState', 'Window restore should normalize saved settings-sized bounds before startup.');
+expectIncludes(windowState, 'function normalizeRestoredWindowState', 'Window restore should normalize saved settings-sized bounds before startup.');
 expectIncludes(main, 'normalizeRestoredWindowState(stored)', 'Initial bounds should use normalized saved bounds.');
 expectIncludes(main, 'persistWindowState(win, { persistSize: false })', 'Opening settings should not persist the temporary 720px width as the default startup size.');
 expectIncludes(main, 'persistWindowState(win, { overrideBounds:', 'Closing settings should persist only the restored compact bounds.');
-expectIncludes(main, 'SETTINGS_WINDOW_WIDTH', 'Settings mode should still use a wider temporary width.');
+expectIncludes(main, "from './windowState'", 'Main should import extracted window-state helpers.');
+expectIncludes(windowState, 'SETTINGS_WINDOW_WIDTH', 'Settings mode should still use a wider temporary width.');
 
 expectIncludes(settingsPanel, 'waitingForRealProgress', 'AI generation UI should expose a waiting state instead of synthesizing fake repeated stages.');
 expectIncludes(settingsPanel, '等待真实进度', 'Fallback progress copy should explain it is waiting for real progress.');

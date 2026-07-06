@@ -12,6 +12,9 @@ import {
   removeTaskIdFromOrder,
   sortTasksForDisplay,
 } from '../src/utils/taskOrdering';
+import { selectTaskViewState } from '../src/hooks/taskSelectors';
+import { reorderTasksWithinSourceForDate } from '../src/hooks/taskOrderingState';
+import { clearCompletedTasks } from '../src/hooks/taskMutations';
 
 const cwd = process.cwd();
 const root = existsSync(join(cwd, 'src')) ? cwd : join(cwd, 'app');
@@ -120,6 +123,9 @@ const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
 const addTaskInput = readFileSync(join(root, 'src/components/AddTaskInput.tsx'), 'utf8');
 const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').replace(/\r\n/g, '\n');
 const useTasks = readFileSync(join(root, 'src/hooks/useTasks.ts'), 'utf8');
+const taskPersistence = readFileSync(join(root, 'src/hooks/taskPersistence.ts'), 'utf8');
+const taskSelectors = readFileSync(join(root, 'src/hooks/taskSelectors.ts'), 'utf8');
+const taskOrderingState = readFileSync(join(root, 'src/hooks/taskOrderingState.ts'), 'utf8');
 const packageJson = readFileSync(join(root, 'package.json'), 'utf8');
 
 function getCssBlock(css: string, selector: string) {
@@ -139,21 +145,74 @@ function getFunctionBlock(source: string, signature: string) {
   return source.slice(start, end + '\n  };'.length);
 }
 
-assert(useTasks.includes('const selectedDateTasks = allTasks.filter((task) => taskMatchesDate(task, selectedDate, currentDate) && !task.cleared);'), 'Selected-day counts and commands should include tasks visible via scheduledDates.');
-assert(useTasks.includes('taskMatchesDate(task, selectedDate, currentDate) && task.completed && !task.cleared'), 'Clearing completed tasks should include completed tasks visible via scheduledDates.');
-assert(useTasks.includes('const todayCount = allTasks.filter((task) => taskMatchesDate(task, currentDate, currentDate) && !task.cleared).length;'), 'Today count should include tasks scheduled for today.');
+const scheduledDateViewState = selectTaskViewState({
+  allTasks: [
+    task('normal-open'),
+    task('scheduled-done', {
+      completed: true,
+      priority: 'high',
+      taskDate: '2026-06-11',
+      isToday: false,
+      scheduledDates: ['2026-06-12'],
+    }),
+  ],
+  activeTab: 'today',
+  priorityFilter: 'all',
+  currentDate: '2026-06-12',
+  selectedDate: '2026-06-12',
+  taskListOrderByDate: {},
+});
+assert(
+  scheduledDateViewState.totalCount === 2 &&
+    scheduledDateViewState.completedCount === 1 &&
+    scheduledDateViewState.todayCount === 2 &&
+    ids(scheduledDateViewState.selectedDateTaskCommands) === 'normal-open,scheduled-done',
+  'Selected-day counts and commands should include tasks visible via scheduledDates.',
+);
+assert(taskSelectors.includes('const selectedDateTasks = allTasks.filter((task) => taskMatchesDate(task, selectedDate, currentDate) && !task.cleared);'), 'Selected-day selector should include tasks visible via scheduledDates.');
+const clearCompletedScheduledDateTasks = clearCompletedTasks([
+  task('scheduled-done-to-clear', {
+    completed: true,
+    taskDate: '2026-06-11',
+    isToday: false,
+    scheduledDates: ['2026-06-12'],
+  }),
+], '2026-06-12', '2026-06-12');
+assert(clearCompletedScheduledDateTasks[0].cleared === true, 'Clearing completed tasks should include completed tasks visible via scheduledDates.');
+assert(useTasks.includes('clearCompletedTasks(prev, selectedDate, currentDate)'), 'useTasks should delegate clearing completed tasks to the task mutation helper.');
+assert(taskSelectors.includes('todayCount: allTasks.filter((task) => taskMatchesDate(task, currentDate, currentDate) && !task.cleared).length,'), 'Today count should include tasks scheduled for today.');
 assert(taskItem.includes('const canOpenReviewAction = task.completed || hasReview;'), 'Completed tasks without an existing review should still expose the completion-review backfill action.');
 assert(taskItem.includes("label={hasReview ? '查看完成情况' : '补写完成情况'}"), 'Completion review action should distinguish viewing existing reviews from backfilling a missing one.');
 assert(taskItem.includes("canOpenReviewAction ? 'task-card-has-review-action' : 'task-card-no-review-action'"), 'Task layout should reserve review-action space for completed tasks that can backfill a review.');
 assert(packageJson.includes('verify:task-list-interactions'), 'package.json should expose verify:task-list-interactions.');
-assert(useTasks.includes(TASK_LIST_ORDER_KEY), 'useTasks should load and save task list manual order state.');
+assert(taskPersistence.includes(TASK_LIST_ORDER_KEY) && useTasks.includes('taskListOrderByDate'), 'useTasks should load and save task list manual order state.');
 assert(useTasks.includes('reorderSourceGroups'), 'useTasks should expose source group reordering.');
 assert(useTasks.includes('reorderTasksWithinSource'), 'useTasks should expose in-source task reordering.');
-assert(useTasks.includes('preservedOtherBucketOrder'), 'Reordering one completion bucket should preserve any saved order from the other completion bucket.');
+const reorderedBucketOrder = reorderTasksWithinSourceForDate(
+  {
+    '2026-06-12': {
+      taskOrderBySource: { personal: ['open-a', 'open-b', 'done-a'] },
+    },
+  },
+  [task('open-a'), task('open-b'), task('done-a', { completed: true })],
+  {
+    date: '2026-06-12',
+    currentDate: '2026-06-12',
+    source: 'personal',
+    completed: false,
+    activeId: 'open-b',
+    overId: 'open-a',
+  },
+);
+assert(
+  reorderedBucketOrder['2026-06-12'].taskOrderBySource?.personal?.join(',') === 'open-b,open-a,done-a',
+  'Reordering one completion bucket should preserve any saved order from the other completion bucket.',
+);
+assert(taskOrderingState.includes('preservedOtherBucketOrder'), 'Task ordering state helper should keep the other completion bucket order.');
 assert(app.includes('dragDisabled') && app.includes('isTaskDragDisabled'), 'App should compute and pass drag disabled state from active filters.');
 assert(taskList.includes('DndContext') && taskList.includes('SortableContext'), 'TaskList should use dnd-kit sortable contexts.');
 assert(taskList.includes('source-drag-handle') && taskItem.includes('task-drag-handle'), 'TaskList/TaskItem should expose drag handles for tasks and source groups.');
-assert(useTasks.includes('taskMatchesDate(task, date, currentDate)'), 'Manual reorder should include tasks visible via scheduledDates on the selected date.');
+assert(taskOrderingState.includes('taskMatchesDate(task, date, currentDate)'), 'Manual reorder should include tasks visible via scheduledDates on the selected date.');
 assert(taskItem.includes('task-delete-zone') && taskItem.includes('task-action-layer'), 'TaskItem should use a stable right-side delete hot zone and action layer.');
 assert(!taskItem.includes('initial={{ opacity: 0 }}\n              whileHover={{ scale: 1.06 }}\n              whileTap={{ scale: 0.94 }}\n              onClick={onDelete}'), 'Delete button visibility should be controlled by CSS hot-zone hover, not a permanent inline opacity of 0.');
 assert(!taskItem.includes('setIsHovered') && !taskItem.includes('isHovered'), 'TaskItem delete visibility should not depend on whole-card hover state.');
@@ -201,7 +260,11 @@ assert(taskItem.includes('SubtaskCard') && taskItem.includes('onEditSubtask') &&
 const subtaskPriorityHandler = getFunctionBlock(app, "const handleChangeSubtaskPriority = (id: string, priority: Task['priority']) => {");
 assert(subtaskPriorityHandler.includes('updateTask(id, { priority });'), 'Subtask priority changes should write through updateTask with the subtask id and selected priority.');
 assert(app.includes('onChangeSubtaskPriority={handleChangeSubtaskPriority}'), 'Subtask priority changes should be wired to the tree-aware handler.');
-assert(useTasks.match(/const updateTask = useCallback\(\(id: string, updates: Partial<Task>\) => \{[\s\S]*?setAllTasks\(\(prev\) => mapTaskTree\(prev, id, \(task\) => \(\{ \.\.\.task, \.\.\.updates \}\)\)\);[\s\S]*?\}, \[\]\);/), 'updateTask should update matching tasks through mapTaskTree so subtask priority changes persist recursively.');
+assert(
+  useTasks.includes('const updateTask = useCallback((id: string, updates: Partial<Task>) => {') &&
+    useTasks.includes('mapTaskTree(prev, id, (task) => updateTaskFields(task, updates))'),
+  'updateTask should update matching tasks through mapTaskTree so subtask priority changes persist recursively.',
+);
 assert(!taskItem.includes('renderSubtaskTree'), 'TaskItem should no longer render recursive tree subtasks.');
 assert(!taskItem.includes('task-subtask-check'), 'Subtasks should reuse compact task completion controls instead of the old circular subtask check class.');
 assert(globals.includes('.task-cluster') && globals.includes('.task-cluster-main-card'), 'CSS should define the task cluster wrapper and main-card layer.');

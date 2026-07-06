@@ -13,7 +13,9 @@ const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').repla
 const watercolorTheme = readFileSync(join(root, 'src/styles/watercolor-theme.css'), 'utf8').replace(/\r\n/g, '\n');
 
 assert.ok(taskItem.includes('className="task-drag-handle"'), 'Main task rows should keep the drag handle at the leading edge.');
-assert.ok(taskItem.includes('className={`task-tree-toggle'), 'Main task rows should keep the collapsible child toggle.');
+assert.ok(taskItem.includes('onClick={toggleCluster}'), 'Main task rows should keep the collapsible child interaction on the card.');
+assert.ok(taskItem.includes("role={hasChildren ? 'button' : undefined}"), 'Main task rows with children should expose button semantics for collapse/expand.');
+assert.ok(taskItem.includes('aria-expanded={hasChildren ? !task.collapsed : undefined}'), 'Main task rows should expose the current collapsed state.');
 assert.ok(taskItem.includes('className={`task-complete-action'), 'Main task rows should keep the completion circle.');
 assert.ok(taskItem.includes('<PriorityPicker value={task.priority} onChange={onPriorityChange} />'), 'Main task rows should keep the priority dot immediately before the title.');
 assert.ok(taskItem.includes('className="task-text"'), 'Main task rows should keep the task title text.');

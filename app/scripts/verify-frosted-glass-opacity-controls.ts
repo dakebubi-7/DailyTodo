@@ -6,8 +6,10 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
+const appearanceSettings = readFileSync(join(root, 'src/components/settings/appearanceSettings.ts'), 'utf8');
+const settingsControls = readFileSync(join(root, 'src/components/settings/SettingsControls.tsx'), 'utf8');
+const appViewportStyle = readFileSync(join(root, 'src/app/appViewportStyle.ts'), 'utf8');
 const globalsCss = readFileSync(join(root, 'src/styles/globals.css'), 'utf8');
-const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
 const electronMain = readFileSync(join(root, 'electron/main.ts'), 'utf8');
 
 function extractAround(source: string, anchor: string, beforeChars: number, afterChars: number) {
@@ -49,31 +51,6 @@ function extractSelfClosingJsx(source: string, componentName: string, requiredSn
   assert.notEqual(end, -1, `Could not find ${componentName} end for: ${requiredSnippet}`);
 
   return source.slice(start, end + 2);
-}
-
-function extractAppViewportStyle(source: string) {
-  const viewportSlice = extractAround(source, 'className={`app-viewport', 200, 2_400);
-  const styleIndex = viewportSlice.indexOf('style={{');
-  assert.notEqual(styleIndex, -1, 'App viewport should define an inline style object.');
-
-  const firstBrace = viewportSlice.indexOf('{', styleIndex);
-  assert.notEqual(firstBrace, -1, 'Could not find app viewport style opening brace.');
-
-  let depth = 0;
-  for (let index = firstBrace; index < viewportSlice.length; index += 1) {
-    const char = viewportSlice[index];
-    if (char === '{') depth += 1;
-    if (char === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        const styleSlice = viewportSlice.slice(styleIndex, index + 1);
-        assert.ok(styleSlice.includes('as CSSProperties'), 'App viewport style should be typed as CSSProperties.');
-        return styleSlice;
-      }
-    }
-  }
-
-  throw new Error('Could not extract app viewport style object.');
 }
 
 function extractCssBlocksForSelector(source: string, selector: string) {
@@ -132,26 +109,31 @@ function assertSelectorBlockUses(selector: string, required: RegExp, message: st
   assert.ok(blocks.some((block) => required.test(block)), message);
 }
 
-const rangeControl = extractFunction(settingsPanel, 'function RangeControl({');
+const rangeControl = extractFunction(settingsControls, 'export function RangeControl({');
 assertBlockIncludes(rangeControl, 'onDoubleClick={handleReset}', 'RangeControl should support double-click reset on the wrapping control.');
 assertBlockIncludes(rangeControl, 'defaultValue', 'RangeControl should accept a reset default value.');
 assertBlockIncludes(rangeControl, 'resetTitle', 'RangeControl should accept reset tooltip copy.');
 assertBlockIncludes(rangeControl, /if \(typeof defaultValue === 'number'\) onChange\(defaultValue\)/, 'RangeControl should reset to defaultValue through onChange.');
 
 assert.match(
-  settingsPanel,
-  /function withUnifiedGlassOpacity\(settings: PersonalizationSettings, value: number\): PersonalizationSettings/,
-  'SettingsPanel should define a helper that writes one opacity value into every glass opacity field.'
+  appearanceSettings,
+  /export function withUnifiedGlassOpacity\(settings: PersonalizationSettings, value: number\): PersonalizationSettings/,
+  'appearanceSettings should define a helper that writes one opacity value into every glass opacity field.'
 );
 assertBlockIncludes(
-  extractFunction(settingsPanel, 'function withUnifiedGlassOpacity('),
+  extractFunction(appearanceSettings, 'export function withUnifiedGlassOpacity('),
   'for (const key of OPACITY_KEYS)',
   'Unified opacity helper should iterate over OPACITY_KEYS.'
 );
 assertBlockIncludes(
-  extractFunction(settingsPanel, 'function withUnifiedGlassOpacity('),
+  extractFunction(appearanceSettings, 'export function withUnifiedGlassOpacity('),
   'next[key] = value;',
   'Unified opacity helper should write the slider value to every opacity key.'
+);
+assert.match(
+  settingsPanel,
+  /from '\.\/settings\/appearanceSettings'/,
+  'SettingsPanel should import appearance helpers from the appearanceSettings module.'
 );
 assert.doesNotMatch(settingsPanel, /OPACITY_AREAS\.map/, 'SettingsPanel should not render per-area opacity controls.');
 assert.doesNotMatch(settingsPanel, /function OpacityAreaControl\(/, 'SettingsPanel should remove the per-area opacity control component.');
@@ -188,8 +170,6 @@ assert.doesNotMatch(
   'The old separate opacity recommendation section should be removed from Appearance.'
 );
 
-const appViewportStyle = extractAppViewportStyle(app);
-
 const appCssVars = [
   '--window-opacity',
   '--top-opacity',
@@ -203,8 +183,14 @@ const appCssVars = [
 ];
 
 for (const cssVar of appCssVars) {
-  assertBlockIncludes(appViewportStyle, `'${cssVar}':`, `App should expose ${cssVar} in the app viewport inline style object.`);
+  assertBlockIncludes(appViewportStyle, `'${cssVar}':`, `App viewport style helper should expose ${cssVar}.`);
 }
+
+assertBlockIncludes(
+  appViewportStyle,
+  'satisfies CSSProperties',
+  'App viewport style helper should type the CSS variable object.'
+);
 
 const meaningfulCssConsumers: Array<[string, RegExp, string]> = [
   ['.app-shell', /var\(--window-opacity\)/, 'App shell should use --window-opacity.'],
