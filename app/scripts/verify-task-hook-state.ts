@@ -192,8 +192,13 @@ assert.doesNotMatch(
 );
 assert.match(
   taskPersistenceTransforms,
-  /import \{ isObjectRecord \} from '\.\.\/\.\.\/shared\/unknownValueGuards';/,
-  'Task persistence payload validation should reuse the shared object-record predicate.',
+  /from '\.\.\/\.\.\/shared\/taskValidation'/,
+  'Task persistence payload validation should reuse shared taskValidation guards.',
+);
+assert.match(
+  taskPersistenceTransforms,
+  /return isSharedTaskLike\(value\)/,
+  'isTaskLike should delegate to shared taskValidation.',
 );
 assert.doesNotMatch(
   taskPersistenceTransforms,

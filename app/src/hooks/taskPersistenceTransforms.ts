@@ -1,6 +1,9 @@
 import { getBusinessDateKey, getTaskDate, isDateKey } from '../../shared/taskRollover';
-import { isObjectRecord } from '../../shared/unknownValueGuards';
 import type { Task, TaskCompletionReview } from '../types/task';
+import {
+  isTaskCompletionReview as isSharedTaskCompletionReview,
+  isTaskLike as isSharedTaskLike,
+} from '../../shared/taskValidation';
 
 export function normalizeScheduledDates(dates: string[] | undefined, primaryDate: string) {
   const uniqueDates = new Set<string>();
@@ -20,18 +23,6 @@ function getLatestCompletionReview(reviews: TaskCompletionReview[] | undefined, 
     if (review.reviewedAt > latest.reviewedAt) latest = review;
   }
   return latest;
-}
-
-function isOptionalString(value: unknown) {
-  return value === undefined || typeof value === 'string';
-}
-
-function isOptionalBoolean(value: unknown) {
-  return value === undefined || typeof value === 'boolean';
-}
-
-function isOptionalStringArray(value: unknown) {
-  return value === undefined || (Array.isArray(value) && value.every((entry) => typeof entry === 'string'));
 }
 
 function haveSameStrings(left: string[] | undefined, right: string[] | undefined) {
@@ -58,45 +49,11 @@ function normalizeSubtasks(subtasks: Task[] | undefined, currentBusinessDate: st
 }
 
 export function isTaskCompletionReview(value: unknown): value is TaskCompletionReview {
-  if (!isObjectRecord(value)) return false;
-  return (
-    isOptionalString(value.id) &&
-    (value.status === 'done' || value.status === 'partial' || value.status === 'blocked') &&
-    typeof value.percent === 'number' &&
-    Number.isFinite(value.percent) &&
-    typeof value.summary === 'string' &&
-    typeof value.unknowns === 'string' &&
-    typeof value.nextStep === 'string' &&
-    typeof value.reviewedAt === 'string'
-  );
+  return isSharedTaskCompletionReview(value);
 }
 
 export function isTaskLike(value: unknown): value is Task {
-  if (!isObjectRecord(value)) return false;
-  const subtasks = value.subtasks;
-  const completionReviews = value.completionReviews;
-  return (
-    typeof value.id === 'string' &&
-    typeof value.text === 'string' &&
-    typeof value.completed === 'boolean' &&
-    (value.priority === 'high' || value.priority === 'medium' || value.priority === 'low') &&
-    typeof value.createdAt === 'string' &&
-    (value.source === undefined || value.source === 'personal' || value.source === 'external') &&
-    isOptionalString(value.taskDate) &&
-    isOptionalBoolean(value.isToday) &&
-    isOptionalString(value.carriedFromDate) &&
-    isOptionalString(value.carriedFromTaskId) &&
-    isOptionalString(value.completedAt) &&
-    isOptionalBoolean(value.cleared) &&
-    isOptionalStringArray(value.scheduledDates) &&
-    isOptionalStringArray(value.tags) &&
-    isOptionalString(value.parentTaskId) &&
-    isOptionalBoolean(value.collapsed) &&
-    (value.completionReview === undefined || isTaskCompletionReview(value.completionReview)) &&
-    (completionReviews === undefined ||
-      (Array.isArray(completionReviews) && completionReviews.every(isTaskCompletionReview))) &&
-    (subtasks === undefined || (Array.isArray(subtasks) && subtasks.every(isTaskLike)))
-  );
+  return isSharedTaskLike(value);
 }
 
 export function parseStoredTasks(value: unknown, currentBusinessDate = getBusinessDateKey()): Task[] {

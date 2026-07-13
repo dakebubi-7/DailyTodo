@@ -38,10 +38,12 @@ export function createAiReviewRuntimeHelpers({ getAiReviewSettings }: CreateAiRe
 
   function ensureReportLlmAvailable(reportKind: AiReviewReportKind):
     | { ok: true; callLlm: (messages: ChatMessage[]) => Promise<LlmResult>; resolution: AiReviewProfileResolution }
-    | { ok: false; error: string; resolution?: AiReviewProfileResolution } {
+    | { ok: false; error: string; resolution: AiReviewProfileResolution } {
     const settings = getAiReviewSettings();
-    if (!settings.enabled) return { ok: false, error: 'AI \u590d\u76d8\u672a\u542f\u7528' };
     const { callLlm, resolution } = getLlmCallerForReportKind(reportKind);
+    if (!settings.enabled) {
+      return { ok: false, error: 'AI \u590d\u76d8\u672a\u542f\u7528', resolution };
+    }
     if (!resolution.profile.apiKey.trim()) {
       return {
         ok: false,

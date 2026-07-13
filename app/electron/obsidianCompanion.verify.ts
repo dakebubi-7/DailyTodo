@@ -617,8 +617,8 @@ let malformedRuntimeInboxPathResult: ReturnType<typeof importMobileInbox> | unde
 const malformedRuntimeInboxPath = { path: 'not-a-string' };
 const originalExistsSyncForMalformedInboxPath = fs.existsSync;
 try {
-  fs.existsSync = ((target: fs.PathLike) => {
-    if (target === malformedRuntimeInboxPath) {
+  (fs as { existsSync: typeof fs.existsSync }).existsSync = ((target: fs.PathLike) => {
+    if ((target as unknown) === malformedRuntimeInboxPath) {
       throw new Error('fs.existsSync should not receive malformed runtime inbox paths');
     }
     return originalExistsSyncForMalformedInboxPath(target);
@@ -627,7 +627,7 @@ try {
 } catch {
   malformedRuntimeInboxPathThrew = true;
 } finally {
-  fs.existsSync = originalExistsSyncForMalformedInboxPath;
+  (fs as { existsSync: typeof fs.existsSync }).existsSync = originalExistsSyncForMalformedInboxPath;
 }
 assert(!malformedRuntimeInboxPathThrew, 'mobile inbox import should not throw when runtime inbox path is not a string');
 assert(
@@ -670,7 +670,7 @@ const originalStatSync = fs.statSync;
 let statFailureInboxThrew = false;
 let statFailureInboxResult: ReturnType<typeof importMobileInbox> | undefined;
 try {
-  fs.statSync = ((target: fs.PathLike) => {
+  (fs as { statSync: typeof fs.statSync }).statSync = ((target: fs.PathLike) => {
     if (String(target) === statFailureInboxPath) {
       throw new Error('simulated inbox stat failure');
     }
@@ -680,7 +680,7 @@ try {
 } catch {
   statFailureInboxThrew = true;
 } finally {
-  fs.statSync = originalStatSync;
+  (fs as { statSync: typeof fs.statSync }).statSync = originalStatSync;
 }
 assert(!statFailureInboxThrew, 'mobile inbox import should not throw when inbox root stat fails');
 assert(
@@ -702,17 +702,17 @@ const originalReaddirSync = fs.readdirSync;
 let readdirFailureInboxThrew = false;
 let readdirFailureInboxResult: ReturnType<typeof importMobileInbox> | undefined;
 try {
-  fs.readdirSync = ((target: fs.PathLike, options?: Parameters<typeof fs.readdirSync>[1]) => {
+  (fs as { readdirSync: typeof fs.readdirSync }).readdirSync = ((target: fs.PathLike, options?: Parameters<typeof fs.readdirSync>[1]) => {
     if (String(target) === readdirFailureInboxPath) {
       throw new Error('simulated inbox readdir failure');
     }
     return originalReaddirSync(target, options as never) as never;
-  }) as typeof fs.readdirSync;
+  }) as unknown as typeof fs.readdirSync;
   readdirFailureInboxResult = importMobileInbox(readdirFailureInboxPath);
 } catch {
   readdirFailureInboxThrew = true;
 } finally {
-  fs.readdirSync = originalReaddirSync;
+  (fs as { readdirSync: typeof fs.readdirSync }).readdirSync = originalReaddirSync;
 }
 assert(!readdirFailureInboxThrew, 'mobile inbox import should not throw when inbox file enumeration fails');
 assert(

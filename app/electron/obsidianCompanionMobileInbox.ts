@@ -94,20 +94,21 @@ export function importMobileInbox(inboxPath: unknown): { ok: boolean; items: Cap
   if (typeof inboxPath !== 'string') {
     return { ok: false, items: [], errors: ['Mobile inbox path must be a string.'] };
   }
-  if (!inboxPath || !fs.existsSync(inboxPath)) {
+  const normalizedInboxPath = path.resolve(inboxPath);
+  if (!normalizedInboxPath || !fs.existsSync(normalizedInboxPath)) {
     return { ok: false, items: [], errors: ['Mobile inbox path does not exist.'] };
   }
 
   try {
-    if (!fs.statSync(inboxPath).isDirectory()) {
+    if (!fs.statSync(normalizedInboxPath).isDirectory()) {
       return { ok: false, items: [], errors: ['Mobile inbox path must be a directory.'] };
     }
   } catch (error) {
     return { ok: false, items: [], errors: [error instanceof Error ? error.message : String(error)] };
   }
 
-  const processed = path.join(inboxPath, '_processed');
-  const failed = path.join(inboxPath, '_failed');
+  const processed = path.join(normalizedInboxPath, '_processed');
+  const failed = path.join(normalizedInboxPath, '_failed');
   const setupErrors = [
     ensureMobileInboxDirectory(processed, '_processed'),
     ensureMobileInboxDirectory(failed, '_failed'),
@@ -122,7 +123,7 @@ export function importMobileInbox(inboxPath: unknown): { ok: boolean; items: Cap
   let files: string[];
   try {
     files = fs
-      .readdirSync(inboxPath, { withFileTypes: true })
+      .readdirSync(normalizedInboxPath, { withFileTypes: true })
       .filter((entry) => entry.isFile() && ['.md', '.txt', '.json'].includes(path.extname(entry.name).toLowerCase()))
       .map((entry) => entry.name);
   } catch (error) {
@@ -130,7 +131,7 @@ export function importMobileInbox(inboxPath: unknown): { ok: boolean; items: Cap
   }
 
   for (const file of files) {
-    const filePath = path.join(inboxPath, file);
+    const filePath = path.join(normalizedInboxPath, file);
     try {
       const raw = fs.readFileSync(filePath, 'utf-8');
       const ext = path.extname(file).toLowerCase();

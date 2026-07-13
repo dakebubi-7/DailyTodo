@@ -1,4 +1,5 @@
 import { BrowserWindow } from 'electron';
+import { hardenRendererNavigation } from './windowNavigationSecurity';
 import { needsDesktopGuard, type WindowMode } from '../shared/windowMode';
 import type { SettingsModeState } from './settingsModeState';
 import type { UserHiddenState } from './userHiddenState';
@@ -34,6 +35,8 @@ export function registerMainWindowEventHandlers({
   persistWindowState,
   settingsMode,
 }: RegisterMainWindowEventHandlersOptions): void {
+  hardenRendererNavigation(win);
+
   win.once('ready-to-show', () => {
     diag('ready-to-show -> show()');
     win.show();

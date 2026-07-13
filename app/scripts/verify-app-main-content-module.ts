@@ -54,7 +54,7 @@ assert.match(mainContentComposition, /const reviewViewProps = \{[\s\S]*allTasks,
 assert.match(mainContentComposition, /const taskListProps = \{[\s\S]*tasks: visibleTasks,[\s\S]*onToggle: completionActions\.toggleTask,[\s\S]*editRequest,[\s\S]*\};/, 'main-content composition helper should gather TaskList props.');
 assert.match(mainContentComposition, /const addTaskInputProps = \{\s*onAdd: addTask,\s*\};/, 'main-content composition helper should gather AddTaskInput props.');
 assert.match(mainContentComposition, /return \{[\s\S]*mainScrollRef,[\s\S]*topContent: <AppTopContent \{\.\.\.topContentProps\} \/>,[\s\S]*reviewViewProps,[\s\S]*taskListProps,[\s\S]*addTaskInputProps,[\s\S]*\};/, 'main-content composition helper should assemble AppMainContent props.');
-assert.match(helper, /createAppShellMainContentComposition\(\{/, 'shell composition helper should delegate main-content prop assembly.');
+assert.match(helper, /createAppShellMainContentComposition\(mainContent\);/, 'shell composition helper should delegate grouped main-content inputs.');
 
 assert.match(app, /from '\.\/components\/AppMainContent'/, 'App should import AppMainContent.');
 assert.match(runtimeComposition, /from '\.\/appShellComposition'/, 'runtime composition hook should import the shell composition helper.');

@@ -13,6 +13,7 @@ const tasks: ObsidianSyncTask[] = [{
   completed: false,
   priority: 'medium',
   createdAt: '2026-07-13T08:00:00.000Z',
+  isToday: true,
 }];
 
 const valid = readObsidianSyncInput(tasks, '2026-07-13', 'Work note', 'Inspiration');

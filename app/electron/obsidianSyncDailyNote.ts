@@ -17,6 +17,7 @@ import {
   upsertManagedBlockIfChanged,
 } from './obsidianManagedBlockSync';
 import { triggerObsidianOverviewUpdate } from './obsidianOverviewUpdate';
+import { writeTextFileAtomic } from './fileWrite';
 
 function readTemplateModuleEnabled(templates: ObsidianTemplateSettings, moduleId: string, fallback: boolean) {
   const modules = isObjectRecord(templates) ? templates.modules : undefined;
@@ -59,9 +60,12 @@ export function createObsidianDailyNoteSyncHelpers({
   migrateLegacyWorkSection,
 }: CreateObsidianDailyNoteSyncHelpersOptions) {
   function getDailyFilePath(date?: string, templates = getTemplates()) {
-    const legacyTemplates = isObjectRecord(templates) ? templates : {};
+    const legacyRecord = isObjectRecord(templates) ? (templates as Record<string, unknown>) : null;
+    const legacyDailyNotePath = typeof legacyRecord?.dailyNotePath === 'string'
+      ? legacyRecord.dailyNotePath
+      : undefined;
     const dailyPath = templates.dailyPath ||
-      (typeof legacyTemplates.dailyNotePath === 'string' ? legacyTemplates.dailyNotePath : undefined) ||
+      legacyDailyNotePath ||
       'logs/daily/{{date}}.md';
     const vaultPath = getVaultPath();
     if (!vaultPath) throw new Error('Obsidian vault path is missing.');

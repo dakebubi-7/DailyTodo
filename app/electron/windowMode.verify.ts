@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -61,13 +61,15 @@ const mainWindowCompositionSource = readFileSync(join(here, 'mainWindowCompositi
 const mainWindowModeControllerSource = readFileSync(join(here, 'mainWindowModeController.ts'), 'utf8');
 const windowIpcSource = readFileSync(join(here, 'windowIpc.ts'), 'utf8');
 const titleBarSource = readFileSync(join(here, '../src/components/TitleBar.tsx'), 'utf8');
+const titleBarWindowModeSource = readFileSync(join(here, '../src/components/useTitleBarWindowMode.ts'), 'utf8');
 const viteEnvSource = readFileSync(join(here, '../src/vite-env.d.ts'), 'utf8');
 assert(desktopWindowModeSource.includes('function reapplyWindowZOrder'), 'desktopWindowMode.ts should define reapplyWindowZOrder helper');
 assert(mainWindowModeControllerSource.includes('setTimeout(() => reapplyWindowZOrder(win), 80)'), 'mainWindowModeController.ts should preserve delayed z-order reapplication.');
 assert(mainWindowCompositionSource.includes('reapplyWindowZOrder: desktopWindowMode.reapplyWindowZOrder'), 'main-window composition should pass controller reapplyWindowZOrder into downstream window-mode helpers.');
 assert(windowIpcSource.includes('reapplyWindowZOrder(mainWindow);'), 'lock window position changes should reapply z-order for the main window');
-assert(titleBarSource.includes('readWindowMode'), 'TitleBar should parse window-mode IPC returns with readWindowMode');
-assert(titleBarSource.includes("readWindowMode(mode) === 'onTop'") || titleBarSource.includes("readWindowMode(await window.electronAPI?.getWindowMode())"), 'TitleBar should only pin after validating window-mode returns');
+assert(titleBarSource.includes('useTitleBarWindowMode'), 'TitleBar should use the dedicated window-mode hook');
+assert(titleBarWindowModeSource.includes('readWindowMode'), 'TitleBar window-mode hook should parse window-mode IPC returns with readWindowMode');
+assert(titleBarWindowModeSource.includes("readWindowMode(mode) === 'onTop'") || titleBarWindowModeSource.includes("readWindowMode(await window.electronAPI?.getWindowMode())"), 'TitleBar window-mode hook should only pin after validating window-mode returns');
 assert(viteEnvSource.includes('getWindowMode: () => Promise<unknown>'), 'ambient getWindowMode should return Promise<unknown>');
 assert(viteEnvSource.includes('setWindowMode: (mode: unknown) => Promise<unknown>'), 'ambient setWindowMode should return Promise<unknown>');
 

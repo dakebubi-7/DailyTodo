@@ -38,7 +38,7 @@ assert.match(settingsIpc, /import \{ isObjectRecord \} from '\.\/unknownValueGua
 assert.doesNotMatch(settingsIpc, /entries as Record<string, unknown>/, 'settingsIpc should not narrow batched IPC entries with a Record assertion.');
 assert.match(settingsIpc, /from '\.\/storeValueEquality'/, 'settingsIpc should reuse the store-value equality helper before writing.');
 assert.match(settingsIpc, /from '\.\.\/shared\/rendererStoreKeys'/, 'settingsIpc should reuse the renderer store key allowlist.');
-assert.match(settingsIpc, /if \(areStoreValuesEqual\(store\.get\(key\), value\)\) return false;/, 'settings IPC should skip writes whose persisted value has not changed.');
+assert.match(settingsIpc, /if \(areStoreValuesEqual\(store\.get\(key\), normalized\)\) return false;/, 'settings IPC should skip writes whose persisted value has not changed.');
 assert.match(settingsIpc, /for \(const \[key, value\] of Object\.entries\(allowedEntries\)\) \{[\s\S]*?if \(setStoreValueIfChanged\(key, value\) && key === 'tasks'\) \{[\s\S]*?tasksChanged = true;/, 'batched writes should process every allowed entry and broadcast task updates only when the task value changed.');
 assert.match(storeValueEquality, /export function areStoreValuesEqual\(left: unknown, right: unknown\): boolean/, 'store value equality helper should expose structural comparison.');
 assert.match(rendererStoreKeys, /export const RENDERER_STORE_KEYS = \[/, 'renderer store keys should export an explicit allowlist.');
@@ -191,4 +191,6 @@ assert.match(ipcRegistration, /from '\.\/settingsIpc'/, 'mainWindowIpcRegistrati
 assert.match(ipcRegistration, /registerSettingsIpcHandlers\(/, 'mainWindowIpcRegistration should call registerSettingsIpcHandlers.');
 assert.doesNotMatch(settingsIpc, /createSafeStore|new Store\(/, 'settingsIpc should not create or own Electron Store.');
 
+assert.match(settingsIpc, /filterValidTasks/, 'settings IPC should validate task payloads before persistence.');
+assert.match(settingsIpc, /from '\.\.\/shared\/taskValidation'/, 'settings IPC should import shared task validation.');
 console.log('electron settings IPC module verification passed');

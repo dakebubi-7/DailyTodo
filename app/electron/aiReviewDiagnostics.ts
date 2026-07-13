@@ -53,7 +53,7 @@ export function createAiReviewDiagnostics({
       if (typeof diagnostic?.durationMs === 'number') requestDuration += diagnostic.durationMs;
       if (!result.ok) continue;
       successful = true;
-      truncated ||= result.truncated;
+      truncated ||= result.truncated === true;
       outputChars += result.content.length;
     }
 

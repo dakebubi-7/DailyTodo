@@ -2,6 +2,7 @@ import { BrowserWindow, screen } from 'electron';
 import path from 'path';
 import type { RendererRoute } from '../shared/rendererRoute';
 import type { TaskMenuPayload } from './taskContextMenuIpc';
+import { hardenRendererNavigation } from './windowNavigationSecurity';
 
 export const TASK_MENU_WIDTH = 320;
 export const TASK_MENU_HEIGHT = 360;
@@ -53,10 +54,12 @@ export function createTaskMenuWindow(
       preload: path.join(__dirname, 'preloadTaskMenu.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       backgroundThrottling: false,
     },
   });
 
+  hardenRendererNavigation(menu);
   menu.setAlwaysOnTop(true, 'screen-saver');
   loadRenderer(menu, {
     view: 'task-menu',

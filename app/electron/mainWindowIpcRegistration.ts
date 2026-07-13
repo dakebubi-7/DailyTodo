@@ -1,76 +1,20 @@
-import { registerAiReviewIpcHandlers } from './aiReviewIpc';
+﻿import { registerAiReviewIpcHandlers } from './aiReviewIpc';
 import { registerCompanionIpcHandlers } from './companionIpc';
-import type { CreateMainWindowBootstrapOptions } from './mainWindowBootstrap';
-import type { SetupMainBrowserWindowOptions } from './mainWindowFactory';
 import { registerObsidianIpcHandlers } from './obsidianIpc';
 import { registerSettingsIpcHandlers } from './settingsIpc';
 import { registerTaskContextMenuIpcHandlers, type TaskMenuPayload } from './taskContextMenuIpc';
 import { TASK_MENU_HEIGHT } from './taskMenuWindow';
+import type {
+  MainWindowIpcRegistrationOptions,
+  MainWindowIpcRegistrations,
+} from './mainWindowIpcRegistrationTypes';
 import { registerWindowIpcHandlers } from './windowIpc';
 
 export type { TaskMenuPayload } from './taskContextMenuIpc';
-
-type MainWindowIpcRegistrationOptions = Pick<
-  CreateMainWindowBootstrapOptions,
-  | 'win'
-  | 'store'
-  | 'scheduleAiTimers'
-  | 'getTaskMenuWindow'
-  | 'openTaskMenuWindow'
-  | 'closeTaskMenuWindow'
-  | 'getTaskMenuPayload'
-  | 'setTaskMenuPayload'
-  | 'getMainWindow'
-  | 'getWindowMode'
-  | 'hideMainWindow'
-  | 'getAppSettings'
-  | 'persistWindowState'
-  | 'compactModeKey'
-  | 'autoStartKey'
-  | 'settingsMode'
-  | 'setWindowMode'
-  | 'setAppSettings'
-  | 'reapplyWindowZOrder'
-  | 'getCompanionSettings'
-  | 'setCompanionSettings'
-  | 'getAiReviewSettings'
-  | 'setAiReviewSettings'
-  | 'getObsidianTemplateSettings'
-  | 'setObsidianTemplateSettings'
-  | 'getReviewSections'
-  | 'setReviewSections'
-  | 'runReviewForDate'
-  | 'inspectDailyAiContent'
-  | 'getDateKey'
-  | 'getVaultPath'
-  | 'getVaultStatus'
-  | 'getDailyFilePath'
-  | 'buildDailySourceRules'
-  | 'getDailySourceRules'
-  | 'getLlmCaller'
-  | 'ensureReportLlmAvailable'
-  | 'emitAiReviewProgress'
-  | 'stage'
-  | 'createDiagnostic'
-  | 'extractDocxText'
-  | 'zh'
-  | 'obsidianPathKey'
-  | 'getDefaultVaultPath'
-  | 'syncTasksToObsidian'
-  | 'previewTasksToObsidian'
-  | 'buildDailyTemplate'
-  | 'triggerOverviewUpdate'
->;
-
-type MainWindowIpcRegistrations = Pick<
-  SetupMainBrowserWindowOptions,
-  | 'registerWindowIpc'
-  | 'registerSettingsIpc'
-  | 'registerTaskContextMenuIpc'
-  | 'registerCompanionIpc'
-  | 'registerAiReviewIpc'
-  | 'registerObsidianIpc'
->;
+export type {
+  MainWindowIpcRegistrationOptions,
+  MainWindowIpcRegistrations,
+} from './mainWindowIpcRegistrationTypes';
 
 export function createMainWindowIpcRegistrations({
   win,

@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+﻿import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 export const cleanupCoreCommands = [
@@ -46,6 +46,7 @@ export const cleanupCoreCommands = [
   "verify:app-shell-presentation-module",
   "verify:app-shell-composition-types",
   "verify:app-shell-composition-module",
+  "verify:app-shell-composition-grouping",
   "verify:app-overlay-stack-module",
   "verify:app-top-content-module",
   "verify:app-main-content-module",
@@ -78,6 +79,7 @@ export const cleanupCoreCommands = [
   "verify:electron-window-state-module",
   "verify:electron-main-window-persistence-module",
   "verify:electron-main-window-composition-module",
+  "verify:electron-main-window-composition-types",
   "verify:electron-main-window-startup-module",
   "verify:electron-settings-mode-state-module",
   "verify:electron-user-hidden-state-module",
@@ -101,6 +103,8 @@ export const cleanupCoreCommands = [
   "verify:electron-win32-native-module",
   "verify:electron-main-window-factory-module",
   "verify:electron-main-window-bootstrap-module",
+  "verify:electron-main-window-bootstrap-types",
+  "verify:electron-main-window-ipc-registration-types",
   "verify:electron-app-lifecycle-module",
   "verify:electron-app-quit-state-module",
   "verify:electron-desktop-window-mode-module",

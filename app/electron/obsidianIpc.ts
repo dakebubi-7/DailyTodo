@@ -57,7 +57,7 @@ export function registerObsidianIpcHandlers({
 
     const settings = getAiReviewSettings();
     if (!settings.enabled || !resolveActiveProfile(settings).apiKey) {
-      return { ok: false, error: 'AI 澶嶇洏鏈惎鐢ㄦ垨缂哄皯 Key', draft: null };
+      return { ok: false, error: 'AI 复盘未启用或缺少 Key', draft: null };
     }
 
     const llm = await getLlmCaller()(buildRecognizeObsidianTemplateMessages(input.rawTemplate));

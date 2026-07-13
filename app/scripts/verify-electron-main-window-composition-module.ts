@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,13 +6,19 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const modulePath = join(root, 'electron', 'mainWindowComposition.ts');
+const typesPath = join(root, 'electron', 'mainWindowCompositionTypes.ts');
 const mainPath = join(root, 'electron', 'main.ts');
 
 assert.ok(existsSync(modulePath), 'Electron main-window composition module should exist.');
+assert.ok(existsSync(typesPath), 'Electron main-window composition types module should exist.');
 
 const helper = readFileSync(modulePath, 'utf8');
+const types = readFileSync(typesPath, 'utf8');
 const main = readFileSync(mainPath, 'utf8');
 
+assert.match(helper, /from '\.\/mainWindowCompositionTypes'/, 'mainWindowComposition should import its dependency contract from the focused types module.');
+assert.match(types, /export type CreateMainWindowCompositionOptions\b/, 'mainWindowCompositionTypes should own the composition dependency contract.');
+assert.doesNotMatch(helper, /type CreateMainWindowCompositionOptions\b/, 'mainWindowComposition should not keep the large composition options type inline.');
 assert.match(helper, /export function createMainWindowComposition\b/, 'mainWindowComposition should export its composition factory.');
 assert.match(helper, /createMainShellController\(/, 'mainWindowComposition should assemble the shell controller.');
 assert.match(helper, /createMainWindowModeController\(/, 'mainWindowComposition should assemble window-mode changes.');

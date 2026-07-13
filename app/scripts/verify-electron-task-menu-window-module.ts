@@ -36,7 +36,7 @@ assert.doesNotMatch(helper, /const \{ workArea \} = screen\.getPrimaryDisplay\(\
 assert.match(helper, /new BrowserWindow\(\{/, 'Task-menu window module should own popup BrowserWindow creation.');
 assert.match(helper, /roundedCorners:\s*true/, 'Task-menu window module should preserve rounded popup corners.');
 assert.match(helper, /hasShadow:\s*false/, 'Task-menu window module should preserve disabled native shadow for the popup.');
-assert.match(helper, /path\.join\(__dirname,\s*'preload\.js'\)/, 'Task-menu window module should own the popup preload path.');
+assert.match(helper, /path\.join\(__dirname,\s*'preloadTaskMenu\.js'\)/, 'Task-menu window module should own the popup preload path.');
 assert.match(helper, /loadRenderer\(menu,\s*\{\s*view:\s*'task-menu'/, 'Task-menu window module should load the task-menu renderer route.');
 assert.match(helper, /menu\.setAlwaysOnTop\(true,\s*'screen-saver'\)/, 'Task-menu window module should preserve popup z-order behavior.');
 assert.match(helper, /menu\.once\('ready-to-show',\s*\(\)\s*=>\s*menu\.show\(\)\)/, 'Task-menu window module should preserve ready-to-show popup display.');
@@ -61,4 +61,6 @@ assert.doesNotMatch(shellController, /new BrowserWindow\(/, 'mainShellController
 assert.equal(scripts['verify:electron-task-menu-window-module'], 'tsx scripts/verify-electron-task-menu-window-module.ts', 'package.json should expose the focused task-menu window verifier.');
 assertCleanupCoreIncludes('verify:electron-task-menu-window-module', 'cleanup-core should include the focused task-menu window verifier.');
 
+assert.match(helper, /sandbox:\s*true/, 'Task-menu window module should enable renderer sandbox.');
+assert.match(helper, /hardenRendererNavigation\(menu\)/, 'Task-menu window module should harden renderer navigation.');
 console.log('electron task-menu window module verification passed');

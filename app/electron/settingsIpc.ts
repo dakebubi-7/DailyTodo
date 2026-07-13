@@ -12,6 +12,7 @@ import {
 } from '../shared/rendererStoreKeys';
 import type { ElectronStoreLike } from './sharedTypes';
 import { areStoreValuesEqual } from './storeValueEquality';
+import { filterValidTasks } from '../shared/taskValidation';
 import { isObjectRecord } from './unknownValueGuards';
 
 type RegisterSettingsIpcHandlersOptions = {
@@ -29,9 +30,15 @@ export function registerSettingsIpcHandlers({
   getObsidianTemplateSettings,
   setObsidianTemplateSettings,
 }: RegisterSettingsIpcHandlersOptions): void {
+  const normalizeStoreValue = (key: string, value: unknown) => {
+    if (key === 'tasks') return filterValidTasks(value);
+    return value;
+  };
+
   const setStoreValueIfChanged = (key: string, value: unknown) => {
-    if (areStoreValuesEqual(store.get(key), value)) return false;
-    store.set(key, value);
+    const normalized = normalizeStoreValue(key, value);
+    if (areStoreValuesEqual(store.get(key), normalized)) return false;
+    store.set(key, normalized);
     return true;
   };
 
@@ -57,7 +64,7 @@ export function registerSettingsIpcHandlers({
     const didChange = setStoreValueIfChanged(key, value);
     // Broadcast task changes to other windows while excluding the sender to avoid echo loops.
     if (didChange && key === 'tasks') {
-      broadcastTaskChanges(event, value);
+      broadcastTaskChanges(event, store.get(key));
     }
   });
   ipcMain.handle('store:setMany', (event, entries: unknown) => {
@@ -70,7 +77,7 @@ export function registerSettingsIpcHandlers({
       }
     }
     if (tasksChanged) {
-      broadcastTaskChanges(event, allowedEntries.tasks);
+      broadcastTaskChanges(event, store.get('tasks'));
     }
   });
 

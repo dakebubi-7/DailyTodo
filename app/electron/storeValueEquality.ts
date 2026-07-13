@@ -23,6 +23,7 @@ export function areStoreValuesEqual(left: unknown, right: unknown): boolean {
   if (leftEntries.length !== rightEntries.length) return false;
 
   return leftEntries.every(([key, value]) =>
-    Object.prototype.hasOwnProperty.call(right, key) && areStoreValuesEqual(value, right[key]),
+    Object.prototype.hasOwnProperty.call(right, key)
+      && areStoreValuesEqual(value, (right as Record<string, unknown>)[key]),
   );
 }

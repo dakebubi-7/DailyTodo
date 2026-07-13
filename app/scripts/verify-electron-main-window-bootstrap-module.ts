@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,16 +7,19 @@ import { assertCleanupCoreIncludes } from './verifyCleanupCore';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const modulePath = join(root, 'electron/mainWindowBootstrap.ts');
+const typesPath = join(root, 'electron/mainWindowBootstrapTypes.ts');
 const ipcRegistrationPath = join(root, 'electron/mainWindowIpcRegistration.ts');
 const startupPath = join(root, 'electron/mainWindowStartup.ts');
 const compositionPath = join(root, 'electron/mainWindowComposition.ts');
 const packagePath = join(root, 'package.json');
 
 assert.ok(existsSync(modulePath), 'Electron main-window bootstrap module should exist.');
+assert.ok(existsSync(typesPath), 'Electron main-window bootstrap types module should exist.');
 assert.ok(existsSync(ipcRegistrationPath), 'Electron main-window IPC registration module should exist.');
 assert.ok(existsSync(startupPath), 'Electron main-window startup module should exist.');
 
 const helper = readFileSync(modulePath, 'utf8');
+const types = readFileSync(typesPath, 'utf8');
 const ipcRegistration = readFileSync(ipcRegistrationPath, 'utf8');
 const startup = readFileSync(startupPath, 'utf8');
 const composition = readFileSync(compositionPath, 'utf8');
@@ -24,8 +27,11 @@ const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
 
 assert.match(helper, /export function createMainWindowBootstrap\b/, 'mainWindowBootstrap should export createMainWindowBootstrap.');
-assert.match(helper, /type CreateMainWindowBootstrapOptions\b/, 'mainWindowBootstrap should define explicit bootstrap dependencies.');
-assert.match(helper, /llmResults\?: LlmResult\[\]/, 'mainWindowBootstrap should preserve the shared LLM diagnostic result contract.');
+assert.match(helper, /from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should import its dependency contract from the focused types module.');
+assert.match(helper, /export type \{[\s\S]*CreateMainWindowBootstrapOptions[\s\S]*\} from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should re-export the bootstrap options type for stable import paths.');
+assert.doesNotMatch(helper, /export type CreateMainWindowBootstrapOptions\b/, 'mainWindowBootstrap should not keep the large bootstrap options type inline.');
+assert.match(types, /export type CreateMainWindowBootstrapOptions\b/, 'mainWindowBootstrapTypes should own the bootstrap dependency contract.');
+assert.match(types, /llmResults\?: LlmResult\[\]/, 'mainWindowBootstrapTypes should preserve the shared LLM diagnostic result contract.');
 assert.match(helper, /SetupMainBrowserWindowOptions/, 'mainWindowBootstrap should return the factory bootstrap callback shape.');
 assert.match(helper, /registerMainWindowEventHandlers\(\{/, 'mainWindowBootstrap should own main-window event wiring.');
 assert.match(helper, /from '\.\/mainWindowIpcRegistration'/, 'mainWindowBootstrap should delegate IPC assembly through the focused registration helper.');

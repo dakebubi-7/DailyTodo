@@ -62,13 +62,15 @@ export async function generateTemplateBackedReport({
   let truncated = false;
   for (const { llm } of blockResults) {
     if (!llm.ok) return { ok: false, error: llm.error };
-    truncated ||= Boolean(llm.truncated);
+    truncated ||= llm.truncated === true;
   }
 
-  const renderedBlocks = blockResults.map(({ block, llm }) => {
+  const renderedBlocks: string[] = [];
+  for (const { block, llm } of blockResults) {
+    if (!llm.ok) return { ok: false, error: llm.error };
     const output = validateBlockOutput(llm.content, block.renderType).output;
-    return `## ${block.name}\n\n${output}`;
-  });
+    renderedBlocks.push(`## ${block.name}\n\n${output}`);
+  }
 
   return writeReport(filePath, frontmatter, renderedBlocks.join('\n\n'), truncated);
 }

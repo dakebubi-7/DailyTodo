@@ -110,7 +110,7 @@ export function registerAiReviewMonthlyReportIpcHandlers({
         month,
         sources,
         stats,
-        relativeFilePath: expandPathTemplate(templateSettings.monthlyPath, dateKeyToLocalDate(selected)),
+        relativeFilePath: expandPathTemplate(templateSettings.monthlyPath, dateKeyToLocalDate(first)),
         reportTemplate: templateSettings.monthlyTemplate,
         systemPrompt: settings.monthlyPrompt,
         callLlm,

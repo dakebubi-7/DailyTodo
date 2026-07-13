@@ -8,7 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "icons": "node scripts/generate-icons.mjs",
     "electron:build": "electron-vite build && electron-builder",
     "dist": "electron-vite build && electron-builder --win dir",
@@ -190,6 +190,7 @@
     "verify:app-daily-panel-presentation-module": "tsx scripts/verify-app-daily-panel-presentation-module.ts",
     "verify:app-shell-presentation-module": "tsx scripts/verify-app-shell-presentation-module.ts",
     "verify:app-shell-composition-module": "tsx scripts/verify-app-shell-composition-module.ts",
+    "verify:app-shell-composition-grouping": "tsx scripts/verify-app-shell-composition-grouping.ts",
     "verify:app-overlay-stack-module": "tsx scripts/verify-app-overlay-stack-module.ts",
     "verify:app-top-content-module": "tsx scripts/verify-app-top-content-module.ts",
     "verify:app-main-content-module": "tsx scripts/verify-app-main-content-module.ts",
@@ -201,7 +202,10 @@
     "verify:electron-main-window-events-module": "tsx scripts/verify-electron-main-window-events-module.ts",
     "verify:electron-main-window-factory-module": "tsx scripts/verify-electron-main-window-factory-module.ts",
     "verify:electron-main-window-bootstrap-module": "tsx scripts/verify-electron-main-window-bootstrap-module.ts",
+    "verify:electron-main-window-bootstrap-types": "tsx scripts/verify-electron-main-window-bootstrap-types.ts",
+    "verify:electron-main-window-ipc-registration-types": "tsx scripts/verify-electron-main-window-ipc-registration-types.ts",
     "verify:electron-main-window-composition-module": "tsx scripts/verify-electron-main-window-composition-module.ts",
+    "verify:electron-main-window-composition-types": "tsx scripts/verify-electron-main-window-composition-types.ts",
     "verify:electron-main-window-persistence-module": "tsx scripts/verify-electron-main-window-persistence-module.ts",
     "verify:electron-main-window-startup-module": "tsx scripts/verify-electron-main-window-startup-module.ts",
     "verify:electron-settings-mode-state-module": "tsx scripts/verify-electron-settings-mode-state-module.ts",
@@ -263,6 +267,9 @@
     "verify:security": "tsx scripts/verify-security-hardening.ts"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "canvas-confetti": "^1.9.3",
     "electron-store": "^11.0.2",
     "framer-motion": "^11.18.2",
@@ -272,9 +279,6 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
     "@types/canvas-confetti": "^1.9.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

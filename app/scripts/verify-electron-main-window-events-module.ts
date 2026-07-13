@@ -23,6 +23,8 @@ const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
 
 assert.match(helper, /export function registerMainWindowEventHandlers\b/, 'mainWindowEvents should export registerMainWindowEventHandlers.');
+assert.match(helper, /hardenRendererNavigation\(win\)/, 'mainWindowEvents should harden renderer navigation.');
+assert.match(helper, /from '\.\/windowNavigationSecurity'/, 'mainWindowEvents should import navigation hardening helper.');
 assert.match(helper, /type RegisterMainWindowEventHandlersOptions\b/, 'mainWindowEvents should define explicit event-registration dependencies.');
 assert.match(helper, /BrowserWindow/, 'mainWindowEvents should type the main window dependency.');
 assert.match(helper, /win\.once\('ready-to-show'/, 'mainWindowEvents should own ready-to-show handling.');

@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import { writeTextFileAtomic } from './fileWrite';
+
 type SyncPlan = import('../shared/obsidianCompanion').SyncPlan;
 
 export { importMobileInbox } from './obsidianCompanionMobileInbox';
@@ -58,12 +60,23 @@ function isPathInsideRoot(rootPath: string, filePath: string) {
   return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
-export function writeSyncPlan(plan: SyncPlan) {
+export function writeSyncPlan(plan: SyncPlan, expectedVaultPath?: string) {
   if (!plan.ok) return { ok: false, errors: plan.errors };
 
   const errors: string[] = [];
   if (!plan.vaultPath) {
     return { ok: false, errors: ['Sync plan vault path is missing.'] };
+  }
+
+  if (expectedVaultPath !== undefined) {
+    const configuredVault = path.resolve(expectedVaultPath);
+    const planVault = path.resolve(plan.vaultPath);
+    if (configuredVault !== planVault) {
+      return {
+        ok: false,
+        errors: ['Sync plan vault path does not match the configured companion vault.'],
+      };
+    }
   }
 
   const pathErrors = plan.changes.flatMap((change) => {

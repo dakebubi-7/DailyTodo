@@ -88,3 +88,53 @@ export function storedSettingsLookProtected(value: unknown): boolean {
   if (!Array.isArray(profiles)) return false;
   return profiles.some((profile) => isObjectRecord(profile) && isEncryptedSecret(profile.apiKey));
 }
+
+export const MASKED_API_KEY_PLACEHOLDER = '????????';
+
+function maskApiKey(value: string): string {
+  return value.trim() ? MASKED_API_KEY_PLACEHOLDER : '';
+}
+
+export function maskAiReviewSettingsSecretsForRenderer(settings: AiReviewSettings): AiReviewSettings {
+  return {
+    ...settings,
+    apiKey: maskApiKey(settings.apiKey || ''),
+    profiles: Array.isArray(settings.profiles)
+      ? settings.profiles.map((profile) => ({
+          ...profile,
+          apiKey: maskApiKey(profile.apiKey || ''),
+        }))
+      : settings.profiles,
+  };
+}
+
+function restoreApiKey(nextKey: unknown, currentKey: string): string {
+  if (typeof nextKey !== 'string') return currentKey;
+  // Masked placeholder means "unchanged"; empty string intentionally clears the key.
+  if (nextKey === MASKED_API_KEY_PLACEHOLDER) return currentKey;
+  return nextKey;
+}
+
+export function mergeAiReviewSettingsSecretsFromRenderer(
+  next: AiReviewSettings,
+  current: AiReviewSettings,
+): AiReviewSettings {
+  const currentProfilesById = new Map(
+    (current.profiles || []).map((profile) => [profile.id, profile] as const),
+  );
+
+  return {
+    ...next,
+    apiKey: restoreApiKey(next.apiKey, current.apiKey || ''),
+    profiles: Array.isArray(next.profiles)
+      ? next.profiles.map((profile) => {
+          const existing = currentProfilesById.get(profile.id);
+          return {
+            ...profile,
+            apiKey: restoreApiKey(profile.apiKey, existing?.apiKey || ''),
+          };
+        })
+      : next.profiles,
+  };
+}
+

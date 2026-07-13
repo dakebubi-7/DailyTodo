@@ -1,4 +1,4 @@
-import type { zhSettingsText } from './shellTextZhSettings';
+import type { SettingsText } from './settingsTextTypes';
 
 export const enSettingsText = {
   title: 'Settings',
@@ -281,4 +281,4 @@ export const enSettingsText = {
     missingCore: 'Missing core content: {fields}',
     advancedDaily: 'Advanced Daily Settings',
   },
-} satisfies typeof zhSettingsText;
+} satisfies SettingsText;

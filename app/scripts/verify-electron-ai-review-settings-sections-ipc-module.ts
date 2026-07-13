@@ -34,11 +34,11 @@ for (const channel of [
   assert.match(moduleSource, new RegExp(`ipcMain\\.handle\\('${channel}'`), `settings/sections IPC module should register ${channel}.`);
 }
 
-assert.match(moduleSource, /ipcMain\.handle\('aiReview:getSettings', \(\) => getAiReviewSettings\(\)\)/, 'settings/sections IPC module should preserve settings getter handler.');
-assert.match(moduleSource, /const next = setAiReviewSettings\(value\)/, 'settings/sections IPC module should preserve settings setter return value.');
+assert.match(moduleSource, /ipcMain\.handle\('aiReview:getSettings', \(\) => maskAiReviewSettingsSecretsForRenderer\(getAiReviewSettings\(\)\)\)/, 'settings/sections IPC module should mask secrets on settings getter.');
+assert.match(moduleSource, /const next = setAiReviewSettings\(withSecrets\)/, 'settings/sections IPC module should preserve settings setter return value after secret merge.');
 assert.match(moduleSource, /scheduleAiTimers\(\)/, 'settings/sections IPC module should reschedule AI timers after settings updates.');
 assert.match(moduleSource, /if \(!areStoreValuesEqual\(current, next\)\) \{\s*scheduleAiTimers\(\);\s*\}/, 'settings/sections IPC module should skip timer rescheduling when normalized settings are unchanged.');
-assert.match(moduleSource, /return next/, 'settings/sections IPC module should return normalized AI Review settings after updates.');
+assert.match(moduleSource, /return maskAiReviewSettingsSecretsForRenderer\(next\)/, 'settings/sections IPC module should return masked AI Review settings after updates.');
 assert.match(moduleSource, /ipcMain\.handle\('aiReview:getSections', \(\) => getReviewSections\(\)\)/, 'settings/sections IPC module should preserve review-sections getter handler.');
 assert.match(moduleSource, /return setReviewSections\(value\)/, 'settings/sections IPC module should preserve review-sections setter return value.');
 assert.match(
@@ -135,4 +135,6 @@ assert.equal(
 );
 assertCleanupCoreIncludes('verify:electron-ai-review-settings-sections-ipc-module', 'cleanup-core should include the focused AI Review settings/sections IPC verifier.');
 
+assert.match(moduleSource, /mergeAiReviewSettingsSecretsFromRenderer/, 'settings/sections IPC module should restore secrets from main-process storage on set.');
+assert.match(moduleSource, /normalizeAiReviewSettings\(value\)/, 'settings/sections IPC module should normalize incoming settings before secret merge.');
 console.log('electron AI Review settings/sections IPC module verification passed');

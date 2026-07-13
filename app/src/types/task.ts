@@ -15,8 +15,8 @@ export interface Task {
   completionReview?: TaskCompletionReview;
   completionReviews?: TaskCompletionReview[];
   /**
-   * 「清理已完成」只隐藏应用内的显示,不删除任务本身。
-   * 被清理的任务仍保留在本地存储并继续同步到 Obsidian,所以 Obsidian 记录不受影响。
+   * "Clear completed" only hides the task in the app UI; it does not delete the task itself.
+   * Cleared tasks remain in local storage and continue syncing to Obsidian.
    */
   cleared?: boolean;
   // Same task's extra visible/planned dates; these are not separate task instances.

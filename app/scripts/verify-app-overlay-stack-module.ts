@@ -57,7 +57,7 @@ assert.match(overlay, /completionDialogProps\.task && <TaskCompletionDialog\b/, 
 assert.match(overlay, /reviewDialogProps\.task && <TaskReviewDialog\b/, 'overlay stack should only request TaskReviewDialog when it opens.');
 
 assert.match(helper, /from '\.\/appShellOverlayComposition'/, 'shell composition helper should delegate overlay prop assembly to the overlay helper.');
-assert.match(helper, /const overlayStackProps = createAppShellOverlayComposition\(\{[\s\S]*editingTemplateKind,[\s\S]*\}\);/, 'shell composition helper should forward overlay inputs into the overlay helper.');
+assert.match(helper, /const overlayStackProps = createAppShellOverlayComposition\(overlay\);/, 'shell composition helper should forward grouped overlay inputs into the overlay helper.');
 assert.match(overlayHelper, /from '\.\.\/i18n'/, 'overlay composition helper should own shell-text lookup for overlays.');
 assert.match(overlayHelper, /from '\.\/appTemplateEditor'/, 'overlay composition helper should own template initial-content derivation for overlays.');
 assert.match(overlayHelper, /const settingsPanelProps = \{[\s\S]*isOpen: settingsOpen,[\s\S]*onOpenCompanionSettings: appModalActions\.openCompanionSettings,[\s\S]*\};/, 'overlay composition helper should gather SettingsPanel props for the overlay stack.');

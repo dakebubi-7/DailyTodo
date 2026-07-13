@@ -69,7 +69,10 @@ export function startReportPreflight<ReportKind extends AiReviewRunReportKind>({
 
   const vaultStatus = getVaultStatus();
   if (!vaultStatus.ok || !vaultStatus.vaultPath) {
-    emitAiReviewProgress(reportKind, 'writeObsidian', WRITE_OBSIDIAN_LABEL, 'failed', vaultStatus.reason);
+    const vaultError = vaultStatus.ok
+      ? 'Obsidian vault path is missing.'
+      : (vaultStatus.reason || 'Obsidian vault path is missing.');
+    emitAiReviewProgress(reportKind, 'writeObsidian', WRITE_OBSIDIAN_LABEL, 'failed', vaultError);
     return {
       ok: false,
       result: createReportFailureResult({
@@ -78,7 +81,7 @@ export function startReportPreflight<ReportKind extends AiReviewRunReportKind>({
         finalStatus: 'writeFailed',
         resolution: llm.resolution,
         createDiagnostic,
-        error: vaultStatus.reason,
+        error: vaultError,
       }),
     };
   }

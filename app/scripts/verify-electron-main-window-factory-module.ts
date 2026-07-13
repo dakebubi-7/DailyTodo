@@ -81,4 +81,7 @@ assert.equal(
 );
 assertCleanupCoreIncludes('verify:electron-main-window-factory-module', 'cleanup-core should include the focused main-window factory verifier.');
 
+assert.match(helper, /sandbox:\s*true/, 'mainWindowFactory should enable renderer sandbox.');
+assert.match(helper, /nodeIntegration:\s*false/, 'mainWindowFactory should disable nodeIntegration.');
+assert.match(helper, /contextIsolation:\s*true/, 'mainWindowFactory should enable contextIsolation.');
 console.log('electron main-window factory module verification passed');

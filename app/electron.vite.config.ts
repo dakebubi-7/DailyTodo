@@ -32,11 +32,11 @@ export default defineConfig({
       rollupOptions: {
         input: 'index.html'
       }
-    }
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src')
+      }
     }
   }
 });

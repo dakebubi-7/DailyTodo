@@ -61,7 +61,7 @@ assert.match(
 );
 assert.match(
   companion,
-  /if \(next !== existing\) \{\s*fs\.writeFileSync\(change\.filePath, next, 'utf-8'\);\s*\}/,
+  /if \(next !== existing\) \{\s*writeTextFileAtomic\(change\.filePath, next\);\s*\}/,
   'Companion sync should skip physical file writes when generated content is unchanged.',
 );
 assert.match(helper, /getCompanionSettings\(\)/, 'Companion IPC module should receive Companion settings getter.');
@@ -78,13 +78,23 @@ assert.doesNotMatch(
 );
 assert.match(
   helper,
-  /buildSyncPlan\(settings, items === undefined \? \[\] : items\)/,
-  'Companion preview IPC should default only omitted items while preserving malformed runtime values for validation.',
+  /buildSyncPlan\(getCompanionSettings\(\), items === undefined \? \[\] : items\)/,
+  'Companion preview IPC should plan from configured settings and default only omitted items.',
 );
 assert.match(
   helper,
-  /const plan = buildSyncPlan\(settings, items === undefined \? \[\] : items\)/,
-  'Companion writeSync IPC should default only omitted items while preserving malformed runtime values for validation.',
+  /const plan = buildSyncPlan\(configured, items === undefined \? \[\] : items\)/,
+  'Companion writeSync IPC should plan from configured settings and default only omitted items.',
+);
+assert.match(
+  helper,
+  /writeSyncPlan\(plan, configured\.vaultPath\)/,
+  'Companion writeSync IPC should re-bind write vault to configured companion settings.',
+);
+assert.doesNotMatch(
+  helper,
+  /buildSyncPlan\(settings,/,
+  'Companion IPC must ignore renderer-supplied settings when building sync plans.',
 );
 for (const handlerName of ['previewSync', 'writeSync']) {
   assert.match(

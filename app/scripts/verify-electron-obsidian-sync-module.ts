@@ -57,7 +57,7 @@ assert.doesNotMatch(helper, /function triggerOverviewUpdate\b/, 'Obsidian sync o
 assert.doesNotMatch(helper, /function syncOneDailyNote\b/, 'Obsidian sync orchestrator should not keep single-note writes inline.');
 assert.match(
   dailyNote,
-  /if \(nextContent !== existingFileContent\) \{\s*fs\.writeFileSync\(filePath, nextContent, 'utf-8'\);\s*\}/,
+  /if \(nextContent !== existingFileContent\) \{\s*writeTextFileAtomic\(filePath, nextContent\);\s*\}/,
   'Obsidian sync should skip physical daily-note writes when generated content is unchanged.',
 );
 assert.match(

@@ -12,6 +12,7 @@ const zhShellPath = join(root, 'src', 'i18n', 'shellTextZh.ts');
 const enShellPath = join(root, 'src', 'i18n', 'shellTextEn.ts');
 const zhSettingsPath = join(root, 'src', 'i18n', 'shellTextZhSettings.ts');
 const enSettingsPath = join(root, 'src', 'i18n', 'shellTextEnSettings.ts');
+const settingsTypesPath = join(root, 'src', 'i18n', 'settingsTextTypes.ts');
 const packagePath = join(root, 'package.json');
 
 function read(path: string): string {
@@ -22,7 +23,7 @@ function lineCount(path: string): number {
   return read(path).split(/\r?\n/).length;
 }
 
-for (const path of [zhShellPath, enShellPath, zhSettingsPath, enSettingsPath]) {
+for (const path of [zhShellPath, enShellPath, zhSettingsPath, enSettingsPath, settingsTypesPath]) {
   assert.ok(existsSync(path), `${path} should exist after splitting shell text from src/i18n.ts.`);
 }
 
@@ -31,6 +32,7 @@ const zhShell = read(zhShellPath);
 const enShell = read(enShellPath);
 const zhSettings = read(zhSettingsPath);
 const enSettings = read(enSettingsPath);
+const settingsTypes = read(settingsTypesPath);
 const packageJson = JSON.parse(read(packagePath));
 const scripts = packageJson.scripts as Record<string, string>;
 
@@ -47,6 +49,10 @@ assert.match(zhShell, /settings:\s*zhSettingsText/, 'Chinese shell module should
 assert.match(enShell, /settings:\s*enSettingsText/, 'English shell module should compose settings from the settings module.');
 assert.match(zhSettings, /export const zhSettingsText/, 'Chinese settings module should export zhSettingsText.');
 assert.match(enSettings, /export const enSettingsText/, 'English settings module should export enSettingsText.');
+assert.match(settingsTypes, /export type SettingsText\s*=\s*typeof import\('\.\/shellTextZhSettings'\)\.zhSettingsText/, 'Settings text type module should own the shared contract.');
+assert.match(enSettings, /import type \{ SettingsText \} from '\.\/settingsTextTypes'/, 'English settings module should use the shared settings text contract.');
+assert.doesNotMatch(enSettings, /from '\.\/shellTextZhSettings'/, 'English settings module should not depend on Chinese locale data.');
+assert.match(enSettings, /satisfies SettingsText/, 'English settings module should satisfy the shared settings text contract.');
 
 for (const path of [zhShellPath, enShellPath, zhSettingsPath, enSettingsPath]) {
   assert.ok(lineCount(path) < 300, `${path} should remain below the production large-file threshold; got ${lineCount(path)} lines.`);
