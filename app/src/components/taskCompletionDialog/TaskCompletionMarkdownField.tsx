@@ -20,7 +20,6 @@ export function TaskCompletionMarkdownField({
   useEffect(() => {
     editor.resetHistory(value, value.length);
     // Reset only when switching tasks; editor records ordinary value updates itself.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
   return (

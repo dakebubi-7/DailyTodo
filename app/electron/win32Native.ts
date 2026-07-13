@@ -54,7 +54,6 @@ function createWin32Api(diag: (message: string) => void): Win32Api | null {
   if (process.platform !== 'win32') return null;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const koffi = require('koffi');
     const user32 = koffi.load('user32.dll');
 

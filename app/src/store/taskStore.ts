@@ -10,38 +10,13 @@ import { readObsidianActionResult, readObsidianPath, readSyncPreview } from '../
 import { CaptureItem, CompanionSettings } from '../../shared/obsidianCompanion';
 import { normalizeCompanionSettings } from '../../shared/obsidianCompanionDefaults';
 import { parseStoredTasks } from '../hooks/taskTransforms';
+import { electronAPI } from './electronApi';
 
 export { buildCaptureItems } from './companionCaptureItems';
 
-const STORE_KEY = 'tasks';
+export { electronAPI } from './electronApi';
 
-export const electronAPI = {
-  minimize: () => window.electronAPI?.minimize(),
-  close: () => window.electronAPI?.close(),
-  getAlwaysOnTop: () => window.electronAPI?.getAlwaysOnTop(),
-  toggleAlwaysOnTop: () => window.electronAPI?.toggleAlwaysOnTop(),
-  resetPosition: () => window.electronAPI?.resetPosition(),
-  getLockWindowPosition: () => window.electronAPI?.getLockWindowPosition(),
-  setLockWindowPosition: (locked: boolean) => window.electronAPI?.setLockWindowPosition(locked),
-  getStore: (key: string) => window.electronAPI?.getStore(key),
-  setStore: (key: string, value: unknown) => window.electronAPI?.setStore(key, value),
-  getAppSettings: () => window.electronAPI?.getAppSettings(),
-  setAppSettings: (settings: AppBehaviorSettings) => window.electronAPI?.setAppSettings(settings),
-  getObsidianTemplateSettings: () => window.electronAPI?.getObsidianTemplateSettings(),
-  setObsidianTemplateSettings: (settings: ObsidianTemplateSettings) => window.electronAPI?.setObsidianTemplateSettings(settings),
-  resetObsidianTemplateSettings: () => window.electronAPI?.resetObsidianTemplateSettings(),
-  getObsidianPath: () => window.electronAPI?.getObsidianPath(),
-  chooseObsidianPath: () => window.electronAPI?.chooseObsidianPath(),
-  syncTasksToObsidian: (tasks: Task[], selectedDate?: string, dailyWork?: string, dailyInspiration?: string, beforeTasks?: Task[]) => window.electronAPI?.syncTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration, beforeTasks),
-  previewTasksToObsidian: (tasks: Task[], selectedDate?: string, dailyWork?: string, dailyInspiration?: string, beforeTasks?: Task[]) => window.electronAPI?.previewTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration, beforeTasks),
-  openDailyNote: (date?: string) => window.electronAPI?.openDailyNote(date),
-  openTodayNote: () => window.electronAPI?.openDailyNote(),
-  getCompanionSettings: () => window.electronAPI?.getCompanionSettings(),
-  setCompanionSettings: (settings: CompanionSettings) => window.electronAPI?.setCompanionSettings(settings),
-  previewCompanionSync: (settings: CompanionSettings, items: CaptureItem[]) => window.electronAPI?.previewCompanionSync(settings, items),
-  writeCompanionSync: (settings: CompanionSettings, items: CaptureItem[]) => window.electronAPI?.writeCompanionSync(settings, items),
-  importMobileInbox: (inboxPath: string) => window.electronAPI?.importMobileInbox(inboxPath),
-};
+const STORE_KEY = 'tasks';
 
 export const saveTasks = async (tasks: Task[]): Promise<void> => {
   await electronAPI.setStore(STORE_KEY, tasks);

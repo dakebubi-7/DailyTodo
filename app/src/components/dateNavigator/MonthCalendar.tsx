@@ -84,7 +84,7 @@ export function MonthCalendar({
           const heat = !isSelected ? heatBackground(cell.summary) : undefined;
           const title = cell.inMonth
             ? total > 0
-              ? `${cell.key}　已完成 ${done} / 共 ${total}${urgent ? '（有高优先级未完成）' : ''}`
+              ? `${cell.key}: 已完成 ${done} / 共 ${total}${urgent ? '（有高优先级未完成）' : ''}`
               : cell.key
             : undefined;
           return (

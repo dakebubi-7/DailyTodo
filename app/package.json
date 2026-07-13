@@ -255,11 +255,16 @@
     "verify:electron-ai-review-report-ipc-no-source-failure-module": "tsx scripts/verify-electron-ai-review-report-ipc-no-source-failure-module.ts",
     "verify:electron-ai-review-report-ipc-source-collection-module": "tsx scripts/verify-electron-ai-review-report-ipc-source-collection-module.ts",
     "verify:electron-ai-review-report-ipc-source-preparation-module": "tsx scripts/verify-electron-ai-review-report-ipc-source-preparation-module.ts",
-    "verify:electron-ai-review-report-ipc-execution-module": "tsx scripts/verify-electron-ai-review-report-ipc-execution-module.ts"
+    "verify:electron-ai-review-report-ipc-execution-module": "tsx scripts/verify-electron-ai-review-report-ipc-execution-module.ts",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:fast": "npm run typecheck && npm run lint && npm test && npm run verify:task-ordering-state && npm run verify:electron-settings-ipc-module && npm run verify:renderer-route && npm run verify:context-menu && npm run verify:atomic-write && npm run verify:security",
+    "verify:security": "tsx scripts/verify-security-hardening.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.3",
-    "electron-store": "7.0.3",
+    "electron-store": "^11.0.2",
     "framer-motion": "^11.18.2",
     "koffi": "^3.0.2",
     "mammoth": "^1.12.0",
@@ -288,7 +293,11 @@
     "vite": "^6.2.0",
     "vite-plugin-electron": "^0.28.8",
     "vite-plugin-electron-renderer": "^0.14.6",
-    "wait-on": "^8.0.3"
+    "wait-on": "^8.0.3",
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^3.2.4"
   },
   "build": {
     "appId": "com.dailytodo.app",

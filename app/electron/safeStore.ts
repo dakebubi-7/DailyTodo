@@ -2,6 +2,7 @@ import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import Store from 'electron-store';
+import type { ElectronStoreLike } from './sharedTypes';
 
 export function getStoreConfigPath(): string {
   try {
@@ -11,9 +12,9 @@ export function getStoreConfigPath(): string {
   }
 }
 
-export function createSafeStore(): Store {
+export function createSafeStore(): ElectronStoreLike {
   try {
-    return new Store();
+    return new Store() as unknown as ElectronStoreLike;
   } catch {
     const configPath = getStoreConfigPath();
     if (configPath && fs.existsSync(configPath) && fs.statSync(configPath).isFile()) {
@@ -24,6 +25,6 @@ export function createSafeStore(): Store {
       fs.copyFileSync(configPath, backupPath);
       fs.writeFileSync(configPath, '{}', 'utf-8');
     }
-    return new Store();
+    return new Store() as unknown as ElectronStoreLike;
   }
 }

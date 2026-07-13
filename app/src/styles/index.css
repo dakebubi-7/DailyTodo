@@ -1,1 +1,4 @@
+/* Main app stylesheet entry.
+ * Theme-specific CSS (e.g. watercolor) is loaded on demand by runtime effects.
+ */
 @import './globals.css';
