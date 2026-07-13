@@ -1,10 +1,83 @@
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import {
   continueListOnEnter,
-  indentSelection,
-  outdentSelection,
   wrapSelection,
 } from '../src/utils/markdownEditor';
+import {
+  indentSelection,
+  outdentSelection,
+} from '../src/utils/markdownEditorIndentation';
+
+const hookSource = readFileSync(new URL('../src/hooks/useMarkdownEditor.ts', import.meta.url), 'utf8');
+const editorSource = readFileSync(new URL('../src/utils/markdownEditor.ts', import.meta.url), 'utf8');
+const indentationModuleUrl = new URL('../src/utils/markdownEditorIndentation.ts', import.meta.url);
+const indentationModuleSource = readFileSync(indentationModuleUrl, 'utf8');
+const textareaModuleUrl = new URL('../src/hooks/markdownEditorTextarea.ts', import.meta.url);
+const textareaModuleSource = readFileSync(textareaModuleUrl, 'utf8');
+
+assert.match(
+  indentationModuleSource,
+  /export function indentSelection\b/,
+  'Indentation commands should live in a dedicated pure editor module.',
+);
+assert.match(
+  indentationModuleSource,
+  /export function outdentSelection\b/,
+  'Outdentation commands should live beside indentation in the dedicated pure editor module.',
+);
+assert.match(
+  editorSource,
+  /export \{ indentSelection, outdentSelection \} from '\.\/markdownEditorIndentation';/,
+  'The markdown editor facade should preserve the indentation command API through the extracted module.',
+);
+assert.doesNotMatch(
+  editorSource,
+  /function selectedLineStarts\b|const INDENT =/,
+  'The markdown editor facade should not retain indentation implementation details after extraction.',
+);
+
+assert.match(
+  textareaModuleSource,
+  /export function restoreTextareaSelection\b/,
+  'Textarea selection restoration should live in a dedicated DOM helper module.',
+);
+assert.match(
+  textareaModuleSource,
+  /export function scrollCaretIntoView\b/,
+  'Textarea caret scrolling should live in the dedicated DOM helper module.',
+);
+assert.match(
+  textareaModuleSource,
+  /function measureCaret\b/,
+  'Textarea caret measurement should stay private to the DOM helper module.',
+);
+assert.match(
+  hookSource,
+  /import \{ restoreTextareaSelection \} from '\.\/markdownEditorTextarea';/,
+  'The React hook should delegate DOM selection restoration to the dedicated helper.',
+);
+assert.doesNotMatch(
+  hookSource,
+  /function measureCaret\b|function scrollCaretIntoView\b|const MIRROR_STYLE_PROPS/,
+  'The React hook should not retain textarea mirror and scrolling mechanics after extraction.',
+);
+
+assert.doesNotMatch(
+  hookSource,
+  /mirror\.style\[prop as any\]/,
+  'Markdown editor caret mirror should copy style properties without casting CSS property names to any.',
+);
+assert.doesNotMatch(
+  hookSource,
+  /style\[prop as any\]/,
+  'Markdown editor caret mirror should read computed style properties without casting CSS property names to any.',
+);
+assert.doesNotMatch(
+  editorSource,
+  /\[\.\.\.starts\]\.reverse\(\)\.forEach\(/,
+  'Multi-line indentation should build the result in source order instead of repeatedly rebuilding the full text.',
+);
 
 // Tab 缩进:行首插入四个空格
 {

@@ -9,6 +9,15 @@ export interface RolloverTask {
   completionReviews?: RolloverTaskReview[];
 }
 
+export interface TaskDateSource {
+  taskDate?: string;
+  createdAt?: string;
+}
+
+export function getTaskDate(task: TaskDateSource, fallbackDate: string) {
+  return task.taskDate || task.createdAt?.slice(0, 10) || fallbackDate;
+}
+
 function parseTime(value: string) {
   const match = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   if (!match) return { hours: 5, minutes: 0 };
@@ -20,6 +29,24 @@ export function formatLocalDateKey(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function isDateKey(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1) return false;
+
+  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
+function isLeapYear(year: number) {
+  return year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0);
 }
 
 export function shiftDateKey(date: string, days: number) {
@@ -49,7 +76,11 @@ export function getLatestCompletionPercent(task: RolloverTask) {
     : task.completionReview
       ? [task.completionReview]
       : [];
-  return reviews[reviews.length - 1]?.percent;
+  const latestReview = reviews.reduce<RolloverTaskReview | undefined>((latest, review) => {
+    if (!latest) return review;
+    return review.reviewedAt > latest.reviewedAt ? review : latest;
+  }, undefined);
+  return latestReview?.percent;
 }
 
 export function shouldCarryTaskForward(task: RolloverTask) {

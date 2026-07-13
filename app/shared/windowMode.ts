@@ -9,6 +9,10 @@ export function isWindowMode(value: unknown): value is WindowMode {
   return value === 'normal' || value === 'onTop' || value === 'desktop';
 }
 
+export function readWindowMode(value: unknown): WindowMode | undefined {
+  return isWindowMode(value) ? value : undefined;
+}
+
 /**
  * 解析存储的窗口模式。优先用新键 windowMode；缺失时从旧布尔 alwaysOnTop 迁移
  * （true→onTop，false→normal），让老用户升级后行为不变。

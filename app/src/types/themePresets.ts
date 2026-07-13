@@ -1,4 +1,5 @@
 import { PersonalizationSettings } from './personalization';
+import { findMatchingThemePresetId } from './themePresetMatching';
 
 export interface ThemePreset {
   id: string;
@@ -161,19 +162,5 @@ export const THEME_PRESETS: ThemePreset[] = [
 
 /** 判断当前外观参数是否与某个预设完全一致(用于卡片高亮) */
 export function matchThemePreset(settings: PersonalizationSettings): string | null {
-  const found = THEME_PRESETS.find((preset) => {
-    const s = preset.settings;
-    return (
-      s.windowOpacity === settings.windowOpacity &&
-      s.panelOpacity === settings.panelOpacity &&
-      s.blurStrength === settings.blurStrength &&
-      s.radius === settings.radius &&
-      s.accentColor.toLowerCase() === settings.accentColor.toLowerCase() &&
-      s.secondaryColor.toLowerCase() === settings.secondaryColor.toLowerCase() &&
-      s.layoutDensity === settings.layoutDensity &&
-      s.texture === settings.texture &&
-      s.animations === settings.animations
-    );
-  });
-  return found ? found.id : null;
+  return findMatchingThemePresetId(THEME_PRESETS, settings);
 }

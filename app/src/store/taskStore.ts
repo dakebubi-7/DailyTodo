@@ -2,9 +2,16 @@ import { Task } from '../types/task';
 import {
   AppBehaviorSettings,
   ObsidianTemplateSettings,
+  normalizeAppSettings,
+  normalizeObsidianTemplateSettings,
 } from '../../shared/appSettings';
 import type { SyncPreview } from '../../shared/obsidianTemplates';
+import { readObsidianActionResult, readObsidianPath, readSyncPreview } from '../../shared/obsidianIpcResults';
 import { CaptureItem, CompanionSettings } from '../../shared/obsidianCompanion';
+import { normalizeCompanionSettings } from '../../shared/obsidianCompanionDefaults';
+import { parseStoredTasks } from '../hooks/taskTransforms';
+
+export { buildCaptureItems } from './companionCaptureItems';
 
 const STORE_KEY = 'tasks';
 
@@ -25,7 +32,7 @@ export const electronAPI = {
   resetObsidianTemplateSettings: () => window.electronAPI?.resetObsidianTemplateSettings(),
   getObsidianPath: () => window.electronAPI?.getObsidianPath(),
   chooseObsidianPath: () => window.electronAPI?.chooseObsidianPath(),
-  syncTasksToObsidian: (tasks: Task[], selectedDate?: string, dailyWork?: string, dailyInspiration?: string) => window.electronAPI?.syncTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration),
+  syncTasksToObsidian: (tasks: Task[], selectedDate?: string, dailyWork?: string, dailyInspiration?: string, beforeTasks?: Task[]) => window.electronAPI?.syncTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration, beforeTasks),
   previewTasksToObsidian: (tasks: Task[], selectedDate?: string, dailyWork?: string, dailyInspiration?: string, beforeTasks?: Task[]) => window.electronAPI?.previewTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration, beforeTasks),
   openDailyNote: (date?: string) => window.electronAPI?.openDailyNote(date),
   openTodayNote: () => window.electronAPI?.openDailyNote(),
@@ -42,19 +49,27 @@ export const saveTasks = async (tasks: Task[]): Promise<void> => {
 
 export const loadTasks = async (): Promise<Task[]> => {
   const tasks = await electronAPI.getStore(STORE_KEY);
-  return (tasks as Task[]) || [];
+  return parseStoredTasks(tasks);
 };
 
 export const getObsidianPath = async (): Promise<string> => {
-  return (await electronAPI.getObsidianPath()) || '';
+  return readObsidianPath(await electronAPI.getObsidianPath());
 };
 
 export const chooseObsidianPath = async (): Promise<string> => {
-  return (await electronAPI.chooseObsidianPath()) || '';
+  return readObsidianPath(await electronAPI.chooseObsidianPath());
 };
 
-export const syncTasksToObsidian = async (tasks: Task[], selectedDate?: string, dailyWork?: string, dailyInspiration?: string) => {
-  return electronAPI.syncTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration);
+export const syncTasksToObsidian = async (
+  tasks: Task[],
+  selectedDate?: string,
+  dailyWork?: string,
+  dailyInspiration?: string,
+  beforeTasks?: Task[],
+) => {
+  return readObsidianActionResult(
+    await electronAPI.syncTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration, beforeTasks),
+  );
 };
 
 export const previewTasksToObsidian = async (
@@ -64,35 +79,37 @@ export const previewTasksToObsidian = async (
   dailyInspiration?: string,
   beforeTasks?: Task[],
 ): Promise<SyncPreview | undefined> => {
-  return electronAPI.previewTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration, beforeTasks);
+  return readSyncPreview(
+    await electronAPI.previewTasksToObsidian(tasks, selectedDate, dailyWork, dailyInspiration, beforeTasks),
+  );
 };
 
-export const getAppSettings = async (): Promise<AppBehaviorSettings | undefined> => {
-  return electronAPI.getAppSettings();
+export const getAppSettings = async (): Promise<AppBehaviorSettings> => {
+  return normalizeAppSettings(await electronAPI.getAppSettings());
 };
 
 export const setAppSettings = async (settings: AppBehaviorSettings) => {
   return electronAPI.setAppSettings(settings);
 };
 
-export const getObsidianTemplateSettings = async (): Promise<ObsidianTemplateSettings | undefined> => {
-  return electronAPI.getObsidianTemplateSettings();
+export const getObsidianTemplateSettings = async (): Promise<ObsidianTemplateSettings> => {
+  return normalizeObsidianTemplateSettings(await electronAPI.getObsidianTemplateSettings());
 };
 
 export const setObsidianTemplateSettings = async (settings: ObsidianTemplateSettings) => {
   return electronAPI.setObsidianTemplateSettings(settings);
 };
 
-export const resetObsidianTemplateSettings = async (): Promise<ObsidianTemplateSettings | undefined> => {
-  return electronAPI.resetObsidianTemplateSettings();
+export const resetObsidianTemplateSettings = async (): Promise<ObsidianTemplateSettings> => {
+  return normalizeObsidianTemplateSettings(await electronAPI.resetObsidianTemplateSettings());
 };
 
 export const openDailyNote = async (date?: string) => {
-  return electronAPI.openDailyNote(date);
+  return readObsidianActionResult(await electronAPI.openDailyNote(date));
 };
 
-export const getCompanionSettings = async () => {
-  return window.electronAPI.getCompanionSettings();
+export const getCompanionSettings = async (): Promise<CompanionSettings> => {
+  return normalizeCompanionSettings(await window.electronAPI.getCompanionSettings());
 };
 
 export const setCompanionSettings = async (settings: CompanionSettings) => {
@@ -110,52 +127,3 @@ export const writeCompanionSync = async (settings: CompanionSettings, items: Cap
 export const importMobileInbox = async (inboxPath: string) => {
   return window.electronAPI.importMobileInbox(inboxPath);
 };
-
-export function buildCaptureItems(
-  tasks: Task[],
-  selectedDate: string,
-  dailyWork = '',
-  dailyInspiration = ''
-): CaptureItem[] {
-  const taskItems = tasks
-    .filter((task) => (task.taskDate || task.createdAt.slice(0, 10)) === selectedDate)
-    .map<CaptureItem>((task) => ({
-      id: `task-${task.id}`,
-      type: 'task',
-      content: task.text,
-      tags: [],
-      priority: task.priority,
-      source: 'desktop',
-      status: task.completed ? 'synced' : 'new',
-      createdAt: task.createdAt,
-      metadata: { taskId: task.id },
-    }));
-
-  const noteItems: CaptureItem[] = [];
-
-  if (dailyWork.trim()) {
-    noteItems.push({
-      id: `work-${selectedDate}`,
-      type: 'work',
-      content: dailyWork.trim(),
-      tags: [],
-      source: 'desktop',
-      status: 'new',
-      createdAt: `${selectedDate}T00:00:00.000Z`,
-    });
-  }
-
-  if (dailyInspiration.trim()) {
-    noteItems.push({
-      id: `inspiration-${selectedDate}`,
-      type: 'inspiration',
-      content: dailyInspiration.trim(),
-      tags: [],
-      source: 'desktop',
-      status: 'new',
-      createdAt: `${selectedDate}T00:00:00.000Z`,
-    });
-  }
-
-  return [...taskItems, ...noteItems];
-}

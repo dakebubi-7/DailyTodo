@@ -42,11 +42,11 @@ export function ScheduleSettingsSection({
       </section>
 
       <section className="settings-section">
-        <h3>{appSettings.language === 'zh-CN' ? '娓呯悊宸插畬鎴?' : 'Clear Completed'}</h3>
+        <h3>{appSettings.language === 'zh-CN' ? '清理已完成' : 'Clear Completed'}</h3>
         <div className="settings-preview-list">
           <p>
             {appSettings.language === 'zh-CN'
-              ? '鍙妸褰撳墠鏃ユ湡鐨勫凡瀹屾垚浠诲姟浠庡簲鐢ㄥ垪琛ㄤ腑闅愯棌锛屼换鍔℃湰韬拰 Obsidian 璁板綍閮戒細瀹屾暣淇濈暀銆?'
+              ? '只把当前日期的已完成任务从应用列表中隐藏，任务本身和 Obsidian 记录都会完整保留。'
               : 'Only hides completed tasks of the current date from the app list. The tasks and their Obsidian records stay intact.'}
           </p>
         </div>
@@ -57,7 +57,7 @@ export function ScheduleSettingsSection({
           disabled={completedCount === 0}
         >
           {appSettings.language === 'zh-CN'
-            ? `娓呯悊銆?${selectedDate}銆嶇殑宸插畬鎴愶紙${completedCount}锛塦`
+            ? `清理「${selectedDate}」的已完成（${completedCount}）`
             : `Clear completed on ${selectedDate} (${completedCount})`}
         </button>
       </section>

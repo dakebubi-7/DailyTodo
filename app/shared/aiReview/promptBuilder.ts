@@ -1,6 +1,7 @@
-import type { CustomBlock, RenderType, SectionConfig } from './sectionConfig';
+import type { CustomBlock, SectionConfig } from './sectionConfig';
 import type { DailyStats } from './stats';
 import type { ChatMessage } from '../llm/openaiClient';
+import { formatDailyStats, getCustomBlockDefaultPrompt, getRenderTypeInstruction } from './promptFormatting';
 export type { ChatMessage };
 
 export interface BuildMessagesParams {
@@ -29,35 +30,6 @@ const SYSTEM_PROMPT = [
   '不要写“用户要求”“软件提示”“确定性统计”“今天的日记原文”等提示词中的说明文字。',
 ].join('\n');
 
-function renderStats(stats: DailyStats) {
-  return [
-    '确定性统计（必须以此为准，不得改写）：',
-    `- 当天任务数：${stats.total}`,
-    `- 已完成：${stats.completed}`,
-    `- 完成率：${stats.completionRate}%`,
-  ].join('\n');
-}
-
-function renderTypeInstruction(renderType: RenderType) {
-  switch (renderType) {
-    case 'list':
-      return '输出格式：使用 Markdown 无序列表，每条以 “- ” 开头。';
-    case 'table':
-      return '输出格式：使用 Markdown 表格，首行为表头，内容不足时也要给出简短说明列。';
-    case 'callout':
-      return '输出格式：使用 Obsidian Callout，例如 “> [!note] 标题” 加正文。';
-    case 'dataview':
-      return '输出格式：优先使用 Obsidian dataview 代码块；如果当天数据不足以生成 dataview 查询，就写一句简短说明。';
-    case 'text':
-    default:
-      return '输出格式：使用普通 Markdown 段落，简洁清楚。';
-  }
-}
-
-function defaultCustomBlockPrompt(blockName: string) {
-  return `请根据今天的记录生成“${blockName}”这个区块的内容。`;
-}
-
 export function buildReviewMessages(params: BuildMessagesParams): ChatMessage[] {
   const { date, dailyContent, section, stats } = params;
   const user = [
@@ -65,7 +37,7 @@ export function buildReviewMessages(params: BuildMessagesParams): ChatMessage[] 
     `任务：『${section.title}』`,
     `要求：${section.prompt}`,
     '',
-    renderStats(stats),
+    formatDailyStats(stats),
     '',
     '今天的日记原文：',
     dailyContent.trim() || '（今天没有记录正文）',
@@ -79,14 +51,14 @@ export function buildReviewMessages(params: BuildMessagesParams): ChatMessage[] 
 
 export function buildCustomBlockReviewMessages(params: BuildCustomBlockMessagesParams): ChatMessage[] {
   const { date, dailyContent, block, stats } = params;
-  const prompt = block.prompt.trim() || defaultCustomBlockPrompt(block.name);
+  const prompt = block.prompt.trim() || getCustomBlockDefaultPrompt(block.name);
   const user = [
     `日期：${date}`,
     `任务：『${block.name}』`,
     `要求：${prompt}`,
-    renderTypeInstruction(block.renderType),
+    getRenderTypeInstruction(block.renderType),
     '',
-    renderStats(stats),
+    formatDailyStats(stats),
     '',
     '今天的日记原文：',
     dailyContent.trim() || '（今天没有记录正文）',

@@ -5,7 +5,10 @@ const root = process.cwd();
 const dailyWorkPanel = readFileSync(join(root, 'src/components/DailyWorkPanel.tsx'), 'utf8');
 const globalsCss = readFileSync(join(root, 'src/styles/globals.css'), 'utf8');
 const appTsx = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+const appShellComposition = readFileSync(join(root, 'src/app/useAppShellComposition.ts'), 'utf8');
+const appTaskView = readFileSync(join(root, 'src/app/appTaskView.ts'), 'utf8');
 const titleBar = readFileSync(join(root, 'src/components/TitleBar.tsx'), 'utf8');
+const dailyWorkPanelCommands = readFileSync(join(root, 'src/components/dailyWorkPanel/useDailyWorkPanelCommands.ts'), 'utf8');
 
 function assert(condition: unknown, message: string) {
   if (!condition) {
@@ -16,6 +19,10 @@ function assert(condition: unknown, message: string) {
 assert(
   dailyWorkPanel.includes('taskCommands') && dailyWorkPanel.includes('insertTaskMarkdown'),
   'DailyWorkPanel slash menu must be task-based, not fixed template commands.',
+);
+assert(
+  dailyWorkPanel.includes('taskCommands: Task[]') && !dailyWorkPanel.includes('const taskCommands = useMemo'),
+  'DailyWorkPanel should consume the shared command ordering instead of sorting the same tasks per panel.',
 );
 
 assert(
@@ -28,7 +35,7 @@ assert(
 
 assert(
   dailyWorkPanel.includes('insertDailyCommandMarkdown') &&
-    dailyWorkPanel.includes('shouldOpenDailyCommandMenu') &&
+    dailyWorkPanelCommands.includes('shouldOpenDailyCommandMenu') &&
     !dailyWorkPanel.includes('value.endsWith'),
   'DailyWorkPanel slash commands must follow the cursor instead of only opening at the end of the text.',
 );
@@ -50,8 +57,10 @@ assert(
 );
 
 assert(
-  appTsx.includes('selectedDateTasksForCommands') && !appTsx.includes('const selectedDateTasksForCommands = allTasks.filter'),
-  'Slash task source should come from the selected-date task list already normalized by useTasks.',
+  appShellComposition.includes('selectedDateTasksForCommands') &&
+    appTaskView.includes('selectedDateTasksForCommands: selectedDateTaskCommands') &&
+    !appTsx.includes('const selectedDateTasksForCommands = allTasks.filter'),
+  'Slash task source should flow from the selected-date task list through the extracted task-view composition.',
 );
 
 assert(

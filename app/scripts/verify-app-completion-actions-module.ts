@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertCleanupCoreIncludes } from './verifyCleanupCore';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '..');
+const helperPath = join(root, 'src/app/appCompletionActions.ts');
+const shellHelperPath = join(root, 'src/app/appShellComposition.tsx');
+const shellMainContentCompositionPath = join(root, 'src/app/appShellMainContentComposition.tsx');
+const overlayHelperPath = join(root, 'src/app/appShellOverlayComposition.ts');
+const shellCompositionHookPath = join(root, 'src/app/useAppShellComposition.ts');
+const shellInputsPath = join(root, 'src/app/appShellCompositionInputs.ts');
+const appPath = join(root, 'src/App.tsx');
+const overlayPath = join(root, 'src/components/AppOverlayStack.tsx');
+const mainContentPath = join(root, 'src/components/AppMainContent.tsx');
+const packagePath = join(root, 'package.json');
+
+assert.ok(existsSync(helperPath), 'App completion actions helper module should exist.');
+assert.ok(existsSync(shellHelperPath), 'App shell composition helper should exist for completion wiring verification.');
+assert.ok(existsSync(shellMainContentCompositionPath), 'App shell main-content composition helper should exist for TaskList completion wiring verification.');
+assert.ok(existsSync(overlayHelperPath), 'App shell overlay composition helper should exist for completion dialog wiring.');
+assert.ok(existsSync(shellCompositionHookPath), 'Runtime shell composition hook should exist for completion wiring verification.');
+assert.ok(existsSync(shellInputsPath), 'Pure shell-inputs helper should exist for completion wiring verification.');
+assert.ok(existsSync(overlayPath), 'App overlay stack component should exist for completion dialog wiring.');
+assert.ok(existsSync(mainContentPath), 'App main content component should exist for TaskList completion wiring.');
+
+const helper = readFileSync(helperPath, 'utf8');
+const shellHelper = readFileSync(shellHelperPath, 'utf8');
+const shellMainContentComposition = readFileSync(shellMainContentCompositionPath, 'utf8');
+const overlayHelper = readFileSync(overlayHelperPath, 'utf8');
+const shellCompositionHook = readFileSync(shellCompositionHookPath, 'utf8');
+const shellInputs = readFileSync(shellInputsPath, 'utf8');
+const app = readFileSync(appPath, 'utf8');
+const overlay = readFileSync(overlayPath, 'utf8');
+const mainContent = readFileSync(mainContentPath, 'utf8');
+const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+const scripts = packageJson.scripts as Record<string, string>;
+
+assert.match(helper, /export function createAppCompletionActions\b/, 'helper should export createAppCompletionActions.');
+assert.match(helper, /getMainTaskToggleDecision\(/, 'helper should preserve main-task completion decision routing.');
+assert.match(helper, /tasks\.find\(\(item\) => item\.id === id\)/, 'helper should preserve selected task lookup for main-task toggles.');
+assert.match(helper, /getSubtaskToggleDecision\(/, 'helper should preserve subtask completion decision routing.');
+assert.match(helper, /findTaskInTree\(allTasks, id\)/, 'helper should preserve recursive subtask lookup.');
+assert.match(helper, /setCompletionTarget\(decision\.target\)/, 'helper should preserve review target state assignment.');
+assert.match(helper, /setCompletionTask\(decision\.task\)/, 'helper should preserve review task state assignment.');
+assert.match(helper, /markSubtaskDoneWithoutReview\(id\)/, 'helper should preserve no-review subtask completion path.');
+assert.match(helper, /resolveCompletionTarget\(completionTarget, taskId\)/, 'helper should preserve completion target resolution.');
+assert.match(helper, /updateSubtaskReview\(taskId, review\)/, 'helper should preserve subtask review update path.');
+assert.match(helper, /completeTaskWithReview\(taskId, review\)/, 'helper should preserve main-task review completion path.');
+assert.match(helper, /setReviewTask\(null\)/, 'helper should preserve review dialog cleanup.');
+assert.match(helper, /getViewCompletionDecision\(task\)/, 'helper should preserve view-review decision routing.');
+assert.match(helper, /updateTask\(id, \{ priority \}\)/, 'helper should preserve subtask priority update workflow.');
+
+assert.match(app, /useAppShellComposition\(\{/, 'App should delegate completion action wiring through the runtime composition hook.');
+assert.match(shellCompositionHook, /from '\.\/appCompletionActions'/, 'Runtime shell composition hook should import completion action helper.');
+assert.match(shellCompositionHook, /const completionActions = useMemo\(\(\) => createAppCompletionActions\(\{[\s\S]*setReviewTask: appState\.setReviewTask,[\s\S]*\}\), \[[\s\S]*taskState\.tasks,[\s\S]*\]\);/, 'Runtime shell composition hook should memoize completion actions so unrelated UI state does not invalidate task-list callbacks.');
+assert.match(shellInputs, /completionActions,/, 'Pure shell-inputs helper should pass completion actions into the shell composition helper.');
+assert.match(shellMainContentComposition, /const taskListProps = \{[\s\S]*onToggle: completionActions\.toggleTask,[\s\S]*onViewReview: completionActions\.viewCompletion,[\s\S]*onToggleSubtask: completionActions\.toggleSubtask,[\s\S]*onViewSubtaskReview: completionActions\.viewCompletion,[\s\S]*onChangeSubtaskPriority: completionActions\.changeSubtaskPriority,[\s\S]*\};/, 'main-content composition helper should gather TaskList completion props.');
+assert.match(mainContent, /<TaskList \{\.\.\.taskListProps\} \/>/, 'AppMainContent should forward TaskList props.');
+assert.match(shellHelper, /createAppShellOverlayComposition\(\{[\s\S]*completionActions,[\s\S]*\}\);/, 'shell composition helper should pass completion actions into the overlay prop helper.');
+assert.match(overlayHelper, /const completionDialogProps = \{[\s\S]*onSave: completionActions\.completeWithReview,[\s\S]*onCompleteWithoutReview: completionActions\.completeWithoutReview,[\s\S]*\};/, 'overlay composition helper should route completion dialog actions through the overlay prop bag.');
+assert.match(overlay, /<TaskCompletionDialog \{\.\.\.completionDialogProps\} \/>/, 'AppOverlayStack should forward completion dialog props.');
+assert.doesNotMatch(app, /const taskListProps = \{/, 'App should not inline TaskList props once shell composition owns them.');
+assert.doesNotMatch(app, /const completionDialogProps = \{/, 'App should not inline completion dialog props once shell composition owns them.');
+assert.doesNotMatch(app, /const handleToggleTask = \(id: string\) => \{/, 'App should not inline main toggle workflow.');
+assert.doesNotMatch(app, /const handleToggleSubtask = \(id: string\) => \{/, 'App should not inline subtask toggle workflow.');
+assert.doesNotMatch(app, /const handleCompleteWithReview = /, 'App should not inline completion-with-review workflow.');
+assert.doesNotMatch(app, /const handleCompleteWithoutReview = /, 'App should not inline completion-without-review workflow.');
+assert.doesNotMatch(app, /const handleViewCompletion = /, 'App should not inline view-review workflow.');
+assert.doesNotMatch(app, /findTaskInTree\(allTasks, id\)/, 'App should not perform recursive completion lookup inline.');
+assert.equal(scripts['verify:app-completion-actions-module'], 'tsx scripts/verify-app-completion-actions-module.ts', 'package.json should expose the focused completion actions verifier.');
+assertCleanupCoreIncludes('verify:app-completion-actions-module', 'cleanup-core should include the focused completion actions verifier.');
+
+console.log('App completion actions helper verification passed');

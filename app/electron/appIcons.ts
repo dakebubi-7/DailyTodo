@@ -16,7 +16,7 @@ export function resolveIconPath(fileName: string, options: IconPathOptions) {
     ? [path.join(options.appDirname, '..', 'build', fileName)]
     : [path.join(options.resourcesPath, fileName)];
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
   }
   return '';
 }

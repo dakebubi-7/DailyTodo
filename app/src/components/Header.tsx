@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import confetti from 'canvas-confetti';
+import { useCompletionCelebration } from './header/useCompletionCelebration';
 
 interface HeaderProps {
   selectedDate: string;
@@ -29,7 +29,7 @@ function getLocalDateKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-export function Header({
+export const Header = memo(function Header({
   selectedDate,
   completedCount,
   totalCount,
@@ -40,23 +40,12 @@ export function Header({
   onChooseObsidian,
   onOpenTodayNote,
 }: HeaderProps) {
-  const prevCompletedRef = useRef(completedCount);
+  useCompletionCelebration({ completedCount, totalCount });
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
   const openCount = Math.max(0, totalCount - completedCount);
   const today = getLocalDateKey();
   const dateContextLabel = selectedDate === today ? '今天' : selectedDate > today ? '计划' : '历史';
-
-  useEffect(() => {
-    if (completedCount > 0 && completedCount === totalCount && prevCompletedRef.current < totalCount) {
-      confetti({
-        particleCount: 90,
-        spread: 70,
-        origin: { y: 0.62 },
-        colors: ['#2D4A3E', '#C9A84C', '#5B9A8B'],
-      });
-    }
-    prevCompletedRef.current = completedCount;
-  }, [completedCount, totalCount]);
+  const formattedDateLabel = useMemo(() => formatDateLabel(selectedDate), [selectedDate]);
 
   const syncLabel = {
     idle: obsidianPath ? '更改库' : '选择库',
@@ -75,7 +64,7 @@ export function Header({
           className="app-brand"
         >
           <div className="app-brand-eyebrow">Daily Todo</div>
-          <h1>{dateContextLabel} · {formatDateLabel(selectedDate)}</h1>
+          <h1>{dateContextLabel} · {formattedDateLabel}</h1>
           <p>{openCount} 项待推进 · {completedCount}/{totalCount} 完成</p>
         </motion.div>
 
@@ -149,4 +138,4 @@ export function Header({
       </div>
     </div>
   );
-}
+});

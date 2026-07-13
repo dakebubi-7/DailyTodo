@@ -11,6 +11,8 @@ export const REVIEW_MARKERS = {
 
 export type ReviewMarkerKey = keyof typeof REVIEW_MARKERS;
 
+export const REVIEW_MARKER_KEYS = ['REVIEW', 'TOMORROW', 'KNOWLEDGE'] as const satisfies readonly ReviewMarkerKey[];
+
 const SAFE_CUSTOM_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const BASE64URL_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 

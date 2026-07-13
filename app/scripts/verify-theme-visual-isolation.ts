@@ -7,12 +7,35 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').replace(/\r\n/g, '\n');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
-const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+const appearanceSection = readFileSync(join(root, 'src/components/settings/AppearanceSettingsSection.tsx'), 'utf8');
+const appPersonalization = readFileSync(join(root, 'src/app/appPersonalization.ts'), 'utf8');
+const appShellComposition = readFileSync(join(root, 'src/app/appShellComposition.tsx'), 'utf8');
 
-assert.ok(settingsPanel.includes('onResetTheme'), 'SettingsPanel should expose a reset-current-theme action.');
-assert.ok(settingsPanel.includes('恢复当前主题默认设置'), 'Appearance panel should render reset-current-theme copy.');
-assert.ok(app.includes('resetCurrentThemeDefaults'), 'App should reset the active theme preset and clear remembered overrides.');
-assert.ok(app.includes('delete next[preset.id]'), 'Theme reset should clear per-theme opacity override memory.');
+assert.ok(
+  settingsPanel.includes('AppearanceSettingsSection') &&
+    settingsPanel.includes('onResetTheme={onResetTheme}'),
+  'SettingsPanel should delegate reset-current-theme behavior to AppearanceSettingsSection.',
+);
+assert.ok(
+  appearanceSection.includes('onClick={onResetTheme}') &&
+    appearanceSection.includes('Reset current theme defaults'),
+  'AppearanceSettingsSection should render reset-current-theme copy.',
+);
+assert.match(
+  appPersonalization,
+  /resetCurrentThemeDefaults: \(\) => \{\s*const reset = getThemeDefaultsReset\(personalization, activeThemeId, themeOverrides\);\s*if \(!reset\) return;\s*setThemeOverrides\(reset\.nextThemeOverrides\);\s*setPersonalization\(reset\.nextPersonalization\);\s*\}/,
+  'App personalization actions should reset the active theme preset through the reset helper.',
+);
+assert.match(
+  appPersonalization,
+  /export function getThemeDefaultsReset\b[\s\S]*const next = \{ \.\.\.themeOverrides \};\s*delete next\[preset\.id\];[\s\S]*nextThemeOverrides: next/,
+  'Theme reset should clear per-theme opacity override memory in the personalization helper.',
+);
+assert.match(
+  appShellComposition,
+  /const settingsPanelProps = \{[\s\S]*onApplyTheme: appPersonalizationActions\.applyThemePreset,[\s\S]*onResetTheme: appPersonalizationActions\.resetCurrentThemeDefaults,[\s\S]*onChange: appPersonalizationActions\.changePersonalization,[\s\S]*\};/,
+  'App shell composition should pass the personalization reset action to SettingsPanel.',
+);
 
 assert.ok(
   globals.includes(".app-shell[data-theme='invisible'] .titlebar-icon-active") &&
@@ -230,3 +253,4 @@ assert.ok(
 );
 
 console.log('verify-theme-visual-isolation passed');
+

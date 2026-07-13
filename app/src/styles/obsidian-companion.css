@@ -1,0 +1,160 @@
+.companion-panel {
+  position: fixed;
+  inset: 12px;
+  z-index: 60;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(31, 41, 55, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #1f2937;
+  box-shadow: 0 18px 55px rgba(15, 23, 42, 0.22);
+}
+
+.dark .companion-panel {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(24, 24, 27, 0.97);
+  color: #f4f4f5;
+}
+
+.companion-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.companion-panel-header h2,
+.companion-section h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.companion-panel-header p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.dark .companion-panel-header p,
+.dark .companion-muted,
+.dark .companion-status,
+.dark .companion-preview-list span,
+.dark .companion-preview-list small {
+  color: #a1a1aa;
+}
+
+.companion-section {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.companion-section button,
+.companion-field input,
+.companion-field select,
+.companion-template-editor textarea {
+  min-height: 36px;
+  border: 1px solid rgba(31, 41, 55, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.86);
+  color: inherit;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.dark .companion-section button,
+.dark .companion-field input,
+.dark .companion-field select,
+.dark .companion-template-editor textarea {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(39, 39, 42, 0.92);
+}
+
+.companion-section button {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.companion-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.companion-rule-row,
+.companion-preview-list li {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(31, 41, 55, 0.12);
+  border-radius: 6px;
+}
+
+.dark .companion-rule-row,
+.dark .companion-preview-list li {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.companion-rule-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 700;
+}
+
+.companion-rule-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.companion-field,
+.companion-template-editor {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.companion-template-editor textarea {
+  min-height: 74px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-weight: 500;
+}
+
+.companion-preview-list,
+.companion-error-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.companion-error-list {
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.companion-preview-list strong {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.companion-preview-list span,
+.companion-preview-list small,
+.companion-muted,
+.companion-status {
+  color: #6b7280;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 420px) {
+  .companion-rule-controls,
+  .companion-actions {
+    grid-template-columns: 1fr;
+  }
+}

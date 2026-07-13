@@ -19,6 +19,7 @@ export interface Task {
    * 被清理的任务仍保留在本地存储并继续同步到 Obsidian,所以 Obsidian 记录不受影响。
    */
   cleared?: boolean;
+  // Same task's extra visible/planned dates; these are not separate task instances.
   scheduledDates?: string[];
   tags?: string[];
   subtasks?: Task[];

@@ -1,4 +1,4 @@
-﻿import type { AppBehaviorSettings, AppLanguage } from '../../../shared/appSettings';
+import { isAppLanguage, type AppBehaviorSettings } from '../../../shared/appSettings';
 import type { getShellText } from '../../i18n';
 import type { PersonalizationSettings } from '../../types/personalization';
 import { AutoStartToggle, ToggleRow } from './SettingsControls';
@@ -31,44 +31,50 @@ export function GeneralSettingsSection({
         <h3>{text.language}</h3>
         <label className="settings-field">
           <span>
-            <strong>{zh ? '璇█' : 'Language'}</strong>
+            <strong>{zh ? '语言' : 'Language'}</strong>
             <small>{text.languageHint}</small>
           </span>
-          <select value={appSettings.language} onChange={(event) => updateApp('language', event.target.value as AppLanguage)}>
-            <option value="zh-CN">涓枃</option>
+          <select
+            value={appSettings.language}
+            onChange={(event) => {
+              if (!isAppLanguage(event.target.value)) return;
+              updateApp('language', event.target.value);
+            }}
+          >
+            <option value="zh-CN">简体中文</option>
             <option value="en-US">English</option>
           </select>
         </label>
       </section>
 
       <section className="settings-section">
-        <h3>{zh ? '瀹屾垚璁板綍' : 'Completion Records'}</h3>
+        <h3>{zh ? '完成记录' : 'Completion Records'}</h3>
         <ToggleRow
-          title={zh ? '涓讳换鍔″畬鎴愭椂濉啓瀹屾垚璁板綍' : 'Ask for main task completion record'}
-          description={zh ? '寮€鍚悗锛屼富浠诲姟鐐瑰嚮瀹屾垚鏃朵細鍏堝～鍐欏畬鎴愭儏鍐碉紱鍏抽棴鍚庣洿鎺ュ畬鎴愩€?' : 'When enabled, completing a main task opens the completion record dialog.'}
+          title={zh ? '主任务完成时填写完成记录' : 'Ask for main task completion record'}
+          description={zh ? '开启后，点击完成主任务时会先填写完成情况；关闭后直接完成。' : 'When enabled, completing a main task opens the completion record dialog.'}
           checked={appSettings.mainTaskCompletionReviewEnabled}
           onChange={(value) => updateApp('mainTaskCompletionReviewEnabled', value)}
         />
         <ToggleRow
-          title={zh ? '瀛愪换鍔″畬鎴愭椂濉啓瀹屾垚璁板綍' : 'Ask for subtask completion record'}
-          description={zh ? '寮€鍚悗锛屽瓙浠诲姟鐐瑰嚮瀹屾垚鏃朵細鍏堝～鍐欏畬鎴愭儏鍐碉紱鍏抽棴鍚庣洿鎺ュ畬鎴愩€?' : 'When enabled, completing a subtask opens the completion record dialog.'}
+          title={zh ? '子任务完成时填写完成记录' : 'Ask for subtask completion record'}
+          description={zh ? '开启后，点击完成子任务时会先填写完成情况；关闭后直接完成。' : 'When enabled, completing a subtask opens the completion record dialog.'}
           checked={appSettings.subtaskCompletionReviewEnabled}
           onChange={(value) => updateApp('subtaskCompletionReviewEnabled', value)}
         />
       </section>
 
       <section className="settings-section">
-        <h3>{zh ? '绐楀彛琛屼负' : 'Window Behavior'}</h3>
+        <h3>{zh ? '窗口行为' : 'Window Behavior'}</h3>
         <AutoStartToggle />
         <ToggleRow
-          title={zh ? '鍏抽棴鏃舵渶灏忓寲鍒版墭鐩?' : 'Minimize to tray on close'}
-          description={zh ? '鐐瑰叧闂寜閽椂闅愯棌鍒扮郴缁熸墭鐩橈紱鍏抽棴鍚庝粛鍙粠鎵樼洏鎭㈠銆?' : 'Hide the app to the system tray when the close button is clicked.'}
+          title={zh ? '关闭时最小化到托盘' : 'Minimize to tray on close'}
+          description={zh ? '点击关闭按钮时隐藏到系统托盘；关闭后仍可从托盘恢复。' : 'Hide the app to the system tray when the close button is clicked.'}
           checked={appSettings.minimizeToTrayOnClose}
           onChange={(value) => updateApp('minimizeToTrayOnClose', value)}
         />
         <ToggleRow
-          title={zh ? '鍚姩鏃剁獥鍙ｇ疆椤?' : 'Always on top on start'}
-          description={zh ? '搴旂敤鍚姩鏃惰嚜鍔ㄧ疆椤?' : 'Keep window always on top'}
+          title={zh ? '启动时窗口置顶' : 'Always on top on start'}
+          description={zh ? '应用启动时自动置顶窗口。' : 'Keep window always on top'}
           checked={settings.alwaysOnTop ?? false}
           onChange={(value) => onChange({ ...settings, alwaysOnTop: value })}
         />

@@ -20,11 +20,25 @@ assert(/aiGenerate:\s*boolean/.test(sectionConfig), 'CustomBlock.aiGenerate miss
 assert(/renderType:\s*RenderType/.test(sectionConfig), 'CustomBlock.renderType missing');
 assert(/prompt:\s*string/.test(sectionConfig), 'CustomBlock.prompt missing');
 assert(sectionConfig.includes('export interface FixedBlock'), 'FixedBlock interface not defined');
-assert(sectionConfig.includes("id: 'work' | 'inspire' | 'tasks'"), 'FixedBlock.id union incorrect');
+assert(/export type FixedBlockId\s*=\s*['"]work['"]\s*\|\s*['"]inspire['"]\s*\|\s*['"]tasks['"]/.test(sectionConfig), 'FixedBlockId union incorrect');
+assert(/export interface FixedBlock[\s\S]*?id:\s*FixedBlockId/.test(sectionConfig), 'FixedBlock.id should use FixedBlockId');
 assert(sectionConfig.includes('export interface DailyTemplate'), 'DailyTemplate interface not defined');
 assert(sectionConfig.includes('export interface ReportTemplate'), 'ReportTemplate interface not defined');
 
 console.log('T1: CustomBlock data structures ✓');
+
+
+// RenderType runtime narrowing
+assert(sectionConfig.includes('export function isRenderType'), 'sectionConfig should export isRenderType runtime guard');
+const sc = await import(pathToFileURL(join(root, 'shared/aiReview/sectionConfig.ts')).href);
+assert(sc.isRenderType('text') === true, 'text should be a valid RenderType');
+assert(sc.isRenderType('list') === true, 'list should be a valid RenderType');
+assert(sc.isRenderType('table') === true, 'table should be a valid RenderType');
+assert(sc.isRenderType('callout') === true, 'callout should be a valid RenderType');
+assert(sc.isRenderType('dataview') === true, 'dataview should be a valid RenderType');
+assert(sc.isRenderType('markdown') === false, 'unknown render types should be rejected');
+assert(sc.isRenderType(null) === false, 'non-string render types should be rejected');
+console.log('T1b: RenderType runtime narrowing ?');
 
 // T2: Path template variable expansion
 const pathTemplate = readFileSync(join(root, 'shared/pathTemplate.ts'), 'utf8');
@@ -48,7 +62,11 @@ console.log('T2: Path template variable expansion ✓');
 
 // T3: Light anonymization
 const blockDefaults = readFileSync(join(root, 'shared/templateBlockDefaults.ts'), 'utf8');
-assert(blockDefaults.includes('export function lightAnonymize'), 'lightAnonymize not exported');
+assert(
+  blockDefaults.includes('export function lightAnonymize')
+    || blockDefaults.includes("export { lightAnonymize } from './lightAnonymization'"),
+  'lightAnonymize not exported',
+);
 
 const bd = await import(pathToFileURL(join(root, 'shared/templateBlockDefaults.ts')).href);
 const sample = '联系张三 13800138000,邮箱 zhang@example.com,项目代号 Apollo-X';
@@ -101,6 +119,12 @@ const dailyTpl = {
   customBlocks: [
     { id: 'b1', name: '复盘', aiGenerate: true, renderType: 'text', prompt: '' },
   ],
+  blockOrder: [
+    { type: 'fixed', id: 'work' },
+    { type: 'fixed', id: 'inspire' },
+    { type: 'fixed', id: 'tasks' },
+    { type: 'custom', id: 'b1' },
+  ],
 };
 const rendered = tr.renderDailyTemplate({
   template: dailyTpl,
@@ -109,9 +133,9 @@ const rendered = tr.renderDailyTemplate({
   tasks: '- [x] 任务A',
   date: '2026-06-11',
 });
-assert(rendered.includes('<!-- DAILYTODO:REVIEW:START -->'), 'review marker START missing');
-assert(rendered.includes('<!-- DAILYTODO:REVIEW:END -->'), 'review marker END missing');
-const markerBody = rendered.match(/<!-- DAILYTODO:REVIEW:START -->([\s\S]*?)<!-- DAILYTODO:REVIEW:END -->/);
+assert(rendered.includes('<!-- DAILYTODO:CUSTOM:b1:START -->'), 'custom review marker START missing');
+assert(rendered.includes('<!-- DAILYTODO:CUSTOM:b1:END -->'), 'custom review marker END missing');
+const markerBody = rendered.match(/<!-- DAILYTODO:CUSTOM:b1:START -->([\s\S]*?)<!-- DAILYTODO:CUSTOM:b1:END -->/);
 assert(markerBody, 'marker pair incomplete');
 assert(!markerBody![1].includes('🤖'), `marker body has AI draft, bug not fixed. Body: "${markerBody![1]}"`);
 assert(!markerBody![1].match(/\S/), `marker body should be empty/whitespace, got: "${markerBody![1]}"`);
@@ -218,6 +242,12 @@ const badResult = r.parseRecognizedBlocks('not valid', fallback);
 assert(badResult.confidence === 'low', `should be low confidence, got ${badResult.confidence}`);
 assert(badResult.blocks[0].name === 'fallback', 'should return fallback on bad input');
 
+// Duplicate H2 headings would otherwise create ambiguous custom block names.
+const duplicateHeadingResult = r.parseRecognizedBlocks('## 复盘\n第一次内容\n## 复盘\n第二次内容', []);
+assert(duplicateHeadingResult.blocks.length === 1, `duplicate headings should produce one block, got ${duplicateHeadingResult.blocks.length}`);
+assert(duplicateHeadingResult.blocks[0].name === '复盘', `first duplicate heading should be retained, got ${duplicateHeadingResult.blocks[0].name}`);
+assert(duplicateHeadingResult.confidence === 'medium', `duplicate headings should lower confidence, got ${duplicateHeadingResult.confidence}`);
+
 console.log('T7: AI recognition N blocks + renderType ✓');
 
 // T8: Report generation helpers — slicing + renderType prompt injection
@@ -269,6 +299,13 @@ assert(templateModal.includes('恢复默认') || templateModal.includes('resetTo
 assert(templateModal.includes('draggable'), 'TemplateEditorModal should use HTML5 drag-and-drop');
 console.log('T9: TemplateEditorModal component ✓');
 
+assert(templateModal.includes('isRenderType'), 'TemplateEditorModal should use isRenderType');
+assert(
+  templateModal.includes('isRenderType(e.target.value)') || templateModal.includes('isRenderType(nextRenderType)') || templateModal.includes('isRenderType(rt)'),
+  'TemplateEditorModal should narrow render-type select values with isRenderType',
+);
+assert(!templateModal.includes('e.target.value as RenderType'), 'TemplateEditorModal should not cast render-type select values');
+
 // T10: TemplateRecognitionModal component
 const recogModal = readFileSync(join(root, 'src/components/TemplateRecognitionModal.tsx'), 'utf8');
 assert(recogModal.includes('export function TemplateRecognitionModal') || recogModal.includes('export default function TemplateRecognitionModal'), 'TemplateRecognitionModal not exported');
@@ -278,6 +315,13 @@ assert(recogModal.includes('parseRecognizedBlocks'), 'TemplateRecognitionModal s
 assert(recogModal.includes('替换自定义区块') || recogModal.includes('replace'), 'TemplateRecognitionModal should have replace option');
 assert(recogModal.includes('追加') || recogModal.includes('append'), 'TemplateRecognitionModal should have append option');
 assert(recogModal.includes('.md') || recogModal.includes('accept'), 'TemplateRecognitionModal should accept .md/.txt files');
+assert(recogModal.includes('isRenderType'), 'TemplateRecognitionModal should use isRenderType');
+assert(
+  recogModal.includes('isRenderType(e.target.value)') || recogModal.includes('isRenderType(nextRenderType)'),
+  'TemplateRecognitionModal should narrow render-type select values with isRenderType',
+);
+assert(!recogModal.includes("e.target.value as RenderType"), 'TemplateRecognitionModal should not cast render-type select values');
+
 console.log('T10: TemplateRecognitionModal component ✓');
 
 // T11: SettingsPanel restructured
@@ -306,7 +350,13 @@ assert(sp.includes('{{month}}') || sp.includes('externalMonthlyPath'), 'external
 console.log('T11: SettingsPanel 4-zone restructured ✓');
 
 // T12: i18n — nav keys present in both zh and en
-const i18n = readFileSync(join(root, 'src/i18n.ts'), 'utf8');
+const i18n = [
+  'src/i18n.ts',
+  'src/i18n/shellTextZh.ts',
+  'src/i18n/shellTextZhSettings.ts',
+  'src/i18n/shellTextEn.ts',
+  'src/i18n/shellTextEnSettings.ts',
+].map((filePath) => readFileSync(join(root, filePath), 'utf8')).join('\n');
 // zh section must have Chinese titles for all 6 nav entries
 assert(i18n.includes("'settings'") || i18n.includes('"settings"'), "i18n: settings key missing");
 assert(i18n.includes('外观'), "i18n zh: 外观 missing");

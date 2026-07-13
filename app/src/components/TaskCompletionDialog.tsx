@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Task, TaskCompletionReview } from '../types/task';
-import { useMarkdownEditor } from '../hooks/useMarkdownEditor';
+import { isTaskCompletionReviewStatus } from '../../shared/completionReviews';
+import { TaskCompletionMarkdownField } from './taskCompletionDialog/TaskCompletionMarkdownField';
+import { useTaskCompletionDialogForm } from './taskCompletionDialog/useTaskCompletionDialogForm';
 
 interface TaskCompletionDialogProps {
   task: Task | null;
@@ -22,32 +23,21 @@ export function TaskCompletionDialog({
   onSave,
   onCompleteWithoutReview,
 }: TaskCompletionDialogProps) {
-  const [status, setStatus] = useState<TaskCompletionReview['status']>('done');
-  const [percent, setPercent] = useState(100);
-  const [summary, setSummary] = useState('');
-  const [unknowns, setUnknowns] = useState('');
-  const [nextStep, setNextStep] = useState('');
-
-  useEffect(() => {
-    if (!task) return;
-    setStatus('done');
-    setPercent(100);
-    setSummary('');
-    setUnknowns('');
-    setNextStep('');
-  }, [task]);
+  const {
+    nextStep,
+    percent,
+    save,
+    selectStatus,
+    setNextStep,
+    setPercent,
+    setSummary,
+    setUnknowns,
+    status,
+    summary,
+    unknowns,
+  } = useTaskCompletionDialogForm({ task, onSave });
 
   if (!task) return null;
-
-  const handleSave = () => {
-    onSave(task.id, {
-      status,
-      percent,
-      summary: summary.trim(),
-      unknowns: unknowns.trim(),
-      nextStep: nextStep.trim(),
-    });
-  };
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/25 p-4 backdrop-blur-sm">
@@ -76,11 +66,8 @@ export function TaskCompletionDialog({
               <select
                 value={status}
                 onChange={(event) => {
-                  const nextStatus = event.target.value as TaskCompletionReview['status'];
-                  setStatus(nextStatus);
-                  if (nextStatus === 'done') setPercent(100);
-                  if (nextStatus === 'partial' && percent === 100) setPercent(80);
-                  if (nextStatus === 'blocked' && percent === 100) setPercent(50);
+                  if (!isTaskCompletionReviewStatus(event.target.value)) return;
+                  selectStatus(event.target.value);
                 }}
               >
                 {statusOptions.map((option) => (
@@ -110,21 +97,21 @@ export function TaskCompletionDialog({
           </label>
         </div>
 
-        <DialogTextarea
+        <TaskCompletionMarkdownField
           label="今天这个任务的情况"
           value={summary}
           placeholder="比如：核心步骤已经跑通了，但还需要明天再整理一下文档。"
           onChange={setSummary}
           resetKey={task.id}
         />
-        <DialogTextarea
+        <TaskCompletionMarkdownField
           label="还有什么不懂 / 卡住"
           value={unknowns}
           placeholder="比如：API 权限、Electron 打包、某个概念还不清楚。"
           onChange={setUnknowns}
           resetKey={task.id}
         />
-        <DialogTextarea
+        <TaskCompletionMarkdownField
           label="下一步"
           value={nextStep}
           placeholder="比如：明天先复盘这个问题，再继续做下一步。"
@@ -146,7 +133,7 @@ export function TaskCompletionDialog({
             只标记完成
           </button>
           <button
-            onClick={handleSave}
+            onClick={save}
             className="rounded-xl bg-forest px-3 py-2 text-[0.78rem] font-semibold text-white shadow-card transition-colors hover:bg-forest/90 dark:bg-zinc-100 dark:text-zinc-950 dark:shadow-none dark:hover:bg-white"
           >
             保存并完成
@@ -154,46 +141,5 @@ export function TaskCompletionDialog({
         </div>
       </motion.div>
     </div>
-  );
-}
-
-function DialogTextarea({
-  label,
-  value,
-  placeholder,
-  onChange,
-  resetKey,
-}: {
-  label: string;
-  value: string;
-  placeholder: string;
-  onChange: (value: string) => void;
-  /** 任务切换时重置撤销/重做历史，避免跨任务串台。 */
-  resetKey: string;
-}) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // 多行框接入编辑 Hook：Tab 缩进、回车续 `1.`/`1.1`、Ctrl+Z/Ctrl+Y、加粗斜体；不传 command（无 `/` 菜单）。
-  const editor = useMarkdownEditor({ value, onChange, textareaRef });
-
-  useEffect(() => {
-    editor.resetHistory(value, value.length);
-    // 仅在切换任务时重置历史；value 变化由 Hook 内部记录。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey]);
-
-  return (
-    <label className="completion-field mt-2">
-      {label}
-      <div className="completion-input-shell">
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(event) => editor.handleChange(event.target.value, event.currentTarget.selectionStart)}
-          onCompositionEnd={(event) => editor.handleChange(event.currentTarget.value, event.currentTarget.selectionStart)}
-          onKeyDown={editor.onKeyDown}
-          placeholder={placeholder}
-        />
-      </div>
-    </label>
   );
 }

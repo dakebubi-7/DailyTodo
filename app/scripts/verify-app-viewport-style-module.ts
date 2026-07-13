@@ -21,8 +21,17 @@ assert.ok(
   'App should import createAppViewportStyle from the app module.'
 );
 assert.ok(
-  app.includes('style={createAppViewportStyle(personalization, isInvisibleTheme)}'),
-  'App viewport should use the extracted style helper.'
+  app.includes('createAppViewportStyle(appState.personalization, themeState.isInvisibleTheme)'),
+  'App should initialize its viewport style from the extracted helper.'
+);
+assert.match(
+  app,
+  /const viewportStyle = useMemo\(\(\) => createAppViewportStyle\(appState\.personalization, themeState\.isInvisibleTheme\), \[appState\.personalization, themeState\.isInvisibleTheme\]\);/,
+  'App should memoize viewport CSS variables until their inputs change.',
+);
+assert.ok(
+  app.includes('style={viewportStyle}'),
+  'App viewport should receive the memoized CSS variable object.',
 );
 assert.doesNotMatch(
   app,

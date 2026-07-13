@@ -6,11 +6,22 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const main = readFileSync(join(root, 'electron/main.ts'), 'utf8');
+const mainWindowComposition = readFileSync(join(root, 'electron/mainWindowComposition.ts'), 'utf8');
+const mainWindowPersistence = readFileSync(join(root, 'electron/mainWindowPersistence.ts'), 'utf8');
+const windowIpc = readFileSync(join(root, 'electron/windowIpc.ts'), 'utf8');
 const windowState = readFileSync(join(root, 'electron/windowState.ts'), 'utf8');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
+const aiReviewGeneration = readFileSync(join(root, 'src/components/settings/useAiReviewGeneration.ts'), 'utf8');
+const aiReviewManualGenerationSection = readFileSync(
+  join(root, 'src/components/settings/AiReviewManualGenerationSection.tsx'),
+  'utf8',
+);
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
 const addTaskInput = readFileSync(join(root, 'src/components/AddTaskInput.tsx'), 'utf8');
 const appTsx = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+const useAppShellComposition = readFileSync(join(root, 'src/app/useAppShellComposition.ts'), 'utf8');
+const appShellMainContentComposition = readFileSync(join(root, 'src/app/appShellMainContentComposition.tsx'), 'utf8');
+const appMainContent = readFileSync(join(root, 'src/components/AppMainContent.tsx'), 'utf8');
 const titleBar = readFileSync(join(root, 'src/components/TitleBar.tsx'), 'utf8');
 const dailyWorkPanel = readFileSync(join(root, 'src/components/DailyWorkPanel.tsx'), 'utf8');
 const taskCompletionDialog = readFileSync(join(root, 'src/components/TaskCompletionDialog.tsx'), 'utf8');
@@ -28,17 +39,18 @@ function expectNotIncludes(source: string, needle: string, message: string) {
 }
 
 expectIncludes(windowState, 'function normalizeRestoredWindowState', 'Window restore should normalize saved settings-sized bounds before startup.');
-expectIncludes(main, 'normalizeRestoredWindowState(stored)', 'Initial bounds should use normalized saved bounds.');
-expectIncludes(main, 'persistWindowState(win, { persistSize: false })', 'Opening settings should not persist the temporary 720px width as the default startup size.');
-expectIncludes(main, 'persistWindowState(win, { overrideBounds:', 'Closing settings should persist only the restored compact bounds.');
+expectIncludes(mainWindowComposition, "from './mainWindowPersistence'", 'Main-window composition should import the extracted persistence helper.');
+expectIncludes(mainWindowPersistence, 'normalizeRestoredWindowState(stored)', 'Initial bounds should use normalized saved bounds.');
+expectIncludes(windowIpc, 'persistWindowState(win, { persistSize: false })', 'Opening settings should not persist the temporary 720px width as the default startup size.');
+expectIncludes(windowIpc, 'persistWindowState(win, { overrideBounds: restoredBounds })', 'Closing settings should persist only the restored compact bounds.');
 expectIncludes(main, "from './windowState'", 'Main should import extracted window-state helpers.');
 expectIncludes(windowState, 'SETTINGS_WINDOW_WIDTH', 'Settings mode should still use a wider temporary width.');
 
-expectIncludes(settingsPanel, 'waitingForRealProgress', 'AI generation UI should expose a waiting state instead of synthesizing fake repeated stages.');
-expectIncludes(settingsPanel, '等待真实进度', 'Fallback progress copy should explain it is waiting for real progress.');
-expectNotIncludes(settingsPanel, 'function fallbackProgress', 'SettingsPanel should not synthesize fake AI pipeline stages.');
-expectNotIncludes(settingsPanel, 'setCurrentProgress((current) => fallbackProgress(current))', 'AI progress fallback should not advance through fake stages on a timer.');
-expectIncludes(settingsPanel, 'progressDisplay(currentProgress, waitingForRealProgress)', 'Generate button should use real progress or the waiting fallback copy.');
+expectIncludes(aiReviewGeneration, 'waitingForRealProgress', 'AI generation state should expose a waiting value instead of synthesizing fake repeated stages.');
+expectIncludes(aiReviewGeneration, 'Waiting for real progress...', 'Fallback progress copy should explain it is waiting for real progress.');
+expectNotIncludes(aiReviewGeneration, 'function fallbackProgress', 'AI generation state should not synthesize fake pipeline stages.');
+expectNotIncludes(aiReviewGeneration, 'setCurrentProgress((current) => fallbackProgress(current))', 'AI generation state should not advance through fake stages on a timer.');
+expectIncludes(aiReviewManualGenerationSection, 'progressDisplay(currentProgress, waitingForRealProgress)', 'Generate button should use real progress or the waiting fallback copy.');
 expectNotIncludes(taskItem, 'shouldShowAiAssistBadge', 'TaskItem should not keep the old AI assist badge heuristic; natural quick capture handles AI-like intent.');
 expectNotIncludes(taskItem, 'task-ai-assist-badge', 'TaskItem should not render the old AI assist badge.');
 expectNotIncludes(globals, '.task-ai-assist-badge', 'AI assist badge styling should be removed because the requirement is natural-language task parsing, not a badge.');
@@ -47,8 +59,16 @@ expectIncludes(quickCapture, 'NATURAL_URGENCY_PATTERNS', 'Quick capture should i
 expectIncludes(quickCapture, 'extractNaturalTaskTitle', 'Quick capture should extract concise task titles from natural sentences.');
 expectIncludes(addTaskInput, 'resolveDateIntent(parsed.dateIntent)', 'AddTaskInput should route parsed date intents to taskDate.');
 expectIncludes(addTaskInput, 'onAdd(nextText, effectivePriority, effectiveSource, taskDate)', 'AddTaskInput should pass the resolved date into addTask.');
-expectIncludes(appTsx, '<ReviewView allTasks={allTasks} onEditReview={editTaskReview} onDeleteReview={deleteTaskReview}', 'Main review tab should support deleting records from context/menu actions.');
-expectIncludes(appTsx, 'onAdd={(text, taskPriority, taskSource, taskDate) => addTask(text, taskPriority, taskSource, taskDate)}', 'App should pass parsed quick-capture dates into addTask.');
+expectIncludes(appTsx, 'useAppShellComposition({', 'App should delegate shell prop composition before rendering main content.');
+expectIncludes(useAppShellComposition, 'deleteTaskReview: taskState.deleteTaskReview', 'Shell-composition hook should pass delete-review wiring into composition.');
+expectIncludes(useAppShellComposition, 'addTask: taskState.addTask', 'Shell-composition hook should pass quick-capture addTask wiring into composition.');
+expectIncludes(appTsx, '<AppMainContent {...shellComposition.mainContentProps} />', 'App should render main content through composed shell props.');
+expectIncludes(appShellMainContentComposition, 'const reviewViewProps = {', 'Main-content composition should gather review-view props before delegating main content.');
+expectIncludes(appShellMainContentComposition, 'onDeleteReview: deleteTaskReview', 'Main-content composition should keep delete-review wiring.');
+expectIncludes(appShellMainContentComposition, 'const addTaskInputProps = {', 'Main-content composition should gather add-task props before delegating main content.');
+expectIncludes(appShellMainContentComposition, 'onAdd: addTask', 'Main-content composition should pass parsed quick-capture dates into addTask without a redundant wrapper.');
+expectIncludes(appMainContent, '<ReviewView {...reviewViewProps} />', 'AppMainContent should render the review tab with forwarded delete-review support.');
+expectIncludes(appMainContent, '<AddTaskInput {...addTaskInputProps} />', 'AppMainContent should render AddTaskInput with forwarded quick-capture addTask wiring.');
 
 expectIncludes(dailyWorkPanel, 'daily-inline-bottom-row', 'Daily inline editor should group the resizer and action buttons into one bottom row.');
 expectIncludes(globals, '.dark .add-task-input {\n  border-color: rgba(255, 255, 255, 0.18);\n  background: rgba(255, 255, 255, 0.24);\n  color: #f8fafc;', 'Add-task input should match the brighter gray daily editor surface in dark mode.');

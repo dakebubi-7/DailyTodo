@@ -1,4 +1,20 @@
-import type { ReviewMarkerKey } from './markers';
+import { REVIEW_MARKER_KEYS, type ReviewMarkerKey } from './markers';
+import { isObjectRecord } from '../unknownValueGuards';
+import {
+  normalizeDailyBlockOrderValue,
+  normalizeDailyTemplateValue,
+  normalizeReportTemplateValue,
+} from './sectionConfigNormalization';
+import {
+  createDefaultDailyTemplate,
+  createDefaultReportTemplate,
+} from './sectionConfigDefaultTemplates';
+
+export {
+  createDailyBlockOrder,
+  createDefaultDailyTemplate,
+  createDefaultReportTemplate,
+} from './sectionConfigDefaultTemplates';
 
 export enum SectionType {
   Ai = 'ai',
@@ -35,8 +51,8 @@ export function createDefaultSections(): SectionConfig[] {
   ];
 }
 
-function isObject(v: unknown): v is Record<string, unknown> {
-  return Boolean(v && typeof v === 'object' && !Array.isArray(v));
+export function isReviewMarkerKey(value: unknown): value is ReviewMarkerKey {
+  return REVIEW_MARKER_KEYS.some((key) => key === value);
 }
 
 export function normalizeSections(value: unknown): SectionConfig[] {
@@ -44,8 +60,9 @@ export function normalizeSections(value: unknown): SectionConfig[] {
   const defaults = createDefaultSections();
   const byKey = new Map(defaults.map((s) => [s.markerKey, s]));
   for (const raw of value) {
-    if (!isObject(raw)) continue;
-    const key = raw.markerKey as ReviewMarkerKey;
+    if (!isObjectRecord(raw)) continue;
+    const key = raw.markerKey;
+    if (!isReviewMarkerKey(key)) continue;
     const base = byKey.get(key);
     if (!base) continue;
     byKey.set(key, {
@@ -59,7 +76,17 @@ export function normalizeSections(value: unknown): SectionConfig[] {
 }
 
 export type RenderType = 'text' | 'list' | 'table' | 'callout' | 'dataview';
+
+export const RENDER_TYPES = ['text', 'list', 'table', 'callout', 'dataview'] as const satisfies readonly RenderType[];
+
+export function isRenderType(value: unknown): value is RenderType {
+  return RENDER_TYPES.some((type) => type === value);
+}
 export type FixedBlockId = 'work' | 'inspire' | 'tasks';
+
+function isFixedBlockId(value: unknown): value is FixedBlockId {
+  return value === 'work' || value === 'inspire' || value === 'tasks';
+}
 
 export interface CustomBlock {
   id: string;
@@ -88,91 +115,16 @@ export interface ReportTemplate {
   customBlocks: CustomBlock[];
 }
 
-export function createDefaultDailyTemplate(): DailyTemplate {
-  const fixedBlocks: FixedBlock[] = [
-    { id: 'work', displayName: '今日工作' },
-    { id: 'inspire', displayName: '灵感随笔' },
-    { id: 'tasks', displayName: '每日任务' },
-  ];
-  const customBlocks: CustomBlock[] = [
-    { id: crypto.randomUUID(), name: '复盘', aiGenerate: true, renderType: 'text', prompt: '' },
-    { id: crypto.randomUUID(), name: '明日待办', aiGenerate: true, renderType: 'list', prompt: '' },
-    { id: crypto.randomUUID(), name: '可复用知识', aiGenerate: true, renderType: 'text', prompt: '' },
-  ];
-  return {
-    fixedBlocks,
-    customBlocks,
-    blockOrder: createDailyBlockOrder(fixedBlocks, customBlocks),
-  };
-}
-
-export function createDefaultReportTemplate(
-  kind: 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly'
-): ReportTemplate {
-  if (kind === 'personalWeekly') {
-    return {
-      customBlocks: [
-        { id: crypto.randomUUID(), name: '本周工作总结', aiGenerate: true, renderType: 'text', prompt: '请用口语化、亲切的语气总结本周工作。' },
-        { id: crypto.randomUUID(), name: '本周完成任务', aiGenerate: true, renderType: 'table', prompt: '' },
-        { id: crypto.randomUUID(), name: '本周灵感汇总', aiGenerate: true, renderType: 'callout', prompt: '请用 Obsidian Callout 突出显示。' },
-        { id: crypto.randomUUID(), name: '下周计划', aiGenerate: true, renderType: 'list', prompt: '' },
-      ],
-    };
-  }
-  if (kind === 'personalMonthly') {
-    return {
-      customBlocks: [
-        { id: crypto.randomUUID(), name: '本月工作总结', aiGenerate: true, renderType: 'text', prompt: '请用口语化总结。' },
-        { id: crypto.randomUUID(), name: '本月完成任务', aiGenerate: true, renderType: 'table', prompt: '' },
-        { id: crypto.randomUUID(), name: '本月灵感汇总', aiGenerate: true, renderType: 'callout', prompt: '' },
-        { id: crypto.randomUUID(), name: '本月复盘', aiGenerate: true, renderType: 'text', prompt: '' },
-        { id: crypto.randomUUID(), name: '下月计划', aiGenerate: true, renderType: 'list', prompt: '' },
-      ],
-    };
-  }
-  if (kind === 'externalWeekly') {
-    return {
-      customBlocks: [
-        { id: crypto.randomUUID(), name: '本周工作概览', aiGenerate: true, renderType: 'text', prompt: '请用正式书面语,不要包含个人情绪。' },
-        { id: crypto.randomUUID(), name: '关键交付', aiGenerate: true, renderType: 'table', prompt: '' },
-        { id: crypto.randomUUID(), name: '下周计划', aiGenerate: true, renderType: 'list', prompt: '' },
-      ],
-    };
-  }
-  return {
-    customBlocks: [
-      { id: crypto.randomUUID(), name: '本月工作概览', aiGenerate: true, renderType: 'text', prompt: '请用正式书面语。' },
-      { id: crypto.randomUUID(), name: '关键交付', aiGenerate: true, renderType: 'table', prompt: '' },
-      { id: crypto.randomUUID(), name: '下月计划', aiGenerate: true, renderType: 'list', prompt: '' },
-    ],
-  };
-}
-
-export function createDailyBlockOrder(fixedBlocks: FixedBlock[], customBlocks: CustomBlock[]): DailyBlockOrderItem[] {
-  return [
-    ...fixedBlocks.map((block) => ({ type: 'fixed' as const, id: block.id })),
-    ...customBlocks.map((block) => ({ type: 'custom' as const, id: block.id })),
-  ];
-}
-
 export function getDailyBlockOrder(template: DailyTemplate): DailyBlockOrderItem[] {
-  return normalizeDailyBlockOrder(template.blockOrder, template.fixedBlocks, template.customBlocks);
+  return normalizeDailyBlockOrderValue(template.blockOrder, template.fixedBlocks, template.customBlocks, isFixedBlockId);
 }
 
 export function normalizeDailyTemplate(value: unknown): DailyTemplate {
   const defaults = createDefaultDailyTemplate();
-  if (!value || typeof value !== 'object') return defaults;
-  const v = value as Partial<DailyTemplate>;
-  const fixedBlocks = normalizeFixedBlocks((v as any).fixedBlocks, defaults.fixedBlocks);
-  const customBlocks = Array.isArray(v.customBlocks) && v.customBlocks.length > 0
-    ? v.customBlocks.map((b) => normalizeCustomBlock(b, defaults))
-    : defaults.customBlocks;
-
-  return {
-    fixedBlocks,
-    customBlocks,
-    blockOrder: normalizeDailyBlockOrder((v as any).blockOrder, fixedBlocks, customBlocks),
-  };
+  return normalizeDailyTemplateValue(value, defaults, {
+    isFixedBlockId,
+    isRenderType,
+  });
 }
 
 export function normalizeReportTemplate(
@@ -180,84 +132,5 @@ export function normalizeReportTemplate(
   kind: 'personalWeekly' | 'personalMonthly' | 'externalWeekly' | 'externalMonthly'
 ): ReportTemplate {
   const defaults = createDefaultReportTemplate(kind);
-  if (!value || typeof value !== 'object') return defaults;
-  const v = value as Partial<ReportTemplate>;
-  return {
-    customBlocks: Array.isArray(v.customBlocks) && v.customBlocks.length > 0
-      ? v.customBlocks.map((b) => normalizeCustomBlock(b, defaults))
-      : defaults.customBlocks,
-  };
-}
-
-function normalizeFixedBlocks(value: unknown, defaults: FixedBlock[]): FixedBlock[] {
-  if (!Array.isArray(value)) return defaults;
-  const byDefault = new Map(defaults.map((block) => [block.id, block]));
-  const seen = new Set<FixedBlockId>();
-  const blocks: FixedBlock[] = [];
-
-  value.forEach((raw, index) => {
-    if (!raw || typeof raw !== 'object') return;
-    const candidate = (raw as Partial<FixedBlock>).id;
-    const id = candidate === 'work' || candidate === 'inspire' || candidate === 'tasks'
-      ? candidate
-      : defaults[index]?.id;
-    if (!id || seen.has(id)) return;
-    seen.add(id);
-    blocks.push({
-      id,
-      displayName: typeof (raw as any).displayName === 'string' && (raw as any).displayName.trim()
-        ? (raw as any).displayName
-        : byDefault.get(id)!.displayName,
-    });
-  });
-
-  defaults.forEach((block) => {
-    if (!seen.has(block.id)) blocks.push(block);
-  });
-
-  return blocks;
-}
-
-function normalizeDailyBlockOrder(value: unknown, fixedBlocks: FixedBlock[], customBlocks: CustomBlock[]): DailyBlockOrderItem[] {
-  const fixedIds = new Set(fixedBlocks.map((block) => block.id));
-  const customIds = new Set(customBlocks.map((block) => block.id));
-  const usedFixed = new Set<FixedBlockId>();
-  const usedCustom = new Set<string>();
-  const order: DailyBlockOrderItem[] = [];
-
-  if (Array.isArray(value)) {
-    value.forEach((raw) => {
-      if (!raw || typeof raw !== 'object') return;
-      const item = raw as DailyBlockOrderItem;
-      if (item.type === 'fixed' && fixedIds.has(item.id) && !usedFixed.has(item.id)) {
-        usedFixed.add(item.id);
-        order.push({ type: 'fixed', id: item.id });
-      }
-      if (item.type === 'custom' && customIds.has(item.id) && !usedCustom.has(item.id)) {
-        usedCustom.add(item.id);
-        order.push({ type: 'custom', id: item.id });
-      }
-    });
-  }
-
-  fixedBlocks.forEach((block) => {
-    if (!usedFixed.has(block.id)) order.push({ type: 'fixed', id: block.id });
-  });
-  customBlocks.forEach((block) => {
-    if (!usedCustom.has(block.id)) order.push({ type: 'custom', id: block.id });
-  });
-
-  return order;
-}
-
-function normalizeCustomBlock(b: any, defaults: { customBlocks: CustomBlock[] }): CustomBlock {
-  const fallback = defaults.customBlocks[0];
-  if (!b || typeof b !== 'object') return { ...fallback, id: crypto.randomUUID() };
-  return {
-    id: typeof b.id === 'string' ? b.id : crypto.randomUUID(),
-    name: typeof b.name === 'string' ? b.name : fallback.name,
-    aiGenerate: typeof b.aiGenerate === 'boolean' ? b.aiGenerate : true,
-    renderType: ['text', 'list', 'table', 'callout', 'dataview'].includes(b.renderType) ? b.renderType : 'text',
-    prompt: typeof b.prompt === 'string' ? b.prompt : '',
-  };
+  return normalizeReportTemplateValue(value, defaults, isRenderType);
 }

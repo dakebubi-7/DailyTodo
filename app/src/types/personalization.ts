@@ -64,13 +64,21 @@ export const THEME_APPEARANCE_KEYS = [
 export type ThemeAppearanceKey = (typeof THEME_APPEARANCE_KEYS)[number];
 export type ThemeAppearanceOverride = Partial<Pick<PersonalizationSettings, ThemeAppearanceKey>>;
 
+function setThemeAppearanceOverride<K extends ThemeAppearanceKey>(
+  override: ThemeAppearanceOverride,
+  key: K,
+  value: PersonalizationSettings[K],
+) {
+  override[key] = value;
+}
+
 /** 从一份完整设置中提取该主题自己的外观字段。 */
 export function extractThemeAppearanceOverride(settings: PersonalizationSettings): ThemeAppearanceOverride {
   const override: ThemeAppearanceOverride = {};
   for (const key of THEME_APPEARANCE_KEYS) {
     const value = settings[key];
     if (value !== undefined) {
-      override[key] = value as never;
+      setThemeAppearanceOverride(override, key, value);
     }
   }
   return override;

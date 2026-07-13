@@ -1,5 +1,6 @@
 import type { ChatMessage } from '../llm/openaiClient';
 import type { TemplateRecognitionTarget } from '../templateRecognition';
+import { isObjectRecord } from '../unknownValueGuards';
 
 export type ReportKind = 'weekly' | 'monthly';
 export type ReportTemplateTarget = Exclude<TemplateRecognitionTarget, 'daily'>;
@@ -42,4 +43,42 @@ export function parseRecognizedReportPrompt(raw: string): string {
     .replace(/\s*```\s*$/, '')
     .trim();
   return cleaned;
+}
+
+export interface AiReviewRecognizeReportTemplateResult {
+  ok: boolean;
+  error?: string;
+  target?: ReportTemplateTarget;
+  prompt: string;
+}
+
+export function readAiReviewRecognizeReportTemplateResult(
+  value: unknown,
+): AiReviewRecognizeReportTemplateResult | undefined {
+  if (!isObjectRecord(value) || typeof value.ok !== 'boolean') return undefined;
+  if (value.error !== undefined && typeof value.error !== 'string') return undefined;
+  if (typeof value.prompt !== 'string') return undefined;
+  if (
+    value.target !== undefined &&
+    value.target !== 'personalWeekly' &&
+    value.target !== 'personalMonthly' &&
+    value.target !== 'externalWeekly' &&
+    value.target !== 'externalMonthly'
+  ) {
+    return undefined;
+  }
+  const result: AiReviewRecognizeReportTemplateResult = {
+    ok: value.ok,
+    prompt: value.prompt,
+  };
+  if (typeof value.error === 'string') result.error = value.error;
+  if (
+    value.target === 'personalWeekly' ||
+    value.target === 'personalMonthly' ||
+    value.target === 'externalWeekly' ||
+    value.target === 'externalMonthly'
+  ) {
+    result.target = value.target;
+  }
+  return result;
 }

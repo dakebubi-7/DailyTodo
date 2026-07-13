@@ -8,6 +8,8 @@
 
 import type { CustomBlock, RenderType } from './aiReview/sectionConfig';
 
+export { validateBlockOutput } from './reportOutputFormatting';
+
 const WORK_KEYWORDS = /工作|总结|summary|work|概览|overview/i;
 
 /**
@@ -57,43 +59,4 @@ export function buildBlockPrompt(params: BuildBlockPromptParams): string {
   const withPeriod = base.includes(period) ? base : `${base}\n\n周期:${period}`;
   const withSource = `${withPeriod}\n\n---原始内容---\n${sourceContent}`;
   return applyRenderTypeInstruction(withSource, block.renderType);
-}
-
-/**
- * Validates and formats LLM output according to renderType.
- * Falls back to 'text' rendering with a warning if format doesn't match.
- */
-export function validateBlockOutput(content: string, renderType: RenderType): { output: string; downgraded: boolean } {
-  const trimmed = content.trim();
-  switch (renderType) {
-    case 'list': {
-      const lines = trimmed.split('\n').filter(Boolean);
-      const hasList = lines.some(l => /^[-*+]\s/.test(l) || /^\d+\.\s/.test(l));
-      if (!hasList) {
-        const withBullets = lines.map(l => `- ${l}`).join('\n');
-        return { output: withBullets, downgraded: false };
-      }
-      return { output: trimmed, downgraded: false };
-    }
-    case 'table': {
-      if (!trimmed.includes('|')) {
-        return { output: `${trimmed}\n\n⚠️ 表格格式识别失败,降级为文本`, downgraded: true };
-      }
-      return { output: trimmed, downgraded: false };
-    }
-    case 'callout': {
-      if (!trimmed.includes('[!')) {
-        return { output: `${trimmed}\n\n⚠️ Callout 格式识别失败,降级为文本`, downgraded: true };
-      }
-      return { output: trimmed, downgraded: false };
-    }
-    case 'dataview': {
-      if (!trimmed.includes('```dataview')) {
-        return { output: `${trimmed}\n\n⚠️ Dataview 格式识别失败,降级为文本`, downgraded: true };
-      }
-      return { output: trimmed, downgraded: false };
-    }
-    default:
-      return { output: trimmed, downgraded: false };
-  }
 }

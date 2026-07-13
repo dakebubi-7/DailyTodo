@@ -1,6 +1,7 @@
 import type { RangeStats } from './stats';
 import type { ChatMessage } from '../llm/openaiClient';
 import { DEFAULT_MONTHLY_SYSTEM } from './defaultPrompts';
+import { buildReportMessages } from './reportMessageComposition';
 
 /** 月键，如 2026-06。 */
 export function monthKey(date: string): string {
@@ -40,18 +41,13 @@ export function selectMonthlySources(weeklyReports: MonthlySource[], dailyReport
 
 export function buildMonthlyMessages(params: MonthlyParams): ChatMessage[] {
   const system = params.systemPrompt?.trim() || DEFAULT_MONTHLY_SYSTEM;
-  const user = [
-    `月：${params.month}`,
-    '确定性统计（以此为准）：',
-    `- 活跃天数：${params.stats.activeDays}`,
-    `- 完成任务：${params.stats.totalCompleted}/${params.stats.totalTasks}`,
-    `- 连续天数（截至月末）：${params.stats.streak}`,
-    '',
-    '本月输入：',
-    ...params.sources.map((s) => `### ${s.label}\n${s.content.trim()}`),
-  ].join('\n');
-  return [
-    { role: 'system', content: system },
-    { role: 'user', content: user },
-  ];
+  return buildReportMessages({
+    system,
+    periodLabel: '月',
+    period: params.month,
+    streakLabel: '连续天数（截至月末）',
+    sourceLabel: '本月输入',
+    sources: params.sources,
+    stats: params.stats,
+  });
 }

@@ -3,9 +3,42 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runReviewForFile } from '../electron/aiReview/runner';
+import { readWithStamp } from '../electron/aiReview/atomicWrite';
 import { createDefaultDailyTemplate, createDefaultSections } from '../shared/aiReview/sectionConfig';
 import { REVIEW_MARKERS, customBlockMarker, readBlockBody } from '../shared/aiReview/markers';
 import { hashMatches } from '../shared/aiReview/hash';
+
+const runnerSource = fs.readFileSync(path.join(import.meta.dirname, '../electron/aiReview/runner.ts'), 'utf-8');
+assert.doesNotMatch(
+  runnerSource,
+  /const carried = tasks\s*\.filter\([\s\S]*?\)\s*\.map\(/,
+  'Deterministic carryover should build lines in one task traversal.',
+);
+assert.doesNotMatch(
+  runnerSource,
+  /const start = lines\.findIndex\([\s\S]*?const end = lines\.findIndex\(/,
+  'Final-block extraction should locate its start and end markers in one line traversal.',
+);
+assert.doesNotMatch(
+  runnerSource,
+  /const beforeMarker = content\.slice\(0, markerIndex\);\s*const lines = beforeMarker\.split\(\/\\r\?\\n\/\)\.reverse\(\);/s,
+  'Heading lookup should scan backward from the marker without allocating and reversing every preceding line.',
+);
+assert.doesNotMatch(
+  runnerSource,
+  /function stripDuplicateSectionHeading[\s\S]*?const lines = content\.split\(\/\\r\?\\n\/\);[\s\S]*?lines\.shift\(\);/,
+  'Duplicate-heading cleanup should scan leading lines without shifting a full response array.',
+);
+assert.doesNotMatch(
+  runnerSource,
+  /function cleanLlmContent[\s\S]*?\.split\(\/\\r\?\\n\/\)[\s\S]*?lines\.shift\(\);/,
+  'LLM content cleanup should scan leading metadata without allocating and shifting a full response array.',
+);
+assert.doesNotMatch(
+  runnerSource,
+  /function extractFinalBlock\(content: string\) \{\s*const lines = content\.split\(\/\\r\?\\n\/\);/,
+  'Final-block extraction should scan the response without allocating every input line.',
+);
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-runner-'));
 const file = path.join(dir, '2026-06-07.md');
@@ -50,6 +83,28 @@ const second = await runReviewForFile({
   sections: createDefaultSections(), callLlm: fakeLlm,
 });
 assert.equal(second.ok, true);
+
+const cachedSnapshot = readWithStamp(file);
+const originalReadFileSync = fs.readFileSync;
+let cachedRunnerReadCount = 0;
+try {
+  fs.readFileSync = ((target: fs.PathOrFileDescriptor, options?: BufferEncoding | { encoding?: BufferEncoding | null; flag?: string } | null) => {
+    if (String(target) === file) cachedRunnerReadCount += 1;
+    return originalReadFileSync(target, options as never) as never;
+  }) as typeof fs.readFileSync;
+  const cachedRun = await runReviewForFile({
+    filePath: file,
+    initialSnapshot: cachedSnapshot,
+    date: '2026-06-07',
+    tasks: [],
+    sections: createDefaultSections(),
+    callLlm: fakeLlm,
+  });
+  assert.equal(cachedRun.ok, true, 'review runner should accept a caller-provided snapshot.');
+} finally {
+  fs.readFileSync = originalReadFileSync;
+}
+assert.equal(cachedRunnerReadCount, 0, 'review runner should not reread a file when given its current snapshot.');
 
 // 用户改过 → 再跑应跳过
 fs.writeFileSync(file, fs.readFileSync(file, 'utf-8').replace('AI 生成的复盘正文', '用户改写了'), 'utf-8');

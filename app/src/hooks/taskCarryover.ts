@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import { AppBehaviorSettings } from '../../shared/appSettings';
 import { shiftDateKey, shouldCarryTaskForward } from '../../shared/taskRollover';
 import { Task } from '../types/task';
@@ -24,7 +23,7 @@ function buildCarryoverTask(task: Task, targetDate: string): Task {
   const baseText = task.text.includes(suffix) ? task.text : `${task.text}${suffix}`;
 
   return {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     text: baseText,
     completed: false,
     priority: task.priority,
@@ -47,22 +46,37 @@ export function carryForwardTasks(
 
   const sourceDate = shiftDateKey(targetDate, -1);
   const carriedIds = new Set(ledger[targetDate] || []);
-  const inheritedTasks = tasks.filter((task) => (
-    getTaskDate(task) === sourceDate &&
-    shouldCarryTaskForward(task) &&
-    !carriedIds.has(task.id) &&
-    !tasks.some((candidate) => candidate.taskDate === targetDate && candidate.carriedFromTaskId === task.id)
-  ));
+  const carriedFromTaskIds = new Set<string>();
+  const candidateTasks: Task[] = [];
+  for (const task of tasks) {
+    if (task.taskDate === targetDate && task.carriedFromTaskId) {
+      carriedFromTaskIds.add(task.carriedFromTaskId);
+    }
+    if (
+      getTaskDate(task) === sourceDate &&
+      shouldCarryTaskForward(task) &&
+      !carriedIds.has(task.id)
+    ) {
+      candidateTasks.push(task);
+    }
+  }
+  const nextCarryovers: Task[] = [];
+  const nextCarriedIds: string[] = [];
+  for (const task of candidateTasks) {
+    if (carriedFromTaskIds.has(task.id)) continue;
+    nextCarryovers.push(buildCarryoverTask(task, targetDate));
+    nextCarriedIds.push(task.id);
+  }
 
-  if (!inheritedTasks.length) {
+  if (!nextCarryovers.length) {
     return { tasks, ledger };
   }
 
   return {
-    tasks: [...inheritedTasks.map((task) => buildCarryoverTask(task, targetDate)), ...tasks],
+    tasks: [...nextCarryovers, ...tasks],
     ledger: {
       ...ledger,
-      [targetDate]: [...carriedIds, ...inheritedTasks.map((task) => task.id)],
+      [targetDate]: [...carriedIds, ...nextCarriedIds],
     },
   };
 }
@@ -73,11 +87,18 @@ export function applyBusinessDateCarryover({
   ledger,
   settings,
 }: ApplyBusinessDateCarryoverInput): TaskCarryoverResult {
-  const normalizedTasks = tasks.map((task) => normalizeTask(task, targetDate));
+  let normalizedTasks = tasks;
+  for (let index = 0; index < tasks.length; index += 1) {
+    const task = tasks[index];
+    const normalizedTask = normalizeTask(task, targetDate);
+    if (normalizedTask === task) continue;
+    if (normalizedTasks === tasks) normalizedTasks = tasks.slice();
+    normalizedTasks[index] = normalizedTask;
+  }
   const carryoverResult = carryForwardTasks(normalizedTasks, targetDate, ledger, settings);
 
   return {
-    tasks: carryoverResult.tasks.map((task) => normalizeTask(task, targetDate)),
+    tasks: carryoverResult.tasks,
     ledger: carryoverResult.ledger,
   };
 }

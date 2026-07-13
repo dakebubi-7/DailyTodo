@@ -1,4 +1,7 @@
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { fuzzyMatchTitle, fuzzyMatchTitles } from '../shared/aiReview/fuzzyMatch';
 
 // 单标题命中
@@ -18,5 +21,11 @@ assert.deepEqual(result.unmatched, ['完全无关的东西']);
 const allUnknown = fuzzyMatchTitles(['xyz', 'abc']);
 assert.equal(allUnknown.matches.length, 0);
 assert.equal(allUnknown.unmatched.length, 2);
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '..');
+const fuzzySource = readFileSync(join(root, 'shared/aiReview/fuzzyMatch.ts'), 'utf8');
+assert.match(fuzzySource, /REVIEW_MARKER_KEYS/, 'fuzzyMatch should iterate canonical marker keys');
+assert.doesNotMatch(fuzzySource, /Object\.keys\(SYNONYMS\) as ReviewMarkerKey\[\]/, 'fuzzyMatch should not cast Object.keys(SYNONYMS) to ReviewMarkerKey[]');
 
 console.log('Fuzzy match verification passed');

@@ -49,4 +49,8 @@ for (const check of sectionChecks) {
   assert.doesNotMatch(settingsPanel, new RegExp(escapeRegExp(check.removedInlineMarker)), `SettingsPanel should not keep ${check.exportName} inline markup.`);
 }
 
+const generalSection = readFileSync(join(sectionsDir, 'GeneralSettingsSection.tsx'), 'utf8');
+assert.match(generalSection, /isAppLanguage\(event\.target\.value\)/, 'General settings language select should narrow runtime values with isAppLanguage.');
+assert.doesNotMatch(generalSection, /event\.target\.value as AppLanguage/, 'General settings language select should not cast event target values as AppLanguage.');
+
 console.log('settings basic sections verification passed');

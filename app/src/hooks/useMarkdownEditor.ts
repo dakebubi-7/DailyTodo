@@ -6,6 +6,8 @@ import {
   outdentSelection,
   wrapSelection,
 } from '../utils/markdownEditor';
+import { createMarkdownEditorHistory } from './markdownEditorHistory';
+import { restoreTextareaSelection } from './markdownEditorTextarea';
 
 /**
  * 多行 Markdown 编辑框的可复用能力（从 DailyWorkPanel 抽出）：
@@ -42,115 +44,12 @@ export interface MarkdownEditorApi {
   resetHistory: (value: string, cursor: number) => void;
 }
 
-const COALESCE_MS = 500;
-
-// 复制到镜像 div 上以精确测量光标像素位置的样式属性。
-// 不复制 border —— textarea 的 clientWidth/scrollTop 都不含 border，
-// 镜像也不加 border，offsetTop 才能和 scrollTop 落在同一坐标系。
-const MIRROR_STYLE_PROPS = [
-  'paddingTop',
-  'paddingRight',
-  'paddingBottom',
-  'paddingLeft',
-  'fontFamily',
-  'fontSize',
-  'fontWeight',
-  'fontStyle',
-  'lineHeight',
-  'letterSpacing',
-  'textTransform',
-  'wordSpacing',
-  'tabSize',
-] as const;
-
-/**
- * 精确测量光标所在行相对 textarea 内容顶部的像素位置。
- * 用一个隐藏的镜像 div 复刻 textarea 的字体/宽度/换行规则，把光标前文本放进去，
- * 末尾插一个标记 span，读它的 offsetTop。比「行号 × 估算行高」准确（能处理软换行）。
- */
-function measureCaret(textarea: HTMLTextAreaElement, caret: number): { top: number; lineHeight: number } {
-  const style = window.getComputedStyle(textarea);
-  const mirror = document.createElement('div');
-  MIRROR_STYLE_PROPS.forEach((prop) => {
-    mirror.style[prop as any] = style[prop as any];
-  });
-  mirror.style.position = 'absolute';
-  mirror.style.visibility = 'hidden';
-  mirror.style.whiteSpace = 'pre-wrap';
-  mirror.style.overflowWrap = 'break-word';
-  mirror.style.wordBreak = style.wordBreak;
-  // 与 textarea 文本区同宽（content + padding，配合 box-sizing 一致换行）。
-  mirror.style.width = `${textarea.clientWidth}px`;
-  mirror.style.boxSizing = 'border-box';
-  mirror.style.top = '0';
-  mirror.style.left = '-9999px';
-
-  mirror.textContent = textarea.value.slice(0, caret);
-  const marker = document.createElement('span');
-  marker.textContent = textarea.value.slice(caret) || '.';
-  mirror.appendChild(marker);
-
-  document.body.appendChild(mirror);
-  const top = marker.offsetTop;
-  let lineHeight = parseFloat(style.lineHeight);
-  if (!Number.isFinite(lineHeight)) {
-    const fontSize = parseFloat(style.fontSize);
-    lineHeight = Number.isFinite(fontSize) ? fontSize * 1.4 : 18;
-  }
-  document.body.removeChild(mirror);
-
-  return { top, lineHeight };
-}
-
-/** 把光标所在行滚进 textarea 可视区。 */
-function scrollCaretIntoView(textarea: HTMLTextAreaElement, caret: number) {
-  const { top, lineHeight } = measureCaret(textarea, caret);
-
-  if (top < textarea.scrollTop) {
-    // 光标在可视区上方 → 向上带回。
-    textarea.scrollTop = top;
-  } else if (top + lineHeight > textarea.scrollTop + textarea.clientHeight) {
-    // 光标在可视区下方 → 向下带回（续列表后新行立即可见，无需多敲回车）。
-    textarea.scrollTop = top + lineHeight - textarea.clientHeight;
-  }
-}
-
 export function useMarkdownEditor({ value, onChange, textareaRef, command }: UseMarkdownEditorOptions): MarkdownEditorApi {
-  type HistorySnapshot = { value: string; start: number; end: number };
-  const historyRef = useRef<{ stack: HistorySnapshot[]; index: number }>({
-    stack: [{ value, start: value.length, end: value.length }],
-    index: 0,
-  });
-  const lastRecordRef = useRef<{ time: number; typing: boolean }>({ time: 0, typing: false });
+  const historyRef = useRef(createMarkdownEditorHistory(value));
   const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
 
   const resetHistory = (nextValue: string, cursor: number) => {
-    historyRef.current = { stack: [{ value: nextValue, start: cursor, end: cursor }], index: 0 };
-    lastRecordRef.current = { time: 0, typing: false };
-  };
-
-  // 记录一次快照。连续打字在 COALESCE_MS 内合并为一步，结构化编辑各自独立成步。
-  const recordHistory = (nextValue: string, start: number, end: number, typing: boolean) => {
-    const history = historyRef.current;
-    if (history.index < history.stack.length - 1) {
-      history.stack = history.stack.slice(0, history.index + 1);
-    }
-    const top = history.stack[history.index];
-    if (top && top.value === nextValue) {
-      top.start = start;
-      top.end = end;
-      lastRecordRef.current = { time: Date.now(), typing };
-      return;
-    }
-    const now = Date.now();
-    const canCoalesce = typing && lastRecordRef.current.typing && now - lastRecordRef.current.time < COALESCE_MS;
-    if (canCoalesce && top) {
-      history.stack[history.index] = { value: nextValue, start, end };
-    } else {
-      history.stack.push({ value: nextValue, start, end });
-      history.index = history.stack.length - 1;
-    }
-    lastRecordRef.current = { time: now, typing };
+    historyRef.current.reset(nextValue, cursor);
   };
 
   // 用 useEffect 设置光标，避免受控组件重渲染覆盖；设完光标再把光标行滚进可视区。
@@ -160,40 +59,32 @@ export function useMarkdownEditor({ value, onChange, textareaRef, command }: Use
     if (!textarea) return;
     const { start, end } = pendingSelectionRef.current;
     pendingSelectionRef.current = null;
-    textarea.focus();
-    textarea.setSelectionRange(start, end);
-    scrollCaretIntoView(textarea, start);
+    restoreTextareaSelection(textarea, { start, end });
   });
 
-  const restoreSnapshot = (snapshot: HistorySnapshot) => {
+  const restoreSnapshot = (snapshot: { value: string; start: number; end: number }) => {
     pendingSelectionRef.current = { start: snapshot.start, end: snapshot.end };
     command?.onClose();
     onChange(snapshot.value);
   };
 
   const undo = () => {
-    const history = historyRef.current;
-    if (history.index <= 0) return;
-    history.index -= 1;
-    lastRecordRef.current = { time: 0, typing: false };
-    restoreSnapshot(history.stack[history.index]);
+    const snapshot = historyRef.current.undo();
+    if (snapshot) restoreSnapshot(snapshot);
   };
 
   const redo = () => {
-    const history = historyRef.current;
-    if (history.index >= history.stack.length - 1) return;
-    history.index += 1;
-    lastRecordRef.current = { time: 0, typing: false };
-    restoreSnapshot(history.stack[history.index]);
+    const snapshot = historyRef.current.redo();
+    if (snapshot) restoreSnapshot(snapshot);
   };
 
   const handleChange = (nextValue: string, cursor: number) => {
-    recordHistory(nextValue, cursor, cursor, true);
+    historyRef.current.record(nextValue, cursor, cursor, true);
     onChange(nextValue);
   };
 
   const commit = (nextValue: string, selectionStart: number, selectionEnd = selectionStart) => {
-    recordHistory(nextValue, selectionStart, selectionEnd, false);
+    historyRef.current.record(nextValue, selectionStart, selectionEnd, false);
     pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
     command?.onClose();
     onChange(nextValue);

@@ -13,13 +13,28 @@ export interface AppendCompletionReviewInput {
 
 export type TaskReviewUpdates = Partial<Pick<TaskCompletionReview, 'status' | 'percent' | 'summary' | 'unknowns' | 'nextStep'>>;
 
+function getExistingTaskReviews(task: Task): TaskCompletionReview[] {
+  return task.completionReviews?.length
+    ? task.completionReviews
+    : task.completionReview ? [task.completionReview] : [];
+}
+
+function getLatestTaskReview(reviews: TaskCompletionReview[]) {
+  let latest = reviews[0];
+  for (let index = 1; index < reviews.length; index += 1) {
+    const review = reviews[index];
+    if (review.reviewedAt > latest.reviewedAt) latest = review;
+  }
+  return latest;
+}
+
 export function appendCompletionReviewToTask(task: Task, { review, id, reviewedAt }: AppendCompletionReviewInput): Task {
   const nextReview: TaskCompletionReview = {
     ...review,
     id,
     reviewedAt,
   };
-  const completionReviews = [...(task.completionReviews || (task.completionReview ? [task.completionReview] : [])), nextReview];
+  const completionReviews = [...getExistingTaskReviews(task), nextReview];
 
   return {
     ...task,
@@ -31,9 +46,16 @@ export function appendCompletionReviewToTask(task: Task, { review, id, reviewedA
 }
 
 export function deleteReviewFromTask(task: Task, reviewId: string): Task {
-  const existingReviews = task.completionReviews || (task.completionReview ? [task.completionReview] : []);
-  const reviews = existingReviews.filter((review) => getReviewIdentity(review) !== reviewId);
-  const latestReview = reviews[reviews.length - 1];
+  const existingReviews = getExistingTaskReviews(task);
+  if (!existingReviews.some((review) => getReviewIdentity(review) === reviewId)) return task;
+
+  const reviews: TaskCompletionReview[] = [];
+  let latestReview: TaskCompletionReview | undefined;
+  for (const review of existingReviews) {
+    if (getReviewIdentity(review) === reviewId) continue;
+    reviews.push(review);
+    if (!latestReview || review.reviewedAt > latestReview.reviewedAt) latestReview = review;
+  }
 
   if (!latestReview) {
     return {
@@ -53,22 +75,26 @@ export function deleteReviewFromTask(task: Task, reviewId: string): Task {
 }
 
 export function updateTaskReview(task: Task, reviewId: string, updates: TaskReviewUpdates): Task {
-  const reviews = [...(task.completionReviews?.length
-    ? task.completionReviews
-    : task.completionReview ? [task.completionReview] : [])];
-  const index = reviews.findIndex((review) => getReviewIdentity(review) === reviewId);
+  const existingReviews = getExistingTaskReviews(task);
+  const index = existingReviews.findIndex((review) => getReviewIdentity(review) === reviewId);
   if (index === -1) return task;
 
-  reviews[index] = { ...reviews[index], ...updates };
+  const existingReview = existingReviews[index];
+  if (Object.entries(updates).every(([key, value]) => existingReview[key as keyof TaskReviewUpdates] === value)) {
+    return task;
+  }
+
+  const reviews = [...existingReviews];
+  reviews[index] = { ...existingReview, ...updates };
   return {
     ...task,
     completionReviews: reviews,
-    completionReview: reviews[reviews.length - 1],
+    completionReview: getLatestTaskReview(reviews),
   };
 }
 
 export function findTaskReview(task: Task, reviewId: string): TaskCompletionReview | undefined {
-  const existingReviews = task.completionReviews || (task.completionReview ? [task.completionReview] : []);
+  const existingReviews = getExistingTaskReviews(task);
   return existingReviews.find((review) => getReviewIdentity(review) === reviewId);
 }
 

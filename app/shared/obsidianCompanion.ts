@@ -4,6 +4,10 @@ export type CaptureStatus = 'new' | 'synced' | 'archived' | 'error';
 export type RuleStopMode = 'continue' | 'stop';
 export type WriteMode = 'append' | 'managed-block';
 
+export function isWriteMode(value: unknown): value is WriteMode {
+  return value === 'append' || value === 'managed-block';
+}
+
 export interface CaptureItem {
   id: string;
   type: CaptureType;
@@ -80,7 +84,29 @@ export interface SyncPlanChange {
 
 export interface SyncPlan {
   ok: boolean;
+  vaultPath?: string;
   changes: SyncPlanChange[];
   unmatchedItems: CaptureItem[];
   errors: string[];
 }
+
+export interface CompanionWriteResult {
+  ok: boolean;
+  errors: string[];
+}
+
+export interface CompanionMobileImportResult {
+  ok: boolean;
+  items: CaptureItem[];
+  errors: string[];
+}
+
+export {
+  isCaptureItem,
+  isCompanionRule,
+  isCompanionTemplate,
+  isSyncPlan,
+  readCompanionMobileImportResult,
+  readCompanionSyncPlan,
+  readCompanionWriteResult,
+} from './obsidianCompanionValidation';

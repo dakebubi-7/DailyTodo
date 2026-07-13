@@ -4,35 +4,20 @@ import {
   createDefaultModules,
   normalizeTemplateModules,
   normalizeTemplatePresetId,
-  type ObsidianTemplateModules,
-  type ObsidianTemplatePresetId,
 } from './obsidianTemplateCenter';
 import { missingDailyCoreTokens } from './dailyMarkdownTemplate';
+import { isObjectRecord } from './unknownValueGuards';
+export {
+  readObsidianTemplateRecognitionResult,
+  readTemplatePickerResult,
+  type ObsidianTemplateRecognitionResult,
+  type RecognizedObsidianTemplateDraft,
+  type RecognizedUnmappedSection,
+  type TemplatePickerResult,
+} from './obsidianTemplateRecognitionResultReaders';
+import type { RecognizedObsidianTemplateDraft, RecognizedUnmappedSection } from './obsidianTemplateRecognitionResultReaders';
 
 export const MAX_OBSIDIAN_TEMPLATE_RECOGNITION_CHARS = 20_000;
-
-export interface RecognizedUnmappedSection {
-  title: string;
-  reason: string;
-  excerpt: string;
-}
-
-export interface RecognizedObsidianTemplateDraft {
-  presetId: ObsidianTemplatePresetId;
-  dailyNotePath?: string;
-  dailyMarkdownTemplate?: string;
-  missingCoreFields: string[];
-  modules: ObsidianTemplateModules;
-  taskLineTemplate?: string;
-  completionReviewTemplate?: string;
-  unmappedSections: RecognizedUnmappedSection[];
-  notes: string[];
-  unmatched: boolean;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
 
 function cleanJson(raw: string) {
   return raw
@@ -51,22 +36,28 @@ function optionalText(value: unknown) {
 }
 
 function textArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.map((item) => text(item)).filter(Boolean)
-    : [];
+  if (!Array.isArray(value)) return [];
+
+  const values: string[] = [];
+  for (const item of value) {
+    const normalized = text(item);
+    if (normalized) values.push(normalized);
+  }
+  return values;
 }
 
 function unmappedSections(value: unknown): RecognizedUnmappedSection[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!isObject(item)) return null;
-      const title = text(item.title) || '未命名片段';
-      const reason = text(item.reason) || '无法可靠映射到 DailyTodo 模块';
-      const excerpt = text(item.excerpt).slice(0, 500);
-      return { title, reason, excerpt };
-    })
-    .filter((item): item is RecognizedUnmappedSection => item !== null);
+
+  const sections: RecognizedUnmappedSection[] = [];
+  for (const item of value) {
+    if (!isObjectRecord(item)) continue;
+    const title = text(item.title) || '未命名片段';
+    const reason = text(item.reason) || '无法可靠映射到 DailyTodo 模块';
+    const excerpt = text(item.excerpt).slice(0, 500);
+    sections.push({ title, reason, excerpt });
+  }
+  return sections;
 }
 
 function fallbackDraft(unmatched = true): RecognizedObsidianTemplateDraft {
@@ -103,7 +94,7 @@ export function parseRecognizedObsidianTemplateDraft(raw: string): RecognizedObs
     return fallbackDraft(true);
   }
 
-  if (!isObject(parsed)) return fallbackDraft(true);
+  if (!isObjectRecord(parsed)) return fallbackDraft(true);
 
   const modules = normalizeTemplateModules(parsed.modules);
   const hasEnabledModule = OBSIDIAN_TEMPLATE_MODULE_IDS.some((id) => modules[id].enabled);

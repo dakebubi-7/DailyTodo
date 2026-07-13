@@ -25,24 +25,57 @@ export function retainDeletedReview(
   return [...retainedReviews, { task, review, deletedAt }];
 }
 
-function mapTaskTree(tasks: Task[], targetId: string, updater: (task: Task) => Task): Task[] {
-  return tasks.map((task) => {
-    const nextTask = task.id === targetId ? updater(task) : task;
-    if (!nextTask.subtasks?.length) return nextTask;
-    return {
-      ...nextTask,
-      subtasks: mapTaskTree(nextTask.subtasks, targetId, updater),
-    };
-  });
+function mergeReviewsIntoTask(task: Task, retainedReviews: RetainedObsidianReview[]): Task {
+  const reviews = task.completionReviews?.length
+    ? [...task.completionReviews]
+    : task.completionReview
+      ? [task.completionReview]
+      : [];
+  const reviewIds = new Set(reviews.map(getReviewIdentity));
+
+  for (const { review } of retainedReviews) {
+    const identity = getReviewIdentity(review);
+    if (reviewIds.has(identity)) continue;
+    reviewIds.add(identity);
+    reviews.push(review);
+  }
+
+  reviews.sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt));
+  return {
+    ...task,
+    completed: true,
+    completionReviews: reviews,
+    completionReview: reviews[reviews.length - 1],
+  };
 }
 
-function findTaskInTree(tasks: Task[], targetId: string): Task | undefined {
-  for (const task of tasks) {
-    if (task.id === targetId) return task;
-    const found = task.subtasks?.length ? findTaskInTree(task.subtasks, targetId) : undefined;
-    if (found) return found;
+function mergeRetainedReviewsIntoTaskTree(
+  tasks: Task[],
+  retainedReviewsByTaskId: Map<string, RetainedObsidianReview[]>,
+  mergedTaskIds: Set<string>,
+): Task[] {
+  let nextTasks = tasks;
+
+  for (let index = 0; index < tasks.length; index += 1) {
+    const task = tasks[index];
+    const retainedReviews = retainedReviewsByTaskId.get(task.id);
+    const nextSubtasks = task.subtasks?.length
+      ? mergeRetainedReviewsIntoTaskTree(task.subtasks, retainedReviewsByTaskId, mergedTaskIds)
+      : task.subtasks;
+    const nextTask = retainedReviews
+      ? mergeReviewsIntoTask({ ...task, subtasks: nextSubtasks }, retainedReviews)
+      : nextSubtasks === task.subtasks
+        ? task
+        : { ...task, subtasks: nextSubtasks };
+
+    if (retainedReviews) mergedTaskIds.add(task.id);
+    if (nextTask === task) continue;
+
+    if (nextTasks === tasks) nextTasks = tasks.slice();
+    nextTasks[index] = nextTask;
   }
-  return undefined;
+
+  return nextTasks;
 }
 
 export function mergeRetainedReviewsForObsidian(
@@ -51,37 +84,21 @@ export function mergeRetainedReviewsForObsidian(
 ) {
   if (!retainedReviews.length) return tasks;
 
-  let nextTasks = tasks;
-  const archivedOnly = new Map<string, Task>();
+  const retainedReviewsByTaskId = new Map<string, RetainedObsidianReview[]>();
+  for (const retainedReview of retainedReviews) {
+    const taskReviews = retainedReviewsByTaskId.get(retainedReview.task.id);
+    if (taskReviews) taskReviews.push(retainedReview);
+    else retainedReviewsByTaskId.set(retainedReview.task.id, [retainedReview]);
+  }
 
-  retainedReviews.forEach(({ task: archivedTask, review }) => {
-    const existingTask = findTaskInTree(nextTasks, archivedTask.id);
-    const baseTask = existingTask || archivedTask;
-    const reviews = baseTask.completionReviews?.length
-      ? [...baseTask.completionReviews]
-      : baseTask.completionReview
-        ? [baseTask.completionReview]
-        : [];
-    const identity = getReviewIdentity(review);
+  const mergedTaskIds = new Set<string>();
+  const nextTasks = mergeRetainedReviewsIntoTaskTree(tasks, retainedReviewsByTaskId, mergedTaskIds);
+  const archivedOnly: Task[] = [];
 
-    if (!reviews.some((existing) => getReviewIdentity(existing) === identity)) {
-      reviews.push(review);
-    }
+  for (const [taskId, taskReviews] of retainedReviewsByTaskId) {
+    if (mergedTaskIds.has(taskId)) continue;
+    archivedOnly.push(mergeReviewsIntoTask(taskReviews[0].task, taskReviews));
+  }
 
-    reviews.sort((a, b) => a.reviewedAt.localeCompare(b.reviewedAt));
-    const nextTask = {
-      ...baseTask,
-      completed: true,
-      completionReviews: reviews,
-      completionReview: reviews[reviews.length - 1],
-    };
-
-    if (existingTask) {
-      nextTasks = mapTaskTree(nextTasks, baseTask.id, () => nextTask);
-    } else {
-      archivedOnly.set(baseTask.id, nextTask);
-    }
-  });
-
-  return [...nextTasks, ...archivedOnly.values()];
+  return [...nextTasks, ...archivedOnly];
 }

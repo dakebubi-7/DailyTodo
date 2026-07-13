@@ -1,4 +1,4 @@
-import type { ReviewMarkerKey } from './markers';
+import { REVIEW_MARKER_KEYS, type ReviewMarkerKey } from './markers';
 
 /** 内置近义词词典：把用户段落标题模糊映射到三种 markerKey。完全离线，不经 AI。 */
 const SYNONYMS: Record<ReviewMarkerKey, string[]> = {
@@ -15,7 +15,7 @@ export interface FuzzyMatch {
 /** 对单个标题做模糊匹配；命中返回 markerKey，否则 null。 */
 export function fuzzyMatchTitle(title: string): FuzzyMatch | null {
   const lower = title.toLowerCase();
-  for (const key of Object.keys(SYNONYMS) as ReviewMarkerKey[]) {
+  for (const key of REVIEW_MARKER_KEYS) {
     const hit = SYNONYMS[key].find((word) => lower.includes(word.toLowerCase()));
     if (hit) return { markerKey: key, matched: hit };
   }

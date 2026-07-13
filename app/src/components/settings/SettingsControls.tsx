@@ -1,4 +1,22 @@
-import { useEffect, useState } from 'react';
+import {
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+function setAutoStartIfChanged(
+  autoStartRef: MutableRefObject<boolean>,
+  setAutoStart: Dispatch<SetStateAction<boolean>>,
+  nextAutoStart: boolean,
+) {
+  if (autoStartRef.current === nextAutoStart) return;
+
+  autoStartRef.current = nextAutoStart;
+  setAutoStart(nextAutoStart);
+}
 
 export function RangeControl({
   label,
@@ -81,14 +99,15 @@ export function Field({
 
 export function AutoStartToggle() {
   const [autoStart, setAutoStart] = useState(false);
+  const autoStartRef = useRef(false);
 
   useEffect(() => {
-    window.electronAPI?.getAutoStart().then(setAutoStart);
+    window.electronAPI?.getAutoStart().then((value) => setAutoStartIfChanged(autoStartRef, setAutoStart, value === true));
   }, []);
 
   const handleChange = (enabled: boolean) => {
-    window.electronAPI?.setAutoStart(enabled).then((ok) => {
-      if (ok) setAutoStart(enabled);
+    window.electronAPI?.setAutoStart(enabled).then((value) => {
+      setAutoStartIfChanged(autoStartRef, setAutoStart, value === true);
     });
   };
 

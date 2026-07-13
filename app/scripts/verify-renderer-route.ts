@@ -5,6 +5,7 @@ import {
   resolveRendererView,
   type RendererView,
 } from '../shared/rendererRoute';
+import { readFileSync } from 'node:fs';
 
 const mainQuery = buildRendererQuery({ view: 'main' });
 assert.deepEqual(mainQuery, { view: 'main' });
@@ -54,5 +55,27 @@ assert.equal(resolveRendererView('?view=widget'), 'main');
 assert.equal(resolveRendererView('?view=unknown'), 'main');
 assert.equal(resolveRendererView('http://localhost:5173/?view=widget'), 'main');
 assert.equal(resolveRendererView('not a url'), 'main');
+
+const rendererEntry = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
+assert.match(
+  rendererEntry,
+  /const App = lazy\(\(\) => import\('\.\/App'\)\);/,
+  'The main app should be loaded only for the main renderer view.',
+);
+assert.match(
+  rendererEntry,
+  /const TaskMenuPopup = lazy\(\(\) => import\('\.\/taskMenuView'\)\);/,
+  'The task-menu popup should be loaded only for the task-menu renderer view.',
+);
+assert.match(
+  rendererEntry,
+  /<Suspense fallback=\{null\}>[\s\S]*?view === 'task-menu'/,
+  'Route-specific lazy renderer content should keep a suspense boundary.',
+);
+assert.doesNotMatch(
+  rendererEntry,
+  /import '\.\/styles\/index\.css';/,
+  'The renderer entry should not eagerly load the main application stylesheet for the task-menu route.',
+);
 
 console.log('renderer-route verification passed');

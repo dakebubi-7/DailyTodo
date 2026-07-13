@@ -1,4 +1,5 @@
 import { strict as assert } from 'node:assert';
+import fs from 'node:fs';
 import { redactForExport } from '../shared/aiReview/redaction';
 
 const input = [
@@ -28,5 +29,27 @@ assert.ok(mixed.includes('可对外的进展'), '#work tag allows section');
 
 const conflict = redactForExport('## 项目\n#work #private\n敏感');
 assert.equal(conflict.trim(), '', 'private 优先于 work，剔除');
+
+const redactionSource = fs.readFileSync(new URL('../shared/aiReview/redaction.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(
+  redactionSource,
+  /const keptParts: string\[\] = \[\];[\s\S]*?for \(const section of kept\) \{[\s\S]*?const part = section\.join\('\\n'\)\.trim\(\);[\s\S]*?if \(part\) keptParts\.push\(part\);[\s\S]*?return keptParts\.join\('\\n\\n'\);/,
+  'redaction should not retain every section before deciding which content may be exported.',
+);
+assert.doesNotMatch(
+  redactionSource,
+  /return kept\.map\(\(s\) => s\.join\('\\n'\)\.trim\(\)\)\.filter\(Boolean\)\.join\('\\n\\n'\);/,
+  'redaction should not allocate map and filter arrays while joining retained sections.',
+);
+
+assert.doesNotMatch(
+  redactionSource,
+  /const lines = markdown\.split\(\/\\r\?\\n\/\);/,
+  'redaction should scan large Markdown exports without allocating a line array for the whole document.',
+);
+assert.ok(
+  redactionSource.includes('const flushSection = (sectionEnd: number) => {'),
+  'redaction should decide whether each section can be kept as soon as its boundary is found.',
+);
 
 console.log('Redaction verification passed');

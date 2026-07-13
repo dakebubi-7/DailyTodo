@@ -10,6 +10,100 @@ import {
 } from '../electron/aiReview/exportReports';
 import { buildMonthlyMessages } from '../shared/aiReview/monthly';
 
+const exportReportsSource = fs.readFileSync(
+  new URL('../electron/aiReview/exportReports.ts', import.meta.url),
+  'utf8',
+);
+const templateGenerationUrl = new URL('../electron/aiReview/templateReportGeneration.ts', import.meta.url);
+const reportOutputUrl = new URL('../electron/aiReview/reportOutput.ts', import.meta.url);
+assert.equal(
+  fs.existsSync(reportOutputUrl),
+  true,
+  'report output mechanics should live in a dedicated module.',
+);
+const reportOutputSource = fs.readFileSync(reportOutputUrl, 'utf8');
+assert.equal(
+  fs.existsSync(templateGenerationUrl),
+  true,
+  'template-aware report generation should live in a dedicated module.',
+);
+const templateGenerationSource = fs.readFileSync(templateGenerationUrl, 'utf8');
+assert.match(
+  reportOutputSource,
+  /export async function writeReport\b/,
+  'the output module should own atomic report writes.',
+);
+assert.match(
+  reportOutputSource,
+  /export function resolveReportFilePath\b/,
+  'the output module should own vault-contained report path resolution.',
+);
+assert.match(
+  reportOutputSource,
+  /export function buildPersonalReportFrontmatter\b/,
+  'the output module should own report frontmatter formatting.',
+);
+assert.match(
+  exportReportsSource,
+  /export \{[^}]*composeReportContent[^}]*\} from '\.\/reportOutput';/,
+  'the generation facade should preserve composeReportContent through the output module.',
+);
+assert.match(
+  exportReportsSource,
+  /export type \{[^}]*ReportResult[^}]*\} from '\.\/reportOutput';/,
+  'the generation facade should preserve ReportResult through the output module.',
+);
+assert.match(
+  templateGenerationSource,
+  /export async function generateTemplateBackedReport\b/,
+  'template generation module should define the shared template-aware report helper.',
+);
+assert.equal(
+  (exportReportsSource.match(/return generateTemplateBackedReport\(\{/g) ?? []).length,
+  3,
+  'weekly, monthly, and external report generation should all delegate through the shared template-aware report helper.',
+);
+assert.match(
+  templateGenerationSource,
+  /const sourceParts: string\[\] = \[\];\s*\n\s*let systemPrompt = '';\s*\n\s*for \(const message of messages\)/,
+  'template-backed reports should collect the system prompt and user source content in one message traversal.',
+);
+assert.match(
+  templateGenerationSource,
+  /let truncated = false;\s*\n\s*for \(const \{ llm \} of blockResults\)/,
+  'template-backed reports should detect failures and truncation in one result traversal before rendering.',
+);
+assert.doesNotMatch(
+  templateGenerationSource,
+  /const failed = blockResults\.find\(\(\{ llm \}\) => !llm\.ok\);[\s\S]*?const truncated = blockResults\.some\(/,
+  'template-backed reports should not separately scan the completed block results for failure and truncation.',
+);
+assert.match(
+  exportReportsSource,
+  /const redactedParts: string\[\] = \[\];[\s\S]*?for \(const content of params\.rawDailyContents\) \{[\s\S]*?const redactedPart = redactForExport\(content\);[\s\S]*?if \(redactedPart\) redactedParts\.push\(redactedPart\);[\s\S]*?const redacted = redactedParts\.join\('\\n\\n'\);/,
+  'external reports should redact and collect non-empty daily content in one traversal.',
+);
+assert.doesNotMatch(
+  exportReportsSource,
+  /params\.rawDailyContents\.map\(\(c\) => redactForExport\(c\)\)\.filter\(Boolean\)\.join\('\n\n'\)/,
+  'external reports should not allocate map and filter arrays while assembling redacted content.',
+);
+assert.match(
+  exportReportsSource,
+  /reportTemplate:\s*params\.reportTemplate,\s*\n\s*buildMessages:\s*\(\)\s*=> buildWeeklyMessages\(params\)/s,
+  'personal weekly report generation should build weekly messages through the shared helper callback.',
+);
+assert.match(
+  exportReportsSource,
+  /reportTemplate:\s*params\.reportTemplate,\s*\n\s*buildMessages:\s*\(\)\s*=> buildMonthlyMessages\(params\)/s,
+  'personal monthly report generation should build monthly messages through the shared helper callback.',
+);
+assert.match(
+  exportReportsSource,
+  /reportTemplate:\s*params\.reportTemplate,\s*\n\s*buildMessages:\s*\(\)\s*=> params\.buildMessages\(redacted\)/s,
+  'external report generation should build redacted export messages through the shared helper callback.',
+);
+
 // === composeReportContent：模型自带 frontmatter 时不叠加 app frontmatter ===
 const withFm = composeReportContent(
   '---\ntitle: "app"\n---',
@@ -41,6 +135,50 @@ const written = fs.readFileSync(out.filePath!, 'utf-8');
 assert.ok(written.includes('本周概览'), 'LLM 内容写入');
 assert.ok(written.includes('AI 草稿'), '标注 AI 草稿');
 assert.ok(written.includes('2026-W23'), '周键写入 frontmatter');
+
+const fileBackedWeeklyDirVault = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-weekly-file-dir-'));
+fs.mkdirSync(path.join(fileBackedWeeklyDirVault, 'logs'), { recursive: true });
+const occupiedWeeklyDirPath = path.join(fileBackedWeeklyDirVault, 'logs', 'weekly-review');
+fs.writeFileSync(occupiedWeeklyDirPath, 'occupied by file', 'utf-8');
+let fileBackedWeeklyDirThrew = false;
+let fileBackedWeeklyDirResult: Awaited<ReturnType<typeof generatePersonalWeekly>> | undefined;
+try {
+  fileBackedWeeklyDirResult = await generatePersonalWeekly({
+    vaultPath: fileBackedWeeklyDirVault,
+    weekKey: '2026-W23',
+    dailyContents: [{ date: '2026-06-07', content: '?? X' }],
+    stats: { start: '2026-06-01', end: '2026-06-07', activeDays: 1, totalCompleted: 1, totalTasks: 1, streak: 1 },
+    callLlm: async () => ({ ok: true, content: '# weekly\\nsummary' }),
+  });
+} catch {
+  fileBackedWeeklyDirThrew = true;
+}
+assert.equal(
+  fileBackedWeeklyDirThrew,
+  false,
+  'weekly report generation should return a structured failure instead of throwing when the output directory path is occupied by a file',
+);
+assert.equal(
+  fileBackedWeeklyDirResult?.ok,
+  false,
+  'weekly report generation should fail explicitly when the output directory path is occupied by a file',
+);
+assert.match(
+  fileBackedWeeklyDirResult?.error ?? '',
+  /weekly-review|EEXIST|mkdir/i,
+  'weekly report generation should surface the blocked output directory path in the error',
+);
+assert.equal(
+  fs.readFileSync(occupiedWeeklyDirPath, 'utf-8'),
+  'occupied by file',
+  'weekly report generation should not overwrite a file occupying the output directory path',
+);
+assert.equal(
+  fs.existsSync(path.join(fileBackedWeeklyDirVault, 'logs', 'weekly-review', '2026-W23.md')),
+  false,
+  'weekly report generation should not create a report file beneath a file-backed output directory path',
+);
+
 
 // LLM 失败 → ok:false，不写文件
 const failed = await generatePersonalWeekly({
@@ -76,7 +214,89 @@ assert.equal(customWeekly.ok, true);
 assert.ok(customWeekly.filePath!.includes(path.join('custom', 'wk')), 'relativeDir 覆盖输出目录');
 assert.ok(!customWeekly.filePath!.includes(path.join('logs', 'weekly-review')), '不再落默认目录');
 
+// Template-center paths represent the complete report filename, not a directory.
+const templatePathWeekly = await generatePersonalWeekly({
+  vaultPath: vault, weekKey: '2026-W26', dailyContents: [{ date: '2026-06-22', content: 'Z' }],
+  stats: { start: '2026-06-22', end: '2026-06-28', activeDays: 1, totalCompleted: 1, totalTasks: 1, streak: 1 },
+  relativeFilePath: 'reports/personal/2026-W26.md',
+  callLlm: async () => ({ ok: true, content: 'template path weekly' }),
+});
+assert.equal(templatePathWeekly.ok, true);
+assert.equal(
+  templatePathWeekly.filePath,
+  path.join(vault, 'reports', 'personal', '2026-W26.md'),
+  'a complete template-derived report path should not append the period key a second time',
+);
+
+let templateBlockCalls = 0;
+const templateBackedWeekly = await generatePersonalWeekly({
+  vaultPath: vault,
+  weekKey: '2026-W28',
+  dailyContents: [{ date: '2026-07-06', content: 'template-backed source' }],
+  stats: { start: '2026-07-06', end: '2026-07-12', activeDays: 1, totalCompleted: 1, totalTasks: 1, streak: 1 },
+  reportTemplate: {
+    customBlocks: [
+      { id: 'summary', name: 'Summary', aiGenerate: true, renderType: 'text', prompt: 'Summarize the week.' },
+      { id: 'plan', name: 'Plan', aiGenerate: true, renderType: 'list', prompt: 'List next steps.' },
+      { id: 'disabled', name: 'Disabled', aiGenerate: false, renderType: 'text', prompt: '' },
+    ],
+  },
+  callLlm: async () => {
+    templateBlockCalls += 1;
+    return { ok: true, content: templateBlockCalls === 1 ? 'weekly summary' : '- next step' };
+  },
+});
+assert.equal(templateBackedWeekly.ok, true, 'template-backed weekly report should be generated.');
+assert.equal(templateBlockCalls, 2, 'template-backed weekly report should call the LLM once for each enabled block.');
+const templateBackedContent = fs.readFileSync(templateBackedWeekly.filePath!, 'utf-8');
+assert.match(templateBackedContent, /## Summary\s+weekly summary/, 'template-backed weekly report should render the first block heading and content.');
+assert.match(templateBackedContent, /## Plan\s+- next step/, 'template-backed weekly report should render list blocks.');
+assert.doesNotMatch(templateBackedContent, /Disabled/, 'template-backed weekly report should omit disabled blocks.');
+
+const parallelTemplateVault = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-parallel-template-'));
+const pendingTemplateBlocks: Array<() => void> = [];
+let startedTemplateBlocks = 0;
+const parallelTemplateGeneration = generatePersonalWeekly({
+  vaultPath: parallelTemplateVault,
+  weekKey: '2026-W29',
+  dailyContents: [{ date: '2026-07-13', content: 'parallel template source' }],
+  stats: { start: '2026-07-13', end: '2026-07-19', activeDays: 1, totalCompleted: 1, totalTasks: 1, streak: 1 },
+  reportTemplate: {
+    customBlocks: [
+      { id: 'first', name: 'First', aiGenerate: true, renderType: 'text', prompt: 'First block.' },
+      { id: 'second', name: 'Second', aiGenerate: true, renderType: 'text', prompt: 'Second block.' },
+    ],
+  },
+  callLlm: async () => new Promise((resolve) => {
+    startedTemplateBlocks += 1;
+    const blockIndex = startedTemplateBlocks;
+    pendingTemplateBlocks.push(() => resolve({ ok: true, content: `block ${blockIndex}` }));
+  }),
+});
+await Promise.resolve();
+assert.equal(startedTemplateBlocks, 2, 'template-backed report generation should start all enabled block requests in parallel.');
+pendingTemplateBlocks.forEach((resolve) => resolve());
+const parallelTemplateResult = await parallelTemplateGeneration;
+assert.equal(parallelTemplateResult.ok, true, 'parallel template-backed report generation should complete successfully.');
+const parallelTemplateContent = fs.readFileSync(parallelTemplateResult.filePath!, 'utf-8');
+assert.match(parallelTemplateContent, /## First\s+block 1/, 'parallel block output should retain the template order.');
+assert.match(parallelTemplateContent, /## Second\s+block 2/, 'parallel block output should retain the template order.');
+
 // 对外周报 → exports/weekly-reports/，脱敏在调 LLM 前完成
+
+await assert.rejects(
+  () => generatePersonalWeekly({
+    vaultPath: vault,
+    weekKey: '2026-W27',
+    dailyContents: [{ date: '2026-06-22', content: 'outside' }],
+    stats: { start: '2026-06-22', end: '2026-06-28', activeDays: 1, totalCompleted: 1, totalTasks: 1, streak: 1 },
+    relativeDir: '../outside-export',
+    callLlm: async () => ({ ok: true, content: 'should not write outside vault' }),
+  }),
+  /escapes|relative to the vault/i,
+  'report output relativeDir must not escape the selected vault.',
+);
+
 let sawInPrompt = '';
 const external = await generateExternalReport({
   vaultPath: vault,

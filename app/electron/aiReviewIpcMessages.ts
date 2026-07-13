@@ -1,0 +1,17 @@
+export const PREPARE_MATERIALS_LABEL = '准备复盘材料';
+export const REQUEST_AI_LABEL = '请求 AI';
+export const WRITE_OBSIDIAN_LABEL = '写入 Obsidian';
+export const READ_WEEKLY_SOURCES_MESSAGE = '读取本周日报素材';
+export const READ_MONTHLY_SOURCES_MESSAGE = '读取本月周报/日报素材';
+export const WAIT_WEEKLY_REPORT_MESSAGE = '等待模型生成周报';
+export const WAIT_MONTHLY_REPORT_MESSAGE = '等待模型生成月报';
+export const RECEIVED_WEEKLY_REPORT_MESSAGE = '已收到 AI 周报';
+export const RECEIVED_MONTHLY_REPORT_MESSAGE = '已收到 AI 月报';
+export const WEEKLY_WRITTEN_MESSAGE = '周报已写入';
+export const MONTHLY_WRITTEN_MESSAGE = '月报已写入';
+export const AI_REVIEW_DISABLED_ERROR = 'AI 复盘未启用或缺少 Key';
+export const TEMPLATE_CONTENT_REQUIRED_ERROR = '请粘贴你的模板内容';
+export const REPORT_TEMPLATE_REQUIRED_ERROR = '请粘贴你的报告模板';
+export const RECOGNIZE_REPORT_PROMPT_ERROR = '未能识别出可用的生成指令';
+export const PICK_TEMPLATE_FILE_TITLE = '选择模板文件（.md / .txt / .docx）';
+export const PICK_TEMPLATE_FILE_FILTER = '模板文件';

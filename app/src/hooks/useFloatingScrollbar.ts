@@ -1,4 +1,5 @@
 import { RefObject, useEffect } from 'react';
+import { getFloatingScrollbarMetrics, getFloatingScrollbarScrollTop } from './floatingScrollbarMetrics';
 
 interface FloatingScrollbarOptions {
   /** 容器内固定不滚动的头部选择器;滚动条会从其下方开始,不覆盖该区域。 */
@@ -24,11 +25,8 @@ export function useFloatingScrollbar(
       el.style.position = 'relative';
     }
 
-    const headerOffset = () => {
-      if (!headerSelector) return 0;
-      const header = el.querySelector(headerSelector) as HTMLElement | null;
-      return header ? header.offsetHeight : 0;
-    };
+    const header = headerSelector ? el.querySelector(headerSelector) : null;
+    let headerHeight = header instanceof HTMLElement ? header.offsetHeight : 0;
 
     const track = document.createElement('div');
     track.className = 'floating-scrollbar-track';
@@ -38,18 +36,14 @@ export function useFloatingScrollbar(
     el.appendChild(track);
 
     let hideTimer: number | undefined;
+    let layoutFrame: number | undefined;
+    let shouldShowOnLayout = false;
     let dragging = false;
     let hovering = false;
 
     const PAD = 4;
 
-    const metrics = () => {
-      const { scrollHeight, clientHeight, scrollTop } = el;
-      const scrollable = scrollHeight - clientHeight;
-      const trackHeight = clientHeight - headerOffset() - PAD * 2;
-      const thumbHeight = Math.max(28, (clientHeight / scrollHeight) * trackHeight);
-      return { scrollable, trackHeight, thumbHeight, scrollTop };
-    };
+    const metrics = () => getFloatingScrollbarMetrics(el, headerHeight, PAD);
 
     const layout = () => {
       const { scrollHeight, clientHeight } = el;
@@ -58,15 +52,25 @@ export function useFloatingScrollbar(
         return false;
       }
       track.style.display = 'block';
-      const offset = headerOffset();
-      track.style.top = `${el.scrollTop + offset + PAD}px`;
-      track.style.height = `${clientHeight - offset - PAD * 2}px`;
+      track.style.top = `${el.scrollTop + headerHeight + PAD}px`;
+      track.style.height = `${clientHeight - headerHeight - PAD * 2}px`;
 
       const { scrollable, trackHeight, thumbHeight, scrollTop } = metrics();
       const ratio = scrollable > 0 ? scrollTop / scrollable : 0;
       thumb.style.height = `${thumbHeight}px`;
       thumb.style.transform = `translateX(-50%) translateY(${ratio * (trackHeight - thumbHeight)}px)`;
       return true;
+    };
+
+    const scheduleLayout = (show = false) => {
+      shouldShowOnLayout ||= show;
+      if (layoutFrame !== undefined) return;
+      layoutFrame = window.requestAnimationFrame(() => {
+        layoutFrame = undefined;
+        const shouldShow = shouldShowOnLayout;
+        shouldShowOnLayout = false;
+        if (layout() && shouldShow) track.classList.add('is-visible');
+      });
     };
 
     const show = () => {
@@ -81,8 +85,12 @@ export function useFloatingScrollbar(
       }, 900);
     };
 
+    const scheduleShow = () => {
+      scheduleLayout(true);
+    };
+
     const onScroll = () => {
-      show();
+      scheduleShow();
       scheduleHide();
     };
 
@@ -91,11 +99,9 @@ export function useFloatingScrollbar(
 
     const onPointerMove = (event: PointerEvent) => {
       if (!dragging) return;
-      const { scrollable, trackHeight, thumbHeight } = metrics();
-      const usable = trackHeight - thumbHeight;
-      if (usable <= 0) return;
-      const deltaPx = event.clientY - startY;
-      el.scrollTop = startScrollTop + (deltaPx / usable) * scrollable;
+      const nextScrollTop = getFloatingScrollbarScrollTop(metrics(), startScrollTop, startY, event.clientY);
+      if (nextScrollTop === undefined) return;
+      el.scrollTop = nextScrollTop;
     };
 
     const onPointerUp = () => {
@@ -130,9 +136,17 @@ export function useFloatingScrollbar(
     track.addEventListener('pointerenter', onTrackEnter);
     track.addEventListener('pointerleave', onTrackLeave);
 
-    const resizeObserver = new ResizeObserver(() => layout());
+    const resizeObserver = new ResizeObserver(() => scheduleLayout());
     resizeObserver.observe(el);
-    const mutationObserver = new MutationObserver(() => layout());
+    let headerResizeObserver: ResizeObserver | undefined;
+    if (header instanceof HTMLElement) {
+      headerResizeObserver = new ResizeObserver(() => {
+        headerHeight = header.offsetHeight;
+        scheduleLayout();
+      });
+      headerResizeObserver.observe(header);
+    }
+    const mutationObserver = new MutationObserver(() => scheduleLayout());
     mutationObserver.observe(el, { childList: true, subtree: true });
 
     layout();
@@ -145,8 +159,10 @@ export function useFloatingScrollbar(
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       resizeObserver.disconnect();
+      headerResizeObserver?.disconnect();
       mutationObserver.disconnect();
       if (hideTimer) window.clearTimeout(hideTimer);
+      if (layoutFrame !== undefined) window.cancelAnimationFrame(layoutFrame);
       track.remove();
     };
   }, [ref, headerSelector]);

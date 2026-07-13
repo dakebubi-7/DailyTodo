@@ -73,19 +73,24 @@ function extractNaturalTaskTitle(input: string) {
     .replace(/[，。,.!?！？、；;：:]/g, ' ')
     .trim();
 
-  const segments = withoutMarkers.split(/\s+/).filter(Boolean);
-  const candidates = segments
-    .flatMap((segment) => segment.split(/(?=明天|今天|后天|周[一二三四五六日天]|很急|紧急|加急|尽快)/).filter(Boolean))
-    .map((segment) => segment
-      .replace(/^(?:我|你|他|她|我们)?(?:今天|明天|后天|周[一二三四五六日天])?/, '')
-      .replace(/^(?:要|需要|得|去|到|在|把|进行|做|处理|推进|安排)+/, '')
-      .replace(/^(?:公司|学校|家里|办公室)+/, '')
-      .replace(/^(?:要|需要|得|去|到|在|把|进行|做|处理|推进|安排)+/, '')
-      .replace(/(?:很急|紧急|加急|急需|尽快|马上|立刻|一下|一个|一份)+$/, '')
-      .trim())
-    .filter((segment) => segment && !NATURAL_FILLER_PATTERN.test(segment));
+  let longestCandidate = '';
+  for (const token of withoutMarkers.split(/\s+/)) {
+    if (!token) continue;
+    for (const segment of token.split(/(?=明天|今天|后天|周[一二三四五六日天]|很急|紧急|加急|尽快)/)) {
+      const candidate = segment
+        .replace(/^(?:我|你|他|她|我们)?(?:今天|明天|后天|周[一二三四五六日天])?/, '')
+        .replace(/^(?:要|需要|得|去|到|在|把|进行|做|处理|推进|安排)+/, '')
+        .replace(/^(?:公司|学校|家里|办公室)+/, '')
+        .replace(/^(?:要|需要|得|去|到|在|把|进行|做|处理|推进|安排)+/, '')
+        .replace(/(?:很急|紧急|加急|急需|尽快|马上|立刻|一下|一个|一份)+$/, '')
+        .trim();
+      if (candidate && !NATURAL_FILLER_PATTERN.test(candidate) && candidate.length > longestCandidate.length) {
+        longestCandidate = candidate;
+      }
+    }
+  }
 
-  return candidates.sort((a, b) => b.length - a.length)[0] || withoutMarkers;
+  return longestCandidate || withoutMarkers;
 }
 
 export function parseQuickCapture(input: string): QuickCaptureResult {

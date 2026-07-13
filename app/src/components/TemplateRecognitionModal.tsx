@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import type { CustomBlock, RenderType } from '../../shared/aiReview/sectionConfig';
+import { isRenderType, RENDER_TYPES, type CustomBlock, type RenderType } from '../../shared/aiReview/sectionConfig';
 import { parseRecognizedBlocks } from '../../shared/recognizeTemplateBlocks';
 
 const RENDER_TYPE_LABELS: Record<RenderType, string> = {
@@ -31,7 +31,10 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
     }
     setError('');
     const reader = new FileReader();
-    reader.onload = (ev) => setText(ev.target?.result as string ?? '');
+    reader.onload = (ev) => {
+      const fileText = ev.target?.result;
+      setText(typeof fileText === 'string' ? fileText : '');
+    };
     reader.readAsText(file, 'utf-8');
   };
 
@@ -119,10 +122,14 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
                   <select
                     value={block.renderType}
                     disabled={!block.aiGenerate}
-                    onChange={(e) => updateRecognized(block.id, { renderType: e.target.value as RenderType })}
+                    onChange={(e) => {
+                      const nextRenderType = e.target.value;
+                      if (!isRenderType(nextRenderType)) return;
+                      updateRecognized(block.id, { renderType: nextRenderType });
+                    }}
                   >
-                    {(Object.entries(RENDER_TYPE_LABELS) as [RenderType, string][]).map(([v, label]) => (
-                      <option key={v} value={v}>{label}</option>
+                    {RENDER_TYPES.map((v) => (
+                      <option key={v} value={v}>{RENDER_TYPE_LABELS[v]}</option>
                     ))}
                   </select>
                   <button

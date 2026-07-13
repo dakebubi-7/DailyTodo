@@ -20,6 +20,11 @@ const diagnostics = readFileSync(diagnosticsPath, 'utf8');
 assert.match(safeStore, /export function getStoreConfigPath\b/, 'safeStore should export getStoreConfigPath.');
 assert.match(safeStore, /export function createSafeStore\b/, 'safeStore should export createSafeStore.');
 assert.match(safeStore, /config\.corrupt-/, 'safeStore should keep corrupt config backup behavior.');
+assert.match(
+  safeStore,
+  /fs\.statSync\(configPath\)\.isFile\(\)/,
+  'safeStore should only back up and overwrite config.json when the path is a real file.',
+);
 assert.match(safeStore, /new Store\(/, 'safeStore should own electron-store creation.');
 
 assert.match(diagnostics, /export function getDiagnosticLogPath\b/, 'diagnostics should export getDiagnosticLogPath.');

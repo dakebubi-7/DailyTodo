@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Task } from '../types/task';
+import { getCompletionReviews } from '../../shared/completionReviews';
 
 interface TaskReviewDialogProps {
   task: Task | null;
@@ -15,13 +16,9 @@ const statusLabel = {
 };
 
 export function TaskReviewDialog({ task, onClose, onAddRecord, onDeleteRecord }: TaskReviewDialogProps) {
-  const reviews = task?.completionReviews?.length
-    ? task.completionReviews
-    : task?.completionReview
-      ? [task.completionReview]
-      : [];
-
-  if (!task || reviews.length === 0) return null;
+  if (!task) return null;
+  const reviews = getCompletionReviews(task);
+  if (reviews.length === 0) return null;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/25 p-4 backdrop-blur-sm">

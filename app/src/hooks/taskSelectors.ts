@@ -4,7 +4,8 @@ import {
   getSourceOrderForDate,
   sortTasksForDisplay,
 } from '../utils/taskOrdering';
-import { getTaskDate, taskMatchesDate } from './taskTransforms';
+import { isDateKey } from '../../shared/taskRollover';
+import { getTaskDate } from './taskTransforms';
 
 export type PriorityFilter = 'all' | Task['priority'];
 
@@ -31,38 +32,69 @@ export function selectTaskViewState({
   selectedDate,
   taskListOrderByDate,
 }: TaskViewStateInput) {
-  const filteredTasks = allTasks.filter((task) => {
-    if (task.cleared) return false;
-    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+  const filteredTasks: Task[] = [];
+  let selectedDateTaskCount = 0;
+  const taskCommandBuckets: Task[][] = [[], [], [], [], [], []];
+  const allDates = new Set([currentDate]);
+  let completedCount = 0;
+  let todayCount = 0;
 
-    const matchesDate = (date: string) => taskMatchesDate(task, date, currentDate);
-    switch (activeTab) {
-      case 'today':
-        return matchesDate(selectedDate);
-      case 'completed':
-        return matchesDate(selectedDate) && task.completed;
-      case 'all':
-      default:
-        return true;
+  for (const task of allTasks) {
+    const taskDate = getTaskDate(task, currentDate);
+    allDates.add(taskDate);
+    if (task.cleared) continue;
+
+    let matchesSelectedDate = taskDate === selectedDate;
+    let matchesCurrentDate = selectedDate === currentDate
+      ? matchesSelectedDate
+      : taskDate === currentDate;
+    if (!matchesSelectedDate || !matchesCurrentDate) {
+      for (const scheduledDate of task.scheduledDates || []) {
+        if (!isDateKey(scheduledDate)) continue;
+        if (!matchesSelectedDate && scheduledDate === selectedDate) matchesSelectedDate = true;
+        if (!matchesCurrentDate && scheduledDate === currentDate) matchesCurrentDate = true;
+        if (matchesSelectedDate && matchesCurrentDate) break;
+      }
     }
-  });
 
-  const sortedTasks = sortTasksForDisplay(filteredTasks, selectedDate, taskListOrderByDate);
-  const selectedDateTasks = allTasks.filter((task) => taskMatchesDate(task, selectedDate, currentDate) && !task.cleared);
-  const selectedDateTaskCommands = [...selectedDateTasks].sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    return taskCommandPriorityOrder[a.priority] - taskCommandPriorityOrder[b.priority];
-  });
+    if (matchesSelectedDate) {
+      selectedDateTaskCount += 1;
+      if (task.completed) completedCount += 1;
+      taskCommandBuckets[
+        (task.completed ? 3 : 0) + taskCommandPriorityOrder[task.priority]
+      ].push(task);
+    }
+    if (matchesCurrentDate) todayCount += 1;
+
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) continue;
+    if (
+      activeTab === 'all' ||
+      (activeTab === 'today' && matchesSelectedDate) ||
+      (activeTab === 'completed' && matchesSelectedDate && task.completed)
+    ) {
+      filteredTasks.push(task);
+    }
+  }
+
+  const sourceOrderForSelectedDate = getSourceOrderForDate(taskListOrderByDate, selectedDate);
+  const sortedTasks = sortTasksForDisplay(
+    filteredTasks,
+    selectedDate,
+    taskListOrderByDate,
+    sourceOrderForSelectedDate,
+  );
+  const selectedDateTaskCommands: Task[] = [];
+  for (const bucket of taskCommandBuckets) {
+    selectedDateTaskCommands.push(...bucket);
+  }
 
   return {
     sortedTasks,
     selectedDateTaskCommands,
-    completedCount: selectedDateTasks.filter((task) => task.completed).length,
-    totalCount: selectedDateTasks.length,
-    todayCount: allTasks.filter((task) => taskMatchesDate(task, currentDate, currentDate) && !task.cleared).length,
-    allDates: Array.from(
-      new Set([...allTasks.map((task) => getTaskDate(task, currentDate)), currentDate]),
-    ).sort((a, b) => b.localeCompare(a)),
-    sourceOrderForSelectedDate: getSourceOrderForDate(taskListOrderByDate, selectedDate),
+    completedCount,
+    totalCount: selectedDateTaskCount,
+    todayCount,
+    allDates: Array.from(allDates).sort((a, b) => b.localeCompare(a)),
+    sourceOrderForSelectedDate,
   };
 }

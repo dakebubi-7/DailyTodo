@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertCleanupCoreIncludes } from './verifyCleanupCore';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '..');
+const helperPath = join(root, 'src/app/appUiActions.ts');
+const shellHelperPath = join(root, 'src/app/appShellComposition.tsx');
+const shellMainContentCompositionPath = join(root, 'src/app/appShellMainContentComposition.tsx');
+const shellCompositionHookPath = join(root, 'src/app/useAppShellComposition.ts');
+const shellInputsPath = join(root, 'src/app/appShellCompositionInputs.ts');
+const appPath = join(root, 'src/App.tsx');
+const topContentPath = join(root, 'src/components/AppTopContent.tsx');
+const mainContentPath = join(root, 'src/components/AppMainContent.tsx');
+const packagePath = join(root, 'package.json');
+
+assert.ok(existsSync(helperPath), 'App UI actions helper module should exist.');
+assert.ok(existsSync(shellHelperPath), 'App shell composition helper should exist for UI-action wiring verification.');
+assert.ok(existsSync(shellMainContentCompositionPath), 'App shell main-content composition helper should exist for UI-action wiring verification.');
+assert.ok(existsSync(shellCompositionHookPath), 'Runtime shell composition hook should exist for UI-action wiring verification.');
+assert.ok(existsSync(shellInputsPath), 'Pure shell-inputs helper should exist for UI-action wiring verification.');
+assert.ok(existsSync(topContentPath), 'App top content component should exist for UI action wiring verification.');
+assert.ok(existsSync(mainContentPath), 'App main content component should exist for task-list and add-task wiring verification.');
+
+const helper = readFileSync(helperPath, 'utf8');
+const shellHelper = readFileSync(shellHelperPath, 'utf8');
+const shellMainContentComposition = readFileSync(shellMainContentCompositionPath, 'utf8');
+const shellCompositionHook = readFileSync(shellCompositionHookPath, 'utf8');
+const shellInputs = readFileSync(shellInputsPath, 'utf8');
+const app = readFileSync(appPath, 'utf8');
+const topContent = readFileSync(topContentPath, 'utf8');
+const mainContent = readFileSync(mainContentPath, 'utf8');
+const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+const scripts = packageJson.scripts as Record<string, string>;
+
+assert.match(helper, /export function createAppUiActions\b/, 'helper should export createAppUiActions.');
+assert.match(helper, /setIsDailyWorkOpen\(\(prev\) => !prev\)/, 'helper should preserve daily-work toggle behavior.');
+assert.match(helper, /setIsInspirationOpen\(false\)/, 'helper should close inspiration when daily-work opens/toggles.');
+assert.match(helper, /setIsInspirationOpen\(\(prev\) => !prev\)/, 'helper should preserve inspiration toggle behavior.');
+assert.match(helper, /setIsDailyWorkOpen\(false\)/, 'helper should close daily-work when inspiration opens/toggles.');
+assert.match(helper, /setSearchOpen\(\(prev\) => !prev\)/, 'helper should preserve search toggle behavior.');
+assert.match(helper, /setShowOpenOnly\(\(prev\) => !prev\)/, 'helper should preserve open-only toggle behavior.');
+assert.match(helper, /closeDailyWorkPanel: \(\) => setIsDailyWorkOpen\(false\)/, 'helper should expose closeDailyWorkPanel.');
+assert.match(helper, /closeInspirationPanel: \(\) => setIsInspirationOpen\(false\)/, 'helper should expose closeInspirationPanel.');
+
+assert.match(app, /useAppShellComposition\(\{/, 'App should delegate UI action wiring through the runtime composition hook.');
+assert.match(shellCompositionHook, /from '\.\/appUiActions'/, 'Runtime shell composition hook should import app UI actions helper.');
+assert.match(shellCompositionHook, /const appUiActions = useMemo\(\(\) => createAppUiActions\(\{[\s\S]*setShowOpenOnly: appState\.setShowOpenOnly,[\s\S]*\}\), \[\]\);/, 'Runtime shell composition hook should keep UI action handler identities stable across unrelated renders.');
+assert.match(shellInputs, /appUiActions,/, 'Pure shell-inputs helper should pass UI actions into the shell composition helper.');
+assert.match(shellMainContentComposition, /const topContentProps = \{[\s\S]*onToggleDailyWorkPanel: appUiActions\.toggleDailyWorkPanel,[\s\S]*onToggleInspirationPanel: appUiActions\.toggleInspirationPanel,[\s\S]*onCloseDailyWorkPanel: appUiActions\.closeDailyWorkPanel,[\s\S]*onCloseInspirationPanel: appUiActions\.closeInspirationPanel,[\s\S]*\};/, 'main-content composition helper should route daily panel UI actions through topContentProps.');
+assert.match(topContent, /onClick=\{onToggleDailyWorkPanel\}/, 'Daily work tab should use helper action through AppTopContent.');
+assert.match(topContent, /onClick=\{onToggleInspirationPanel\}/, 'Inspiration tab should use helper action through AppTopContent.');
+assert.match(topContent, /onClose=\{onCloseDailyWorkPanel\}/, 'Daily work panel should use helper close action through AppTopContent.');
+assert.match(topContent, /onClose=\{onCloseInspirationPanel\}/, 'Inspiration panel should use helper close action through AppTopContent.');
+assert.match(shellMainContentComposition, /const taskListProps = \{[\s\S]*onToggleSearch: appUiActions\.toggleSearchOpen,[\s\S]*onToggleOpenOnly: appUiActions\.toggleShowOpenOnly,[\s\S]*\};/, 'main-content composition helper should route TaskList UI actions through taskListProps.');
+assert.match(shellMainContentComposition, /const addTaskInputProps = \{\s*onAdd: addTask,\s*\};/, 'main-content composition helper should route AddTaskInput through an explicit prop bag.');
+assert.match(mainContent, /<TaskList \{\.\.\.taskListProps\} \/>/, 'AppMainContent should forward TaskList props.');
+assert.match(mainContent, /<AddTaskInput \{\.\.\.addTaskInputProps\} \/>/, 'AppMainContent should forward AddTaskInput props.');
+assert.doesNotMatch(app, /const topContentProps = \{/, 'App should not inline topContent props once shell composition owns them.');
+assert.doesNotMatch(app, /const taskListProps = \{/, 'App should not inline taskList props once shell composition owns them.');
+assert.doesNotMatch(app, /const addTaskInputProps = \{/, 'App should not inline addTaskInput props once shell composition owns them.');
+assert.doesNotMatch(app, /onClick=\{\(\) => \{\s*setIsDailyWorkOpen\(\(prev\) => !prev\);\s*setIsInspirationOpen\(false\);\s*\}\}/s, 'App should not inline daily-work panel toggle workflow.');
+assert.doesNotMatch(app, /onClick=\{\(\) => \{\s*setIsInspirationOpen\(\(prev\) => !prev\);\s*setIsDailyWorkOpen\(false\);\s*\}\}/s, 'App should not inline inspiration panel toggle workflow.');
+assert.doesNotMatch(app, /onToggleSearch: \(\) => setSearchOpen\(\(prev\) => !prev\)/, 'App should not inline search toggle workflow in taskListProps.');
+assert.doesNotMatch(app, /onToggleOpenOnly: \(\) => setShowOpenOnly\(\(prev\) => !prev\)/, 'App should not inline open-only toggle workflow in taskListProps.');
+assert.doesNotMatch(app, /onAdd: \(text, taskPriority, taskSource, taskDate\) => addTask\(text, taskPriority, taskSource, taskDate\)/, 'App should not inline a pure AddTaskInput addTask pass-through wrapper in addTaskInputProps.');
+assert.equal(scripts['verify:app-ui-actions-module'], 'tsx scripts/verify-app-ui-actions-module.ts', 'package.json should expose the focused UI actions verifier.');
+assertCleanupCoreIncludes('verify:app-ui-actions-module', 'cleanup-core should include the focused UI actions verifier.');
+
+console.log('App UI actions helper verification passed');

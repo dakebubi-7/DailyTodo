@@ -7,12 +7,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const settingsPanelPath = join(root, 'src/components/SettingsPanel.tsx');
 const appearancePath = join(root, 'src/components/settings/appearanceSettings.ts');
+const appearanceSectionPath = join(root, 'src/components/settings/AppearanceSettingsSection.tsx');
 
 const settingsPanel = readFileSync(settingsPanelPath, 'utf8');
 
 assert.ok(existsSync(appearancePath), 'Settings appearance helper module should exist.');
+assert.ok(existsSync(appearanceSectionPath), 'AppearanceSettingsSection should consume appearance helpers.');
 
 const appearance = readFileSync(appearancePath, 'utf8');
+const appearanceSection = readFileSync(appearanceSectionPath, 'utf8');
 
 for (const exportName of [
   'OPACITY_SLIDER_MIN',
@@ -35,9 +38,14 @@ for (const inlineName of [
 }
 
 assert.match(
+  appearanceSection,
+  /from '\.\/appearanceSettings'/,
+  'AppearanceSettingsSection should import appearance helpers from the settings module.',
+);
+assert.match(
   settingsPanel,
-  /from '\.\/settings\/appearanceSettings'/,
-  'SettingsPanel should import appearance helpers from the settings module.',
+  /from '\.\/settings\/AppearanceSettingsSection'/,
+  'SettingsPanel should consume appearance behavior through AppearanceSettingsSection.',
 );
 assert.match(appearance, /THEME_PRESETS/, 'appearanceSettings should own theme preset lookup.');
 assert.match(appearance, /OPACITY_KEYS/, 'appearanceSettings should own unified opacity key iteration.');

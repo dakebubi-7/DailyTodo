@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Task } from '../types/task';
+import { usePriorityPickerPopover } from './priorityPicker/usePriorityPickerPopover';
 
 interface PriorityPickerProps {
   value: Task['priority'];
@@ -18,42 +18,7 @@ const priorityMeta = {
 };
 
 export function PriorityPicker({ value, onChange, title = '调整优先级' }: PriorityPickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  const updatePosition = () => {
-    const rect = buttonRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const popoverWidth = 142;
-    const left = Math.min(Math.max(8, rect.left), window.innerWidth - popoverWidth - 8);
-    const top = rect.bottom + 8 > window.innerHeight - 132 ? rect.top - 138 : rect.bottom + 8;
-    setPosition({ top: Math.max(8, top), left });
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    updatePosition();
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (buttonRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
-      setIsOpen(false);
-    };
-    const handleReposition = () => updatePosition();
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    window.addEventListener('resize', handleReposition);
-    window.addEventListener('scroll', handleReposition, true);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      window.removeEventListener('resize', handleReposition);
-      window.removeEventListener('scroll', handleReposition, true);
-    };
-  }, [isOpen]);
+  const { buttonRef, isOpen, popoverRef, position, togglePopover, closePopover } = usePriorityPickerPopover();
 
   return (
     <>
@@ -62,7 +27,7 @@ export function PriorityPicker({ value, onChange, title = '调整优先级' }: P
         type="button"
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.94 }}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={togglePopover}
         className="priority-dot-button"
         title={`${title}: ${priorityMeta[value].fullLabel}`}
         aria-label={`${title}: ${priorityMeta[value].fullLabel}`}
@@ -85,8 +50,8 @@ export function PriorityPicker({ value, onChange, title = '调整优先级' }: P
               key={priority}
               type="button"
               onClick={() => {
-                onChange(priority);
-                setIsOpen(false);
+                if (priority !== value) onChange(priority);
+                closePopover();
               }}
               className={`priority-option ${value === priority ? 'priority-option-active' : ''}`}
             >

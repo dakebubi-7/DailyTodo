@@ -3,7 +3,10 @@ import {
   CompanionRule,
   CompanionSettings,
   CompanionTemplate,
+  isCompanionRule,
+  isCompanionTemplate,
 } from './obsidianCompanion';
+import { isObjectRecord } from './unknownValueGuards';
 
 export const DEFAULT_COMPANION_TEMPLATES: CompanionTemplate[] = [
   {
@@ -110,4 +113,50 @@ export function createDefaultCompanionSettings(vaultPath = ''): CompanionSetting
     rules: DEFAULT_COMPANION_RULES,
     templates: DEFAULT_COMPANION_TEMPLATES,
   };
+}
+
+export function normalizeCompanionSettings(value: unknown, vaultPath = ''): CompanionSettings {
+  const defaults = createDefaultCompanionSettings(vaultPath);
+  if (!isObjectRecord(value)) return defaults;
+
+  const candidate: Record<string, unknown> = value;
+  return {
+    vaultPath: typeof candidate.vaultPath === 'string' ? candidate.vaultPath : defaults.vaultPath,
+    mobileInboxPath: typeof candidate.mobileInboxPath === 'string' ? candidate.mobileInboxPath : defaults.mobileInboxPath,
+    presetId: typeof candidate.presetId === 'string' ? candidate.presetId : defaults.presetId,
+    syncMode:
+      candidate.syncMode === 'manual' || candidate.syncMode === 'on-change' || candidate.syncMode === 'interval'
+        ? candidate.syncMode
+        : defaults.syncMode,
+    previewBeforeWrite:
+      typeof candidate.previewBeforeWrite === 'boolean' ? candidate.previewBeforeWrite : defaults.previewBeforeWrite,
+    rules: Array.isArray(candidate.rules) && candidate.rules.every(isCompanionRule) ? candidate.rules : defaults.rules,
+    templates:
+      Array.isArray(candidate.templates) && candidate.templates.every(isCompanionTemplate)
+        ? candidate.templates
+        : defaults.templates,
+  };
+}
+
+function areCompanionValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left)
+      && Array.isArray(right)
+      && left.length === right.length
+      && left.every((value, index) => areCompanionValuesEqual(value, right[index]));
+  }
+
+  const leftEntries = Object.entries(left);
+  const rightEntries = Object.entries(right);
+  return leftEntries.length === rightEntries.length
+    && leftEntries.every(([key, value]) => (
+      Object.prototype.hasOwnProperty.call(right, key)
+        && areCompanionValuesEqual(value, Object.getOwnPropertyDescriptor(right, key)?.value)
+    ));
+}
+
+export function areCompanionSettingsEqual(left: CompanionSettings, right: CompanionSettings): boolean {
+  return areCompanionValuesEqual(left, right);
 }

@@ -6,20 +6,24 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
+const taskItemPresentation = readFileSync(join(root, 'src/components/taskItem/taskItemPresentation.tsx'), 'utf8');
+const taskItemControls = readFileSync(join(root, 'src/components/taskItem/taskItemControls.tsx'), 'utf8');
+const taskItemActionControls = readFileSync(join(root, 'src/components/taskItem/taskItemActionControls.tsx'), 'utf8');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
+const appearanceSettingsSection = readFileSync(join(root, 'src/components/settings/AppearanceSettingsSection.tsx'), 'utf8');
 const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
-const electronMain = readFileSync(join(root, 'electron/main.ts'), 'utf8');
+const mainWindowFactory = readFileSync(join(root, 'electron/mainWindowFactory.ts'), 'utf8');
 const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').replace(/\r\n/g, '\n');
 const watercolorTheme = readFileSync(join(root, 'src/styles/watercolor-theme.css'), 'utf8').replace(/\r\n/g, '\n');
 
-assert.ok(taskItem.includes('className="task-drag-handle"'), 'Main task rows should keep the drag handle at the leading edge.');
+assert.ok(taskItem.includes('<DragHandleButton dragHandleProps={dragHandleProps} />') && taskItemControls.includes('className="task-drag-handle"'), 'Main task rows should keep the drag handle at the leading edge.');
 assert.ok(taskItem.includes('onClick={toggleCluster}'), 'Main task rows should keep the collapsible child interaction on the card.');
 assert.ok(taskItem.includes("role={hasChildren ? 'button' : undefined}"), 'Main task rows with children should expose button semantics for collapse/expand.');
 assert.ok(taskItem.includes('aria-expanded={hasChildren ? !task.collapsed : undefined}'), 'Main task rows should expose the current collapsed state.');
-assert.ok(taskItem.includes('className={`task-complete-action'), 'Main task rows should keep the completion circle.');
+assert.ok(taskItem.includes('<CompleteActionButton') && taskItemActionControls.includes('className={getTaskCompleteActionClassName(completed)}'), 'Main task rows should keep the completion circle.');
 assert.ok(taskItem.includes('<PriorityPicker value={task.priority} onChange={onPriorityChange} />'), 'Main task rows should keep the priority dot immediately before the title.');
-assert.ok(taskItem.includes('className="task-text"'), 'Main task rows should keep the task title text.');
-assert.ok(taskItem.includes('ReviewActionButton'), 'Main task rows should keep the review eye action.');
+assert.ok(taskItem.includes('<TaskMainContent') && taskItemControls.includes('className="task-text"'), 'Main task rows should keep the task title text through the controls main-content component.');
+assert.ok(taskItem.includes('<TaskActionLayer') && taskItemActionControls.includes('ReviewActionButton'), 'Main task rows should keep the review eye action through the controls action layer.');
 
 assert.ok(!taskItem.includes('className="task-source-badge"'), 'Main task rows should not render a source badge; keep the desktop-shortcut layout compact.');
 assert.ok(!taskItem.includes('sourceLabels'), 'TaskItem should not keep source-label copy for a removed main-row source badge.');
@@ -27,15 +31,16 @@ assert.ok(!taskItem.includes('sourceTitles'), 'TaskItem should not keep source-t
 assert.ok(!globals.includes('.task-source-badge'), 'Task card CSS should not include source-badge styling after removing the main-row badge.');
 assert.ok(!globals.includes('source/review/delete'), 'Task action safe-space copy should not describe a removed source action.');
 
-assert.ok(settingsPanel.includes("label={appSettings.language === 'zh-CN' ? '玻璃透明度' : 'Glass opacity'}"), 'Settings should expose one total glass opacity control.');
-assert.ok(settingsPanel.includes('value={glassOpacityValue(settings)}'), 'Glass opacity control should read one total value.');
-assert.ok(settingsPanel.includes('onChange={(value) => onChange(withUnifiedGlassOpacity(settings, value))}'), 'Glass opacity control should write the same value to all opacity fields.');
-assert.ok(settingsPanel.includes("label={appSettings.language === 'zh-CN' ? '模糊强度' : 'Blur strength'}"), 'Settings should expose blur strength.');
-assert.ok(!settingsPanel.includes('OPACITY_AREAS.map'), 'Settings should not render old per-area opacity controls.');
-assert.ok(!settingsPanel.includes('function OpacityAreaControl('), 'Settings should not keep the old opacity area control component.');
+assert.ok(settingsPanel.includes('<AppearanceSettingsSection'), 'SettingsPanel should render the extracted appearance settings section.');
+assert.ok(appearanceSettingsSection.includes("label={zh ? '玻璃透明度' : 'Glass opacity'}"), 'Settings should expose one total glass opacity control.');
+assert.ok(appearanceSettingsSection.includes('value={glassOpacityValue(settings)}'), 'Glass opacity control should read one total value.');
+assert.ok(appearanceSettingsSection.includes('onChange={(value) => onChange(withUnifiedGlassOpacity(settings, value))}'), 'Glass opacity control should write the same value to all opacity fields.');
+assert.ok(appearanceSettingsSection.includes("label={zh ? '模糊强度' : 'Blur strength'}"), 'Settings should expose blur strength.');
+assert.ok(!appearanceSettingsSection.includes('OPACITY_AREAS.map'), 'Settings should not render old per-area opacity controls.');
+assert.ok(!appearanceSettingsSection.includes('function OpacityAreaControl('), 'Settings should not keep the old opacity area control component.');
 
-assert.ok(electronMain.includes('transparent: true'), 'Electron windows should stay transparent so CSS glass can show the desktop behind it.');
-assert.ok(electronMain.includes("backgroundColor: '#00000000'"), 'Electron windows should use a fully transparent background.');
+assert.ok(mainWindowFactory.includes('transparent: true'), 'Electron windows should stay transparent so CSS glass can show the desktop behind it.');
+assert.ok(mainWindowFactory.includes("backgroundColor: '#00000000'"), 'Electron windows should use a fully transparent background.');
 assert.ok(globals.includes('backdrop-filter: blur(var(--blur-strength)) saturate(var(--glass-saturation));'), 'App shell should use the configured blur strength for frosted glass.');
 
 assert.ok(

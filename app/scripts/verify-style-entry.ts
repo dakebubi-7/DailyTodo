@@ -13,10 +13,9 @@ assert.ok(existsSync(styleEntryPath), 'Style entry file should exist.');
 
 const styleEntry = readFileSync(styleEntryPath, 'utf8');
 
-assert.match(mainTsx, /import '\.\/styles\/index\.css';/, 'Renderer entry should import the single style entry.');
+assert.match(appTsx, /import '\.\/styles\/index\.css';/, 'Main app route should import the single style entry.');
 assert.doesNotMatch(mainTsx, /import '\.\/styles\/(globals|context-menu)\.css';/, 'Renderer entry should not import style leaf files directly.');
-assert.doesNotMatch(appTsx, /import '\.\/styles\/.+\.css';/, 'App component should not import global CSS directly.');
+assert.doesNotMatch(appTsx, /import '\.\/styles\/(?!index\.css).+\.css';/, 'App component should only import the consolidated style entry.');
 assert.match(styleEntry, /@import '\.\/globals\.css';/, 'Style entry should import globals.css.');
-assert.match(styleEntry, /@import '\.\/context-menu\.css';/, 'Style entry should import context-menu.css.');
 
 console.log('style entry verification passed');

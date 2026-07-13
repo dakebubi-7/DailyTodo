@@ -11,6 +11,15 @@ fs.writeFileSync(file, '原始内容', 'utf-8');
 // 正常读 → 写
 const snap = readWithStamp(file);
 assert.equal(snap.content, '原始内容');
+const directoryBackedPath = path.join(dir, 'directory-backed.md');
+fs.mkdirSync(directoryBackedPath, { recursive: true });
+let directoryBackedSnap: ReturnType<typeof readWithStamp> | undefined;
+assert.doesNotThrow(() => {
+  directoryBackedSnap = readWithStamp(directoryBackedPath);
+}, 'readWithStamp should not throw when the target path is a directory');
+assert.equal(directoryBackedSnap?.stamp, null, 'directory-backed paths should not produce file stamps');
+assert.equal(directoryBackedSnap?.content, '', 'directory-backed paths should not produce file content');
+
 const ok = atomicReplace(file, '新内容', snap.stamp);
 assert.equal(ok.ok, true);
 assert.equal(fs.readFileSync(file, 'utf-8'), '新内容');
@@ -29,6 +38,16 @@ const newFile = path.join(dir, 'sub', 'fresh.md');
 const created = atomicReplace(newFile, '全新内容', null);
 assert.equal(created.ok, true, 'null stamp + missing file → create');
 assert.equal(fs.readFileSync(newFile, 'utf-8'), '全新内容');
+
+const atomicWriteSource = fs.readFileSync(new URL('../electron/aiReview/atomicWrite.ts', import.meta.url), 'utf-8');
+assert.ok(
+  /fs\.renameSync\(tmp, filePath\)[\s\S]*catch \(error\)[\s\S]*fs\.rmSync\(tmp, \{ force: true \}\)/.test(atomicWriteSource),
+  'atomicReplace should clean up the temporary file when rename/write replacement fails',
+);
+assert.ok(
+  /temporary cleanup failed/.test(atomicWriteSource),
+  'atomicReplace should preserve the original replacement error when temporary-file cleanup also fails',
+);
 
 // 文件被删除冲突：expected 有 stamp 但文件已不存在 → 拒绝，不创建
 const toDelete = path.join(dir, 'gone.md');

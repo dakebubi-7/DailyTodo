@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { memo } from 'react';
 import { TabType } from '../types/task';
 
 interface TabBarProps {
@@ -12,7 +13,7 @@ const tabs: { key: TabType; label: string }[] = [
   { key: 'completed', label: '复盘' },
 ];
 
-export function TabBar({ activeTab, onTabChange }: TabBarProps) {
+export const TabBar = memo(function TabBar({ activeTab, onTabChange }: TabBarProps) {
   return (
     <div className="tabbar flex gap-1 bg-transparent px-3 py-1.5 backdrop-blur-sm">
       {tabs.map((tab) => (
@@ -39,4 +40,4 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
       ))}
     </div>
   );
-}
+});

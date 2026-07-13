@@ -7,8 +7,10 @@ import { createDefaultAppSettings, normalizeAppSettings } from '../shared/appSet
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const settingsSource = readFileSync(join(root, 'shared/appSettings.ts'), 'utf8');
-const appSource = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+const shellCompositionSource = readFileSync(join(root, 'src/app/useAppShellComposition.ts'), 'utf8');
+const completionActionsSource = readFileSync(join(root, 'src/app/appCompletionActions.ts'), 'utf8');
 const settingsPanelSource = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
+const generalSettingsSectionSource = readFileSync(join(root, 'src/components/settings/GeneralSettingsSection.tsx'), 'utf8');
 
 const defaults = createDefaultAppSettings();
 assert.equal(defaults.mainTaskCompletionReviewEnabled, true, 'Main task completion review should default to enabled.');
@@ -27,11 +29,18 @@ const disabled = normalizeAppSettings({
 assert.equal(disabled.mainTaskCompletionReviewEnabled, false, 'Explicit disabled main task setting should be preserved.');
 assert.equal(disabled.subtaskCompletionReviewEnabled, false, 'Explicit disabled subtask setting should be preserved.');
 
+assert.match(settingsSource, /import \{ isObjectRecord \} from '\.\/unknownValueGuards';/, 'App settings normalization should reuse the shared object-record predicate.');
+assert.doesNotMatch(settingsSource, /function isObject\(value: unknown\)/, 'App settings normalization should not retain a duplicate local object predicate.');
 assert.ok(settingsSource.includes('mainTaskCompletionReviewEnabled: boolean'), 'AppBehaviorSettings should declare mainTaskCompletionReviewEnabled.');
 assert.ok(settingsSource.includes('subtaskCompletionReviewEnabled: boolean'), 'AppBehaviorSettings should declare subtaskCompletionReviewEnabled.');
-assert.ok(appSource.includes('appSettings.mainTaskCompletionReviewEnabled'), 'App should read main task completion review setting.');
-assert.ok(appSource.includes('appSettings.subtaskCompletionReviewEnabled'), 'App should read subtask completion review setting.');
-assert.ok(settingsPanelSource.includes('主任务完成时填写完成记录'), 'Settings UI should render main task completion review switch.');
-assert.ok(settingsPanelSource.includes('子任务完成时填写完成记录'), 'Settings UI should render subtask completion review switch.');
+assert.ok(shellCompositionSource.includes('mainTaskCompletionReviewEnabled: taskState.appSettings.mainTaskCompletionReviewEnabled'), 'App shell composition should pass the main-task completion review setting into completion actions.');
+assert.ok(shellCompositionSource.includes('subtaskCompletionReviewEnabled: taskState.appSettings.subtaskCompletionReviewEnabled'), 'App shell composition should pass the subtask completion review setting into completion actions.');
+assert.ok(completionActionsSource.includes('getMainTaskToggleDecision('), 'Completion actions should use the main-task review setting when deciding task completion flow.');
+assert.ok(completionActionsSource.includes('getSubtaskToggleDecision('), 'Completion actions should use the subtask review setting when deciding subtask completion flow.');
+assert.ok(settingsPanelSource.includes('<GeneralSettingsSection'), 'SettingsPanel should delegate general settings rendering to GeneralSettingsSection.');
+assert.ok(generalSettingsSectionSource.includes('mainTaskCompletionReviewEnabled'), 'Settings UI should render main task completion review switch.');
+assert.ok(generalSettingsSectionSource.includes('subtaskCompletionReviewEnabled'), 'Settings UI should render subtask completion review switch.');
+assert.ok(generalSettingsSectionSource.includes('Ask for main task completion record'), 'General settings section should keep the main task completion review label.');
+assert.ok(generalSettingsSectionSource.includes('Ask for subtask completion record'), 'General settings section should keep the subtask completion review label.');
 
 console.log('verify-completion-review-settings passed');

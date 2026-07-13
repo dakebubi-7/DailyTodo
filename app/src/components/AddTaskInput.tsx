@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { parseQuickCapture, type QuickCaptureDateIntent } from '../../shared/quickCapture';
 import { getBusinessDateKey, shiftDateKey } from '../../shared/taskRollover';
@@ -35,7 +35,7 @@ function resolveDateIntent(intent?: QuickCaptureDateIntent) {
   return shiftDateKey(today, daysUntil);
 }
 
-export function AddTaskInput({ onAdd }: AddTaskInputProps) {
+export const AddTaskInput = memo(function AddTaskInput({ onAdd }: AddTaskInputProps) {
   const [text, setText] = useState('');
   const [priority, setPriority] = useState<Task['priority']>('medium');
   const [source, setSource] = useState<TaskSource>('personal');
@@ -155,4 +155,4 @@ export function AddTaskInput({ onAdd }: AddTaskInputProps) {
       )}
     </div>
   );
-}
+});

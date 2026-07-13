@@ -41,13 +41,15 @@ export function parseRecognizedBlocks(raw: string, fallback: CustomBlock[]): Rec
   }
 
   const blocks: CustomBlock[] = [];
+  const recognizedNames = new Set<string>();
   let skipped = 0;
 
   for (const { name, body } of sections) {
-    if (!name || FIXED_BLOCK_NAMES.includes(name)) {
+    if (!name || FIXED_BLOCK_NAMES.includes(name) || recognizedNames.has(name)) {
       skipped++;
       continue;
     }
+    recognizedNames.add(name);
     const renderType = inferRenderType(body);
     blocks.push({
       id: Math.random().toString(36).slice(2),
@@ -70,12 +72,31 @@ function splitIntoSections(md: string): Array<{ name: string; body: string }> {
   const lines = md.split('\n');
   const sections: Array<{ name: string; body: string }> = [];
   let current: { name: string; bodyLines: string[] } | null = null;
+  let fenceMarker: { character: '`' | '~'; length: number } | null = null;
 
   for (const line of lines) {
-    const h2 = line.match(/^##\s+(.+)/);
-    if (h2) {
+    const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    const fenceCharacter = fence?.[1][0] as '`' | '~' | undefined;
+    const isClosingFence = Boolean(
+      fenceMarker &&
+      fenceCharacter === fenceMarker.character &&
+      fence![1].length >= fenceMarker.length &&
+      /^\s*$/.test(fence![2]),
+    );
+    if (!fenceMarker && fence) {
+      fenceMarker = { character: fenceCharacter!, length: fence[1].length };
+      if (current) current.bodyLines.push(line);
+      continue;
+    }
+    if (isClosingFence) {
+      fenceMarker = null;
+      if (current) current.bodyLines.push(line);
+      continue;
+    }
+    const h2 = line.match(/^ {0,3}##\s+(.+)/);
+    if (h2 && !fenceMarker) {
       if (current) sections.push({ name: current.name, body: current.bodyLines.join('\n') });
-      current = { name: h2[1].trim(), bodyLines: [] };
+      current = { name: h2[1].replace(/\s+#+\s*$/, '').trim().replace(/\s+/g, ' '), bodyLines: [] };
     } else if (current) {
       current.bodyLines.push(line);
     }
@@ -85,13 +106,20 @@ function splitIntoSections(md: string): Array<{ name: string; body: string }> {
 }
 
 function inferRenderType(body: string): RenderType {
-  const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length === 0) return 'text';
-  const first = lines[0];
+  let first = '';
+  let lineCount = 0;
+  let listLineCount = 0;
+  for (const rawLine of body.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (!first) first = line;
+    lineCount++;
+    if (/^[-*+]\s/.test(line) || /^\d+\.\s/.test(line)) listLineCount++;
+  }
+  if (lineCount === 0) return 'text';
   if (/^```dataview/i.test(first)) return 'dataview';
   if (/^>\s*\[!/.test(first)) return 'callout';
   if (/^\|/.test(first)) return 'table';
-  const listLines = lines.filter(l => /^[-*+]\s/.test(l) || /^\d+\.\s/.test(l));
-  if (listLines.length / lines.length >= 0.5) return 'list';
+  if (listLineCount / lineCount >= 0.5) return 'list';
   return 'text';
 }

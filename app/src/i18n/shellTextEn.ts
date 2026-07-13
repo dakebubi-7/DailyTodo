@@ -1,0 +1,50 @@
+import type { zhShellText } from './shellTextZh';
+import { enSettingsText } from './shellTextEnSettings';
+
+export const enShellText = {
+  settings: enSettingsText,
+  titlebar: {
+    focus: 'Focus',
+    normal: 'Normal',
+    focusTitle: 'Switch to focus mode',
+    normalTitle: 'Switch to normal mode',
+    pin: 'Pin window',
+    unpin: 'Unpin window',
+    lock: 'Lock window position',
+    unlock: 'Unlock window position',
+    settings: 'Settings',
+    more: 'More',
+    resetTopRight: 'Reset to top right',
+    hide: 'Hide to tray',
+    close: 'Close',
+  },
+  daily: {
+    close: 'Close',
+    save: 'Save',
+    cancel: 'Cancel',
+    keepExpanded: 'Keep editor expanded',
+    commands: {
+      today: "Insert today's task list",
+      open: 'Insert open tasks',
+      completed: 'Insert completed tasks',
+      review: 'Insert task review summary',
+    },
+    headings: {
+      today: "Today's Tasks",
+      open: 'Open Tasks',
+      completed: 'Completed Tasks',
+      review: 'Task Review Summary',
+      none: 'None',
+    },
+  },
+  app: {
+    dailyWork: 'Daily Work',
+    dailyWorkDescription: 'Capture progress, blockers, review notes, or anything to sync to Obsidian.',
+    dailyWorkPlaceholder: 'Write the most important progress, blockers, or review notes...',
+    inspiration: 'Inspiration',
+    inspirationDescription: 'Keep sudden ideas, questions, material, or directions to expand later.',
+    inspirationPlaceholder: 'Jot down an idea, question, or piece of material...',
+    editDailyWork: 'Edit daily work',
+    editInspiration: 'Edit inspiration',
+  },
+} satisfies typeof zhShellText;

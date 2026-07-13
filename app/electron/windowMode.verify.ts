@@ -6,6 +6,7 @@ import {
   isAlwaysOnTop,
   isWindowMode,
   needsDesktopGuard,
+  readWindowMode,
   resolveWindowMode,
   setDesktopMode,
   togglePinnedMode,
@@ -18,6 +19,11 @@ function assert(condition: unknown, message: string) {
 // isWindowMode
 assert(isWindowMode('normal') && isWindowMode('onTop') && isWindowMode('desktop'), 'valid modes accepted');
 assert(!isWindowMode('floating') && !isWindowMode(undefined) && !isWindowMode(true), 'invalid modes rejected');
+
+// readWindowMode
+assert(readWindowMode('onTop') === 'onTop', 'readWindowMode admits valid modes');
+assert(readWindowMode('floating') === undefined, 'readWindowMode rejects invalid modes');
+assert(readWindowMode(null) === undefined, 'readWindowMode rejects null');
 
 // resolveWindowMode: new key wins
 assert(resolveWindowMode('desktop', true) === 'desktop', 'new key takes precedence over legacy');
@@ -50,9 +56,19 @@ assert(setDesktopMode('normal', false) === 'normal', 'normal + unpin → normal 
 assert(setDesktopMode('onTop', false) === 'onTop', 'onTop + unpin → onTop (no change)');
 
 const here = dirname(fileURLToPath(import.meta.url));
-const mainSource = readFileSync(join(here, 'main.ts'), 'utf8');
-assert(mainSource.includes('function reapplyWindowZOrder'), 'main.ts should define reapplyWindowZOrder helper');
-assert(mainSource.includes('setTimeout(() => reapplyWindowZOrder(win)'), 'window mode changes should reapply z-order after Windows flag changes');
-assert(mainSource.includes('reapplyWindowZOrder(mainWindow)'), 'lock window position changes should reapply z-order for the main window');
+const desktopWindowModeSource = readFileSync(join(here, 'desktopWindowMode.ts'), 'utf8');
+const mainWindowCompositionSource = readFileSync(join(here, 'mainWindowComposition.ts'), 'utf8');
+const mainWindowModeControllerSource = readFileSync(join(here, 'mainWindowModeController.ts'), 'utf8');
+const windowIpcSource = readFileSync(join(here, 'windowIpc.ts'), 'utf8');
+const titleBarSource = readFileSync(join(here, '../src/components/TitleBar.tsx'), 'utf8');
+const viteEnvSource = readFileSync(join(here, '../src/vite-env.d.ts'), 'utf8');
+assert(desktopWindowModeSource.includes('function reapplyWindowZOrder'), 'desktopWindowMode.ts should define reapplyWindowZOrder helper');
+assert(mainWindowModeControllerSource.includes('setTimeout(() => reapplyWindowZOrder(win), 80)'), 'mainWindowModeController.ts should preserve delayed z-order reapplication.');
+assert(mainWindowCompositionSource.includes('reapplyWindowZOrder: desktopWindowMode.reapplyWindowZOrder'), 'main-window composition should pass controller reapplyWindowZOrder into downstream window-mode helpers.');
+assert(windowIpcSource.includes('reapplyWindowZOrder(mainWindow);'), 'lock window position changes should reapply z-order for the main window');
+assert(titleBarSource.includes('readWindowMode'), 'TitleBar should parse window-mode IPC returns with readWindowMode');
+assert(titleBarSource.includes("readWindowMode(mode) === 'onTop'") || titleBarSource.includes("readWindowMode(await window.electronAPI?.getWindowMode())"), 'TitleBar should only pin after validating window-mode returns');
+assert(viteEnvSource.includes('getWindowMode: () => Promise<unknown>'), 'ambient getWindowMode should return Promise<unknown>');
+assert(viteEnvSource.includes('setWindowMode: (mode: unknown) => Promise<unknown>'), 'ambient setWindowMode should return Promise<unknown>');
 
 console.log('windowMode.verify: all assertions passed');

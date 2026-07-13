@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseQuickCapture } from '../shared/quickCapture';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const quickCaptureSource = readFileSync(join(here, '../shared/quickCapture.ts'), 'utf8');
+assert.doesNotMatch(
+  quickCaptureSource,
+  /const candidates = segments[\s\S]*?\.flatMap\([\s\S]*?\.map\([\s\S]*?\.filter\([\s\S]*?\.sort\(/,
+  'Natural quick capture title extraction should select its longest candidate without intermediate array pipelines.',
+);
 
 const first = parseQuickCapture('明天 写周报 !高 #工作');
 assert.equal(first.title, '写周报');

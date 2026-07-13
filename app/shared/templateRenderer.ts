@@ -1,5 +1,7 @@
 import {
   REVIEW_MARKERS,
+  REVIEW_MARKER_KEYS,
+  type ReviewMarkerKey,
   customBlockMarker,
 } from './aiReview/markers';
 import type { DailyTemplate, ReportTemplate, CustomBlock } from './aiReview/sectionConfig';
@@ -18,20 +20,21 @@ export interface RenderReportParams {
   content: string;
 }
 
-const BLOCK_KEYWORDS: Record<'REVIEW' | 'TOMORROW' | 'KNOWLEDGE', RegExp[]> = {
+const BLOCK_KEYWORDS: Record<ReviewMarkerKey, RegExp[]> = {
   REVIEW: [/复盘/, /review/i, /总结/, /summary/i, /work/i, /工作/],
   TOMORROW: [/明日/, /tomorrow/i, /下周/, /下月/, /next/i, /待办/],
   KNOWLEDGE: [/知识/, /knowledge/i, /灵感/, /inspiration/i, /insight/i],
 };
 
-function inferBlockMarkerKey(block: CustomBlock): 'REVIEW' | 'TOMORROW' | 'KNOWLEDGE' {
-  for (const [key, patterns] of Object.entries(BLOCK_KEYWORDS) as Array<['REVIEW' | 'TOMORROW' | 'KNOWLEDGE', RegExp[]]>) {
+function inferBlockMarkerKey(block: CustomBlock): ReviewMarkerKey {
+  for (const key of REVIEW_MARKER_KEYS) {
+    const patterns = BLOCK_KEYWORDS[key];
     if (patterns.some((p) => p.test(block.name))) return key;
   }
   return 'REVIEW';
 }
 
-function getMarker(key: 'REVIEW' | 'TOMORROW' | 'KNOWLEDGE') {
+function getMarker(key: ReviewMarkerKey) {
   if (key === 'REVIEW') return REVIEW_MARKERS.REVIEW;
   if (key === 'TOMORROW') return REVIEW_MARKERS.TOMORROW;
   return REVIEW_MARKERS.KNOWLEDGE;
@@ -59,13 +62,10 @@ export function renderDailyTemplate(params: RenderDailyParams): string {
 
     const block = customById.get(item.id);
     if (!block) continue;
+    if (!block.aiGenerate) continue;
     lines.push(`## ${block.name}`);
-    if (block.aiGenerate) {
-      const marker = customBlockMarker(block.id);
-      lines.push(marker.start, marker.end);
-    } else {
-      lines.push('');
-    }
+    const marker = customBlockMarker(block.id);
+    lines.push(marker.start, marker.end);
     lines.push('');
   }
 

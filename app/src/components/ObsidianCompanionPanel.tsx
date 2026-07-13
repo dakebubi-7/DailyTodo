@@ -1,4 +1,7 @@
-import { CompanionRule, CompanionSettings, SyncPlan, WriteMode } from '../../shared/obsidianCompanion';
+import { CompanionSettings, SyncPlan } from '../../shared/obsidianCompanion';
+import '../styles/obsidian-companion.css';
+import { ObsidianCompanionRulesSection } from './obsidianCompanion/ObsidianCompanionRulesSection';
+import { ObsidianCompanionTemplatesSection } from './obsidianCompanion/ObsidianCompanionTemplatesSection';
 
 interface ObsidianCompanionPanelProps {
   isOpen: boolean;
@@ -11,13 +14,6 @@ interface ObsidianCompanionPanelProps {
   onPreview: () => void;
   onSync: () => void;
   onImportMobileInbox: () => void;
-}
-
-function updateRule(settings: CompanionSettings, ruleId: string, updater: (rule: CompanionRule) => CompanionRule) {
-  return {
-    ...settings,
-    rules: settings.rules.map((rule) => (rule.id === ruleId ? updater(rule) : rule)),
-  };
 }
 
 export function ObsidianCompanionPanel({
@@ -65,117 +61,9 @@ export function ObsidianCompanionPanel({
         <button onClick={onImportMobileInbox}>Import mobile inbox</button>
       </section>
 
-      <section className="companion-section">
-        <h3>Rules</h3>
-        {settings.rules.map((rule) => (
-          <div key={rule.id} className="companion-rule-row">
-            <label className="companion-rule-toggle">
-              <input
-                type="checkbox"
-                checked={rule.enabled}
-                onChange={(event) =>
-                  onChange(updateRule(settings, rule.id, (candidate) => ({ ...candidate, enabled: event.target.checked })))
-                }
-              />
-              <span>{rule.name}</span>
-            </label>
+      <ObsidianCompanionRulesSection settings={settings} onChange={onChange} />
 
-            <label className="companion-field">
-              <span>Target</span>
-              <input
-                value={rule.write.target}
-                onChange={(event) =>
-                  onChange(updateRule(settings, rule.id, (candidate) => ({
-                    ...candidate,
-                    write: { ...candidate.write, target: event.target.value },
-                  })))
-                }
-              />
-            </label>
-
-            <label className="companion-field">
-              <span>Section</span>
-              <input
-                value={rule.write.section || ''}
-                onChange={(event) =>
-                  onChange(updateRule(settings, rule.id, (candidate) => ({
-                    ...candidate,
-                    write: { ...candidate.write, section: event.target.value || undefined },
-                  })))
-                }
-              />
-            </label>
-
-            <div className="companion-rule-controls">
-              <label className="companion-field">
-                <span>Mode</span>
-                <select
-                  value={rule.write.mode}
-                  onChange={(event) =>
-                    onChange(updateRule(settings, rule.id, (candidate) => ({
-                      ...candidate,
-                      write: { ...candidate.write, mode: event.target.value as WriteMode },
-                    })))
-                  }
-                >
-                  <option value="append">append</option>
-                  <option value="managed-block">managed-block</option>
-                </select>
-              </label>
-
-              <label className="companion-field">
-                <span>Priority</span>
-                <input
-                  type="number"
-                  value={rule.priority}
-                  onChange={(event) =>
-                    onChange(updateRule(settings, rule.id, (candidate) => ({
-                      ...candidate,
-                      priority: Number(event.target.value),
-                    })))
-                  }
-                />
-              </label>
-
-              <label className="companion-field">
-                <span>After match</span>
-                <select
-                  value={rule.afterMatch}
-                  onChange={(event) =>
-                    onChange(updateRule(settings, rule.id, (candidate) => ({
-                      ...candidate,
-                      afterMatch: event.target.value === 'stop' ? 'stop' : 'continue',
-                    })))
-                  }
-                >
-                  <option value="continue">continue</option>
-                  <option value="stop">stop</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section className="companion-section">
-        <h3>Templates</h3>
-        {settings.templates.map((template) => (
-          <label key={template.id} className="companion-template-editor">
-            <span>{template.name}</span>
-            <textarea
-              value={template.body}
-              onChange={(event) =>
-                onChange({
-                  ...settings,
-                  templates: settings.templates.map((candidate) =>
-                    candidate.id === template.id ? { ...candidate, body: event.target.value } : candidate
-                  ),
-                })
-              }
-            />
-          </label>
-        ))}
-      </section>
+      <ObsidianCompanionTemplatesSection settings={settings} onChange={onChange} />
 
       <section className="companion-section">
         <h3>Preview</h3>

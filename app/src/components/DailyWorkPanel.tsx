@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppLanguage } from '../../shared/appSettings';
 import { getShellText } from '../i18n';
 import { Task } from '../types/task';
-import { insertDailyCommandMarkdown, shouldOpenDailyCommandMenu } from '../utils/dailyCommandEditor';
+import { insertDailyCommandMarkdown } from '../utils/dailyCommandEditor';
 import { useMarkdownEditor } from '../hooks/useMarkdownEditor';
+import { useDailyWorkPanelCommands } from './dailyWorkPanel/useDailyWorkPanelCommands';
+import { useDailyWorkPanelResize } from './dailyWorkPanel/useDailyWorkPanelResize';
 
 interface DailyWorkPanelProps {
   title: string;
   description: string;
   placeholder: string;
   value: string;
-  tasks?: Task[];
+  taskCommands: Task[];
   language: AppLanguage;
   onChange: (value: string) => void;
   isOpen: boolean;
@@ -21,17 +23,16 @@ export function DailyWorkPanel({
   title,
   placeholder,
   value,
-  tasks = [],
+  taskCommands,
   language,
   onChange,
   isOpen,
   onClose,
 }: DailyWorkPanelProps) {
   const [draft, setDraft] = useState(value);
-  const [commandOpen, setCommandOpen] = useState(false);
-  const [commandIndex, setCommandIndex] = useState(0);
-  const [editorHeight, setEditorHeight] = useState(64); // px,初始约 4rem
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { commandOpen, commandIndex, closeCommandMenu, handleCommandTextChange, handleCommandKeyDown, setCommandIndex } = useDailyWorkPanelCommands(taskCommands.length);
+  const { editorHeight, startResize } = useDailyWorkPanelResize(textareaRef);
   const text = getShellText(language).daily;
 
   // 编辑能力（历史栈、光标恢复 + 滚动修复、Tab/续列表/Ctrl 快捷键）抽到可复用 Hook。
@@ -41,46 +42,13 @@ export function DailyWorkPanel({
     onChange: setDraft,
     textareaRef,
     command: {
-      onClose: () => {
-        setCommandOpen(false);
-        setCommandIndex(0);
-      },
+      onClose: closeCommandMenu,
     },
   });
-
-  const MIN_EDITOR_HEIGHT = 56;
-  const MAX_EDITOR_HEIGHT = 480;
-
-  const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const startY = event.clientY;
-    const startHeight = textareaRef.current?.offsetHeight ?? editorHeight;
-
-    const onMove = (moveEvent: PointerEvent) => {
-      const next = startHeight + (moveEvent.clientY - startY);
-      setEditorHeight(Math.min(MAX_EDITOR_HEIGHT, Math.max(MIN_EDITOR_HEIGHT, next)));
-    };
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-  };
-
-  const taskCommands = useMemo(() => {
-    return [...tasks].sort((a, b) => {
-      if (a.completed !== b.completed) return a.completed ? 1 : -1;
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
-    });
-  }, [tasks]);
-
   useEffect(() => {
     if (isOpen) {
       setDraft(value);
-      setCommandOpen(false);
-      setCommandIndex(0);
+      closeCommandMenu();
       editor.resetHistory(value, value.length);
     }
   }, [isOpen, value]);
@@ -106,34 +74,18 @@ export function DailyWorkPanel({
 
   const handleTextareaChange = (value: string, cursor: number) => {
     editor.handleChange(value, cursor);
-    const open = shouldOpenDailyCommandMenu(value, cursor);
-    setCommandOpen(open);
-    if (open) setCommandIndex(0);
+    handleCommandTextChange(value, cursor);
   };
 
   const handleTextareaKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Escape') {
-      setCommandOpen(false);
-      setCommandIndex(0);
-      return;
-    }
-
-    if (commandOpen && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-      event.preventDefault();
-      event.stopPropagation(); // 阻止事件冒泡到全局监听器
-      const count = taskCommands.length || 1;
-      setCommandIndex((prev) =>
-        event.key === 'ArrowDown' ? (prev + 1) % count : (prev - 1 + count) % count
-      );
-      return;
-    }
-
-    if (commandOpen && event.key === 'Enter' && !event.nativeEvent.isComposing) {
-      event.preventDefault();
-      if (taskCommands.length) {
-        insertTaskMarkdown(taskCommands[commandIndex]);
-      } else {
-        insertMarkdown('- [ ] ');
+    const commandResult = handleCommandKeyDown(event);
+    if (commandResult.handled) {
+      if (commandResult.commandIndex !== undefined) {
+        if (taskCommands.length) {
+          insertTaskMarkdown(taskCommands[commandResult.commandIndex]);
+        } else {
+          insertMarkdown('- [ ] ');
+        }
       }
       return;
     }

@@ -1,5 +1,8 @@
 import { createDefaultObsidianTemplateSettings } from '../shared/appSettings';
 import { buildTaskLines } from '../shared/obsidianTemplates';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Task } from '../src/types/task';
 
 const date = '2026-06-12';
@@ -74,6 +77,35 @@ for (const line of expected) {
   if (!markdown.includes(line)) {
     throw new Error(`Missing expected Obsidian task line: ${line}\n\nActual:\n${markdown}`);
   }
+}
+
+const tagMarkdown = buildTaskLines([
+  {
+    id: 'tag-normalization',
+    text: 'Tag normalization',
+    completed: false,
+    priority: 'medium',
+    tags: [' work item ', '', '   ', '#focus'],
+    createdAt: `${date}T12:00:00.000Z`,
+    taskDate: date,
+  },
+], date, createDefaultObsidianTemplateSettings()).join('\n');
+if (!tagMarkdown.includes('#work-item #focus')) {
+  throw new Error(`Tags should trim whitespace, skip empty entries, and preserve existing # prefixes. Actual:\n${tagMarkdown}`);
+}
+
+const obsidianTemplatesSource = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'shared/obsidianTemplates.ts'), 'utf8');
+if (/function formatTaskTags[\s\S]*?return tags[\s\S]*?\.map\(/.test(obsidianTemplatesSource)) {
+  throw new Error('Task tag formatting should normalize tags in one loop rather than chained map/filter/map passes.');
+}
+if (obsidianTemplatesSource.includes('.filter(({ referencedDetails }) =>')) {
+  throw new Error('Completion-review rendering should filter and render template lines in one traversal.');
+}
+if (/sortTasks\(task\.subtasks \|\| \[\]\)\s*\.filter\(\(subtask\) => visibleTasks\.has\(subtask\)\)/.test(obsidianTemplatesSource)) {
+  throw new Error('Subtask rendering should discard invisible tasks before sorting the visible subtree.');
+}
+if (obsidianTemplatesSource.includes('const lines = body.split(/\\r?\\n/);')) {
+  throw new Error('Marked block reading should avoid splitting and rebuilding the whole block just to remove an optional heading.');
 }
 
 const forbidden = ['summary:', 'blocker:', 'next:', 'completed at:', 'task date:'];

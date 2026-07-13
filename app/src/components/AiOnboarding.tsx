@@ -6,6 +6,7 @@ import {
 } from '../../shared/aiReview/aiReviewSettings';
 import { dismissOnboarding } from '../../shared/aiReview/onboarding';
 import { getShellText } from '../i18n';
+import { AiOnboardingSteps } from './aiOnboarding/AiOnboardingSteps';
 
 type OnboardingText = ReturnType<typeof getShellText>['settings']['aiReview']['onboarding'];
 
@@ -51,67 +52,7 @@ export function AiOnboarding({ isOpen, text, initialSettings, onComplete }: AiOn
           <span className="text-xs text-zinc-500 dark:text-zinc-400">{stepLabel}</span>
         </div>
 
-        {step === 1 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{text.step1Title}</h3>
-            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{text.step1Body}</p>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{text.step2Title}</h3>
-            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{text.step2Body}</p>
-            <label className="block space-y-1">
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">API Base URL</span>
-              <input
-                className="w-full rounded-lg border border-zinc-300 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900/70"
-                value={draft.baseUrl}
-                onChange={(event) => update('baseUrl', event.target.value)}
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">API Key</span>
-              <input
-                type="password"
-                className="w-full rounded-lg border border-zinc-300 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900/70"
-                value={draft.apiKey}
-                onChange={(event) => update('apiKey', event.target.value)}
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">Model</span>
-              <input
-                className="w-full rounded-lg border border-zinc-300 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900/70"
-                value={draft.model}
-                onChange={(event) => update('model', event.target.value)}
-              />
-            </label>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{text.step3Title}</h3>
-            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{text.step3Body}</p>
-            <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-              <input
-                type="checkbox"
-                checked={draft.timerEnabled}
-                onChange={(event) => update('timerEnabled', event.target.checked)}
-              />
-              <span>{text.enableTimer}</span>
-            </label>
-            <input
-              type="time"
-              className="rounded-lg border border-zinc-300 bg-white/70 px-2 py-1 text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/70"
-              value={draft.timerTime}
-              disabled={!draft.timerEnabled}
-              onChange={(event) => update('timerTime', event.target.value)}
-            />
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">{text.finishedHint}</p>
-          </div>
-        )}
+        <AiOnboardingSteps step={step} text={text} draft={draft} onUpdate={update} />
 
         <div className="mt-5 flex items-center justify-between">
           <button

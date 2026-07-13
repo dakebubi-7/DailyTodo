@@ -16,7 +16,7 @@ export function createSafeStore(): Store {
     return new Store();
   } catch {
     const configPath = getStoreConfigPath();
-    if (configPath && fs.existsSync(configPath)) {
+    if (configPath && fs.existsSync(configPath) && fs.statSync(configPath).isFile()) {
       const backupPath = path.join(
         path.dirname(configPath),
         `config.corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,

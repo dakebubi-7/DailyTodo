@@ -1,5 +1,29 @@
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { computeDailyStats, computeRangeStats, StatTask } from '../shared/aiReview/stats';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '..');
+const statsSource = readFileSync(join(root, 'shared/aiReview/stats.ts'), 'utf8');
+
+assert.match(statsSource, /import \{ getTaskDate, shiftDateKey \} from ['"]\.\.\/taskRollover['"];/, 'AI stats should reuse the shared task-date resolver.');
+assert.doesNotMatch(
+  statsSource,
+  /task\.taskDate \|\| task\.createdAt\?\.slice\(0,\s*10\) \|\|/,
+  'AI stats should not keep a local task-date fallback chain.',
+);
+assert.match(
+  statsSource,
+  /for \(const task of tasks\)/,
+  'AI stats should aggregate daily and range values during a single task traversal.',
+);
+assert.doesNotMatch(
+  statsSource,
+  /const ofDay = tasks\.filter|const inRange = tasks\.filter/,
+  'AI stats should not allocate filtered task arrays before aggregating report statistics.',
+);
 
 const tasks: StatTask[] = [
   { completed: true, taskDate: '2026-06-07' },

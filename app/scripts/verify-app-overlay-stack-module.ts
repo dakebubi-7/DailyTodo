@@ -1,0 +1,88 @@
+﻿import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertCleanupCoreIncludes } from './verifyCleanupCore';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '..');
+const overlayPath = join(root, 'src/components/AppOverlayStack.tsx');
+const companionPath = join(root, 'src/components/ObsidianCompanionPanel.tsx');
+const companionStylesPath = join(root, 'src/styles/obsidian-companion.css');
+const globalStylesPath = join(root, 'src/styles/globals.css');
+const helperPath = join(root, 'src/app/appShellComposition.tsx');
+const overlayHelperPath = join(root, 'src/app/appShellOverlayComposition.ts');
+const runtimeCompositionPath = join(root, 'src/app/useAppShellComposition.ts');
+const appPath = join(root, 'src/App.tsx');
+const packagePath = join(root, 'package.json');
+
+assert.ok(existsSync(overlayPath), 'App overlay stack component should exist.');
+assert.ok(existsSync(companionPath), 'Obsidian companion component should exist.');
+assert.ok(existsSync(helperPath), 'App shell composition helper should exist for overlay wiring verification.');
+assert.ok(existsSync(overlayHelperPath), 'App shell overlay composition helper should exist for overlay prop wiring verification.');
+assert.ok(existsSync(runtimeCompositionPath), 'App shell runtime composition hook should exist for overlay wiring verification.');
+
+const overlay = readFileSync(overlayPath, 'utf8');
+const companion = readFileSync(companionPath, 'utf8');
+const globalStyles = readFileSync(globalStylesPath, 'utf8');
+const helper = readFileSync(helperPath, 'utf8');
+const overlayHelper = readFileSync(overlayHelperPath, 'utf8');
+const runtimeComposition = readFileSync(runtimeCompositionPath, 'utf8');
+const app = readFileSync(appPath, 'utf8');
+const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+const scripts = packageJson.scripts as Record<string, string>;
+
+assert.match(overlay, /export interface AppOverlayStackProps\b/, 'overlay stack should export AppOverlayStackProps.');
+assert.match(overlay, /import \{ lazy, memo, Suspense, type ComponentProps \} from 'react';/, 'overlay stack should import memo for closed-overlay render isolation.');
+assert.match(overlay, /function hasOpenOverlay\(/, 'overlay stack should centralize the rendered-overlay visibility check.');
+assert.match(overlay, /function shouldSkipClosedOverlayRender\(/, 'overlay stack should compare closed overlay states before rerendering.');
+assert.match(overlay, /return !hasOpenOverlay\(previous\) && !hasOpenOverlay\(next\);/, 'overlay stack should skip rerenders only when every overlay stays closed.');
+assert.match(overlay, /export const AppOverlayStack = memo\(function AppOverlayStack\(/, 'overlay stack should memoize its closed state.');
+assert.match(overlay, /\}, shouldSkipClosedOverlayRender\);/, 'overlay stack should use the closed-overlay comparator.');
+assert.match(overlay, /const SettingsPanel = lazy\(\(\) => import\('\.\/SettingsPanel'\)\.then\(\(module\) => \(\{ default: module\.SettingsPanel \}\)\)\);/, 'overlay stack should lazy-load SettingsPanel.');
+assert.match(overlay, /const AiOnboarding = lazy\(\(\) => import\('\.\/AiOnboarding'\)\.then\(\(module\) => \(\{ default: module\.AiOnboarding \}\)\)\);/, 'overlay stack should lazy-load AiOnboarding.');
+assert.match(overlay, /const TemplateEditorModal = lazy\(\(\) => import\('\.\/TemplateEditorModal'\)\.then\(\(module\) => \(\{ default: module\.TemplateEditorModal \}\)\)\);/, 'overlay stack should lazy-load TemplateEditorModal.');
+assert.match(overlay, /const ObsidianCompanionPanel = lazy\(\(\) => import\('\.\/ObsidianCompanionPanel'\)\.then\(\(module\) => \(\{ default: module\.ObsidianCompanionPanel \}\)\)\);/, 'overlay stack should lazy-load ObsidianCompanionPanel.');
+assert.match(overlay, /const TaskCompletionDialog = lazy\(\(\) => import\('\.\/TaskCompletionDialog'\)\.then\(\(module\) => \(\{ default: module\.TaskCompletionDialog \}\)\)\);/, 'overlay stack should lazy-load TaskCompletionDialog.');
+assert.match(overlay, /const TaskReviewDialog = lazy\(\(\) => import\('\.\/TaskReviewDialog'\)\.then\(\(module\) => \(\{ default: module\.TaskReviewDialog \}\)\)\);/, 'overlay stack should lazy-load TaskReviewDialog.');
+assert.match(overlay, /<Suspense fallback=\{null\}>/, 'overlay stack should suspend while opened panels load.');
+assert.match(overlay, /settingsPanelProps\.isOpen && <SettingsPanel\b/, 'overlay stack should only request SettingsPanel when it opens.');
+assert.match(overlay, /aiOnboarding && \(/, 'overlay stack should conditionally render AiOnboarding.');
+assert.match(overlay, /editingTemplateKind && editingTemplateInitialTemplate && \(/, 'overlay stack should conditionally render TemplateEditorModal when template context exists.');
+assert.match(overlay, /companionPanelProps\.isOpen && <ObsidianCompanionPanel\b/, 'overlay stack should only request ObsidianCompanionPanel when it opens.');
+assert.ok(existsSync(companionStylesPath), 'Obsidian companion should have a lazy-loaded stylesheet.');
+assert.match(companion, /import '\.\.\/styles\/obsidian-companion\.css';/, 'Obsidian companion should load its styles with the lazy component chunk.');
+assert.doesNotMatch(globalStyles, /\.companion-panel\s*\{/, 'global styles should not eagerly include the Obsidian companion panel styles.');
+assert.match(overlay, /completionDialogProps\.task && <TaskCompletionDialog\b/, 'overlay stack should only request TaskCompletionDialog when it opens.');
+assert.match(overlay, /reviewDialogProps\.task && <TaskReviewDialog\b/, 'overlay stack should only request TaskReviewDialog when it opens.');
+
+assert.match(helper, /from '\.\/appShellOverlayComposition'/, 'shell composition helper should delegate overlay prop assembly to the overlay helper.');
+assert.match(helper, /const overlayStackProps = createAppShellOverlayComposition\(\{[\s\S]*editingTemplateKind,[\s\S]*\}\);/, 'shell composition helper should forward overlay inputs into the overlay helper.');
+assert.match(overlayHelper, /from '\.\.\/i18n'/, 'overlay composition helper should own shell-text lookup for overlays.');
+assert.match(overlayHelper, /from '\.\/appTemplateEditor'/, 'overlay composition helper should own template initial-content derivation for overlays.');
+assert.match(overlayHelper, /const settingsPanelProps = \{[\s\S]*isOpen: settingsOpen,[\s\S]*onOpenCompanionSettings: appModalActions\.openCompanionSettings,[\s\S]*\};/, 'overlay composition helper should gather SettingsPanel props for the overlay stack.');
+assert.match(overlayHelper, /const companionPanelProps = \{[\s\S]*isOpen: companionOpen,[\s\S]*onImportMobileInbox: importCompanionMobileInbox,[\s\S]*\};/, 'overlay composition helper should gather Companion panel props for the overlay stack.');
+assert.match(overlayHelper, /const completionDialogProps = \{[\s\S]*task: reviewDialogState\.completionTask,[\s\S]*onCompleteWithoutReview: completionActions\.completeWithoutReview,[\s\S]*\};/, 'overlay composition helper should gather completion dialog props for the overlay stack.');
+assert.match(overlayHelper, /const reviewDialogProps = \{[\s\S]*task: reviewDialogState\.currentReviewTask,[\s\S]*onDeleteRecord: deleteTaskReview,[\s\S]*\};/, 'overlay composition helper should gather review dialog props for the overlay stack.');
+assert.match(overlayHelper, /const overlayStackProps = \{[\s\S]*settingsPanelProps,[\s\S]*aiOnboarding,[\s\S]*aiOnboardingText: shellText\.settings\.aiReview\.onboarding,[\s\S]*onCompleteAiOnboarding: appModalActions\.completeAiOnboarding,[\s\S]*editingTemplateKind,[\s\S]*editingTemplateInitialTemplate,[\s\S]*onSaveTemplate: appModalActions\.saveTemplate,[\s\S]*onCancelTemplate: appModalActions\.cancelTemplate,[\s\S]*companionPanelProps,[\s\S]*completionDialogProps,[\s\S]*reviewDialogProps,[\s\S]*\};/, 'overlay composition helper should gather overlay stack props.');
+
+assert.match(app, /from '\.\/components\/AppOverlayStack'/, 'App should import AppOverlayStack.');
+assert.match(runtimeComposition, /from '\.\/appShellComposition'/, 'runtime composition hook should import the shell composition helper.');
+assert.match(app, /from '\.\/app\/useAppShellComposition'/, 'App should import the shell composition runtime hook.');
+assert.match(app, /<AppOverlayStack \{\.\.\.shellComposition\.overlayStackProps\} \/>/, 'App should delegate overlay rendering into AppOverlayStack through shell composition.');
+assert.doesNotMatch(app, /const aiOnboardingText = /, 'App should not inline AI onboarding text derivation once shell composition owns it.');
+assert.doesNotMatch(app, /const editingTemplateInitialTemplate = /, 'App should not inline template editor initial content once shell composition owns it.');
+assert.doesNotMatch(app, /const settingsPanelProps = \{/, 'App should not inline SettingsPanel props once shell composition owns them.');
+assert.doesNotMatch(app, /const companionPanelProps = \{/, 'App should not inline Companion panel props once shell composition owns them.');
+assert.doesNotMatch(app, /const completionDialogProps = \{/, 'App should not inline completion dialog props once shell composition owns them.');
+assert.doesNotMatch(app, /const reviewDialogProps = \{/, 'App should not inline review dialog props once shell composition owns them.');
+assert.doesNotMatch(app, /<SettingsPanel\b/, 'App should not render SettingsPanel directly once AppOverlayStack owns the overlay stack.');
+assert.doesNotMatch(app, /<AiOnboarding\b/, 'App should not render AiOnboarding directly once AppOverlayStack owns the overlay stack.');
+assert.doesNotMatch(app, /<TemplateEditorModal\b/, 'App should not render TemplateEditorModal directly once AppOverlayStack owns the overlay stack.');
+assert.doesNotMatch(app, /<ObsidianCompanionPanel\b/, 'App should not render ObsidianCompanionPanel directly once AppOverlayStack owns the overlay stack.');
+assert.doesNotMatch(app, /<TaskCompletionDialog\b/, 'App should not render TaskCompletionDialog directly once AppOverlayStack owns the overlay stack.');
+assert.doesNotMatch(app, /<TaskReviewDialog\b/, 'App should not render TaskReviewDialog directly once AppOverlayStack owns the overlay stack.');
+assert.equal(scripts['verify:app-overlay-stack-module'], 'tsx scripts/verify-app-overlay-stack-module.ts', 'package.json should expose the focused overlay stack verifier.');
+assertCleanupCoreIncludes('verify:app-overlay-stack-module', 'cleanup-core should include the focused overlay stack verifier.');
+
+console.log('App overlay stack verification passed');

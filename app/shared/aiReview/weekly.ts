@@ -1,6 +1,7 @@
 import type { RangeStats } from './stats';
 import type { ChatMessage } from '../llm/openaiClient';
 import { DEFAULT_WEEKLY_SYSTEM } from './defaultPrompts';
+import { buildReportMessages } from './reportMessageComposition';
 
 /** ISO 8601 周键，如 2026-W23。周一为一周起点，含当年第一个周四的那周为第 1 周。 */
 export function isoWeekKey(date: string): string {
@@ -45,18 +46,13 @@ export interface WeeklyParams {
 
 export function buildWeeklyMessages(params: WeeklyParams): ChatMessage[] {
   const system = params.systemPrompt?.trim() || DEFAULT_WEEKLY_SYSTEM;
-  const user = [
-    `周：${params.weekKey}`,
-    '确定性统计（以此为准）：',
-    `- 活跃天数：${params.stats.activeDays}`,
-    `- 完成任务：${params.stats.totalCompleted}/${params.stats.totalTasks}`,
-    `- 连续天数：${params.stats.streak}`,
-    '',
-    '本周日记：',
-    ...params.dailyContents.map((d) => `### ${d.date}\n${d.content.trim()}`),
-  ].join('\n');
-  return [
-    { role: 'system', content: system },
-    { role: 'user', content: user },
-  ];
+  return buildReportMessages({
+    system,
+    periodLabel: '周',
+    period: params.weekKey,
+    streakLabel: '连续天数',
+    sourceLabel: '本周日记',
+    sources: params.dailyContents.map(({ date, content }) => ({ label: date, content })),
+    stats: params.stats,
+  });
 }

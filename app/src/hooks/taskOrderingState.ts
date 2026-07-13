@@ -18,6 +18,14 @@ export interface ReorderTasksWithinSourceInput {
   overId: string;
 }
 
+function haveSameOrder(left: readonly string[] | undefined, right: readonly string[]): boolean {
+  if (!left || left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
+
 export function removeTaskFromTaskOrderState(
   orderByDate: TaskListOrderByDate,
   taskId: string,
@@ -33,6 +41,11 @@ export function reorderSourceGroupsForDate(
 ): TaskListOrderByDate {
   const currentOrder = getSourceOrderForDate(orderByDate, date);
   const nextSourceOrder = moveSourceInOrder(currentOrder, activeSource, overSource);
+  const currentDateOrder = orderByDate[date];
+
+  if (haveSameOrder(currentDateOrder?.sourceOrder, nextSourceOrder)) {
+    return orderByDate;
+  }
 
   return {
     ...orderByDate,
@@ -56,17 +69,34 @@ export function reorderTasksWithinSourceForDate(
   }: ReorderTasksWithinSourceInput,
 ): TaskListOrderByDate {
   const dateOrder = orderByDate[date] || {};
-  const sourceTasks = allTasks.filter((task) => (
-    !task.cleared &&
-    taskMatchesDate(task, date, currentDate) &&
-    getTaskSource(task) === source
-  ));
-  const bucketTasks = sourceTasks.filter((task) => task.completed === completed);
-  const bucketIds = new Set(bucketTasks.map((task) => task.id));
-  const sourceTaskIds = new Set(sourceTasks.map((task) => task.id));
+  const bucketTasks: Task[] = [];
+  const bucketIds = new Set<string>();
+  const sourceTaskIds = new Set<string>();
+
+  for (const task of allTasks) {
+    if (
+      task.cleared ||
+      !taskMatchesDate(task, date, currentDate) ||
+      getTaskSource(task) !== source
+    ) {
+      continue;
+    }
+
+    sourceTaskIds.add(task.id);
+    if (task.completed === completed) {
+      bucketTasks.push(task);
+      bucketIds.add(task.id);
+    }
+  }
+
   const previousOrder = dateOrder.taskOrderBySource?.[source] || [];
   const nextBucketOrder = buildTaskOrderAfterMove(bucketTasks, previousOrder, activeId, overId);
   const preservedOtherBucketOrder = previousOrder.filter((id) => sourceTaskIds.has(id) && !bucketIds.has(id));
+  const nextSourceOrder = [...nextBucketOrder, ...preservedOtherBucketOrder];
+
+  if (haveSameOrder(dateOrder.taskOrderBySource?.[source], nextSourceOrder)) {
+    return orderByDate;
+  }
 
   return {
     ...orderByDate,
@@ -74,7 +104,7 @@ export function reorderTasksWithinSourceForDate(
       ...dateOrder,
       taskOrderBySource: {
         ...(dateOrder.taskOrderBySource || {}),
-        [source]: [...nextBucketOrder, ...preservedOtherBucketOrder],
+        [source]: nextSourceOrder,
       },
     },
   };

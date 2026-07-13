@@ -3,22 +3,45 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const mainPath = path.join(process.cwd(), 'electron', 'main.ts');
+const mainWindowCompositionPath = path.join(process.cwd(), 'electron', 'mainWindowComposition.ts');
+const windowIpcPath = path.join(process.cwd(), 'electron', 'windowIpc.ts');
+const trayMenuPath = path.join(process.cwd(), 'electron', 'trayMenu.ts');
+const mainShellControllerPath = path.join(process.cwd(), 'electron', 'mainShellController.ts');
+const mainWindowEventsPath = path.join(process.cwd(), 'electron', 'mainWindowEvents.ts');
+const desktopWindowModePath = path.join(process.cwd(), 'electron', 'desktopWindowMode.ts');
+const mainWindowBootstrapPath = path.join(process.cwd(), 'electron', 'mainWindowBootstrap.ts');
+const mainWindowIpcRegistrationPath = path.join(process.cwd(), 'electron', 'mainWindowIpcRegistration.ts');
 const source = fs.readFileSync(mainPath, 'utf-8');
-const minimizeRegistrations = source.match(/win\.on\('minimize'/g) || [];
-const structuredMainLoad = /loadRenderer\(\s*win\s*,\s*\{\s*view:\s*'main'\s*\}\s*\)/.test(source);
-const minimizeHandler = source.match(/win\.on\('minimize', \(\) => \{[\s\S]*?\n  \}\);/)?.[0] || '';
+const mainWindowCompositionSource = fs.readFileSync(mainWindowCompositionPath, 'utf-8');
+const windowIpcSource = fs.readFileSync(windowIpcPath, 'utf-8');
+const trayMenuSource = fs.readFileSync(trayMenuPath, 'utf-8');
+const mainShellControllerSource = fs.readFileSync(mainShellControllerPath, 'utf-8');
+const mainWindowEventsSource = fs.readFileSync(mainWindowEventsPath, 'utf-8');
+const desktopWindowModeSource = fs.readFileSync(desktopWindowModePath, 'utf-8');
+const mainWindowBootstrapSource = fs.readFileSync(mainWindowBootstrapPath, 'utf-8');
+const mainWindowIpcRegistrationSource = fs.readFileSync(mainWindowIpcRegistrationPath, 'utf-8');
+const structuredMainLoad = /loadRenderer\(\s*win\s*,\s*\{\s*view:\s*'main'\s*\}\s*\)/.test(mainWindowBootstrapSource);
 
-assert.equal(minimizeRegistrations.length, 1, 'main window should register minimize exactly once');
-assert.equal(structuredMainLoad, true, 'main window should load the structured main view');
-assert.match(minimizeHandler, /diag\('evt: minimize'\)/, 'minimize handler should log the minimize event');
-assert.match(minimizeHandler, /userHidden=\$\{userHidden\} windowMode=\$\{windowMode\} isVisible=\$\{win\.isVisible\(\)\}/, 'minimize handler should log state diagnostics');
-assert.match(minimizeHandler, /needsDesktopGuard\(windowMode\)/, 'minimize handler should preserve desktop guard check');
-assert.match(minimizeHandler, /win\.showInactive\(\)/, 'minimize handler should preserve desktop guard recovery');
-assert.equal(source.includes("ipcMain.handle('window:minimize', hideMainWindow)"), true, 'window:minimize should use hideMainWindow');
-assert.equal(source.includes("ipcMain.handle('window:close', hideMainWindow)"), true, 'window:close should use hideMainWindow');
+assert.equal(structuredMainLoad, true, 'main-window bootstrap should load the structured main view');
+assert.match(mainWindowCompositionSource, /from '\.\/mainWindowBootstrap'/, 'main-window composition should import the main-window bootstrap helper.');
+assert.match(mainWindowCompositionSource, /createMainWindowBootstrap\(/, 'main-window composition should delegate bootstrap callback assembly to the helper.');
+assert.doesNotMatch(source, /win\.on\('minimize'/, 'main should not register minimize inline after extraction.');
+assert.match(mainWindowEventsSource, /diag\('evt: minimize'\)/, 'main-window events helper should log the minimize event');
+assert.match(mainWindowEventsSource, /userHidden=\$\{userHidden\.isHidden\(\)\} windowMode=\$\{getWindowMode\(\)\} isVisible=\$\{win\.isVisible\(\)\}/, 'main-window events helper should log state diagnostics');
+assert.match(mainWindowEventsSource, /needsDesktopGuard\(getWindowMode\(\)\)/, 'main-window events helper should preserve desktop guard check');
+assert.match(mainWindowEventsSource, /win\.showInactive\(\)/, 'main-window events helper should preserve desktop guard recovery');
+assert.match(mainWindowBootstrapSource, /from '\.\/mainWindowEvents'/, 'mainWindowBootstrap should import the main-window event registration helper.');
+assert.match(mainWindowBootstrapSource, /registerMainWindowEventHandlers\(\{/, 'mainWindowBootstrap should delegate event registration to the helper.');
+assert.match(mainWindowBootstrapSource, /from '\.\/mainWindowIpcRegistration'/, 'mainWindowBootstrap should delegate IPC composition to the focused helper.');
+assert.match(mainWindowIpcRegistrationSource, /from '\.\/windowIpc'/, 'mainWindowIpcRegistration should import the window IPC registration helper.');
+assert.match(mainWindowIpcRegistrationSource, /registerWindowIpcHandlers\(\{/, 'mainWindowIpcRegistration should delegate window IPC registration to the helper.');
+assert.match(mainWindowBootstrapSource, /hideMainWindow,/, 'mainWindowBootstrap should pass hideMainWindow into the window IPC helper.');
+assert.equal(source.includes("ipcMain.handle('window:minimize', hideMainWindow)"), false, 'main should not register window:minimize inline.');
+assert.equal(source.includes("ipcMain.handle('window:close', hideMainWindow)"), false, 'main should not register window:close inline.');
+assert.equal(windowIpcSource.includes("ipcMain.handle('window:minimize', hideMainWindow)"), true, 'window:minimize should use hideMainWindow in windowIpc.');
+assert.equal(windowIpcSource.includes("ipcMain.handle('window:close', hideMainWindow)"), true, 'window:close should use hideMainWindow in windowIpc.');
 
-// 独立桌面小组件窗口已移除；主窗口「钉在桌面」仍保留。
-assert.equal(source.includes("label: zh('打开桌面组件')"), false, 'tray should not include a separate widget entry');
+assert.equal(source.includes("label: zh('?????????')"), false, 'tray should not include a separate widget entry');
 assert.equal(source.includes('showDesktopWidgetWindow'), false, 'separate widget window helper should be removed');
 assert.equal(source.includes('createDesktopWidgetWindow'), false, 'separate widget window creation should be removed');
 assert.equal(source.includes('DESKTOP_WIDGET_WINDOW_STATE_KEY'), false, 'separate widget bounds key should be removed');
@@ -27,11 +50,20 @@ assert.equal(source.includes('startWidgetDesktopPin'), false, 'separate widget p
 assert.equal(source.includes('applyWidgetDesktopOwner'), false, 'separate widget desktop owner helper should be removed');
 assert.equal(source.includes('raiseWidget'), false, 'separate widget raise helper should be removed');
 assert.equal(source.includes('sinkWidget'), false, 'separate widget sink helper should be removed');
-assert.equal(source.includes("label: zh('钉在桌面（组件模式）')"), true, 'tray desktop pin entry should remain');
-assert.equal(source.includes('startDesktopGuard'), true, 'main-window desktop guard should remain');
-assert.equal(source.includes('applyDesktopWidgetState'), true, 'main-window desktop state machine should remain');
+assert.match(mainWindowCompositionSource, /from '\.\/mainShellController'/, 'main-window composition should import the shell controller helper.');
+assert.match(mainWindowCompositionSource, /createMainShellController\(/, 'main-window composition should create the shell controller helper.');
+assert.match(mainShellControllerSource, /from '\.\/trayMenu'/, 'mainShellController should import tray/menu helpers from trayMenu.');
+assert.match(mainShellControllerSource, /refreshMainTrayMenu\(/, 'mainShellController should delegate tray menu refresh to trayMenu.');
+assert.match(mainShellControllerSource, /createMainTray\(/, 'mainShellController should delegate tray creation to trayMenu.');
+assert.match(mainShellControllerSource, /from '\.\/taskMenuWindow'/, 'mainShellController should import task-menu window helpers.');
+assert.match(mainShellControllerSource, /createTaskMenuWindow\(payload,\s*\{/, 'mainShellController should delegate popup creation to taskMenuWindow.');
+assert.equal(source.includes("label: zh('???????????????')"), false, 'main should no longer own tray desktop pin labels inline after extraction');
+assert.equal(trayMenuSource.includes("zh('\\u9489\\u5728\\u684c\\u9762\\uff08\\u7ec4\\u4ef6\\u6a21\\u5f0f\\uff09')"), true, 'trayMenu should preserve the tray desktop pin entry');
+assert.match(source, /from '\.\/desktopWindowMode'/, 'main should import the desktop window mode controller.');
+assert.match(source, /createDesktopWindowModeController\(/, 'main should create the desktop window mode controller.');
+assert.match(desktopWindowModeSource, /function startDesktopGuard\b/, 'desktopWindowMode should own desktop guard startup.');
+assert.match(desktopWindowModeSource, /function applyDesktopWidgetState\b/, 'desktopWindowMode should own the desktop state machine.');
 
-// The abandoned SetParent-into-wallpaper experiment must stay removed.
 assert.equal(source.includes('embedIntoWallpaper'), false, 'wallpaper SetParent experiment must be removed');
 assert.equal(source.includes('toggleWidgetWallpaperEmbed'), false, 'wallpaper embed tray toggle must be removed');
 

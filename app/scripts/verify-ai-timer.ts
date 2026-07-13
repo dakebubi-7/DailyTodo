@@ -47,15 +47,16 @@ const toEnd = getNextMonthlyDelay(feb, 31, '09:00');
 assert.equal(new Date(feb.getTime() + toEnd).getDate(), 28, '2026年2月无31号 → 落到28号');
 
 // === 定时报告无素材时不能静默吞掉错误 ===
-const appSrc = fs.readFileSync(path.join(process.cwd(), 'src/App.tsx'), 'utf-8');
-assert.ok(appSrc.includes('handleScheduledReportResult'), 'App.tsx must define handleScheduledReportResult');
+const lifecycleSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/appAiReviewLifecycle.ts'), 'utf-8');
+const scheduledReportsSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/appScheduledReports.ts'), 'utf-8');
+assert.ok(scheduledReportsSrc.includes('handleScheduledReportResult'), 'appScheduledReports.ts must define handleScheduledReportResult');
 assert.ok(
-  appSrc.includes('generateWeekly(ymd(lastWeek), allTasksRef.current).then(handleScheduledReportResult)'),
-  'weekly tick must pass result to handler',
+  lifecycleSrc.includes('generateWeekly(getScheduledWeeklyReportDateKey(), getCurrentTasks()).then(handleScheduledReportResult)'),
+  'weekly tick must pass result to handler through the AI review lifecycle module',
 );
 assert.ok(
-  appSrc.includes('generateMonthly(ymd(prevMonthEnd), allTasksRef.current).then(handleScheduledReportResult)'),
-  'monthly tick must pass result to handler',
+  lifecycleSrc.includes('generateMonthly(getScheduledMonthlyReportDateKey(), getCurrentTasks()).then(handleScheduledReportResult)'),
+  'monthly tick must pass result to handler through the AI review lifecycle module',
 );
 
 console.log('AI timer verification passed');

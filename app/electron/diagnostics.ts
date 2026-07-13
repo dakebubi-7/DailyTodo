@@ -32,3 +32,18 @@ export function startCrashDiagnostics(diag: (message: string) => void): void {
     diag(`unhandledRejection: ${String(reason)}`);
   });
 }
+
+export function startCrashDiagnosticsSafely(diag: (message: string) => void): void {
+  try {
+    startCrashDiagnostics(diag);
+  } catch (error) {
+    diag(`crash diagnostics startup failed: ${String(error)}`);
+  }
+}
+
+export function createMainDiagnostics(): (message: string) => void {
+  const diag = createDiagLogger();
+  startCrashDiagnosticsSafely(diag);
+  diag('=== app starting ===');
+  return diag;
+}

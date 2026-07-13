@@ -4,12 +4,71 @@ import path from 'node:path';
 import {
   AI_REVIEW_SETTINGS_KEY,
   createDefaultAiReviewSettings,
+  isMonthlySourceMode,
+  isWeeklySourceMode,
   normalizeAiReviewSettings,
+  normalizeMonthlySourceMode,
+  normalizeWeeklySourceMode,
   sanitizeRelDir,
   DEFAULT_REPORT_DIRS,
   createDefaultAiProfile,
   resolveActiveProfile,
 } from '../shared/aiReview/aiReviewSettings';
+import {
+  createDefaultAiProfile as createProfileFromModule,
+  resolveActiveProfile as resolveActiveProfileFromModule,
+} from '../shared/aiReview/aiReviewProfiles';
+
+const aiReviewSettingsPath = path.join(process.cwd(), 'shared/aiReview/aiReviewSettings.ts');
+const aiReviewProfilesPath = path.join(process.cwd(), 'shared/aiReview/aiReviewProfiles.ts');
+const aiReviewSettingsNormalizationPath = path.join(process.cwd(), 'shared/aiReview/aiReviewSettingsNormalization.ts');
+const unknownValueGuardsPath = path.join(process.cwd(), 'shared/unknownValueGuards.ts');
+
+assert.ok(fs.existsSync(aiReviewProfilesPath), 'AI profile helpers should live in shared/aiReview/aiReviewProfiles.ts');
+assert.ok(fs.existsSync(aiReviewSettingsNormalizationPath), 'AI review settings normalization should have a dedicated module.');
+assert.ok(fs.existsSync(unknownValueGuardsPath), 'shared unknown-value guards module should exist.');
+
+const aiReviewSettingsSrc = fs.readFileSync(aiReviewSettingsPath, 'utf-8');
+const aiReviewProfilesSrc = fs.readFileSync(aiReviewProfilesPath, 'utf-8');
+const aiReviewSettingsNormalizationSrc = fs.readFileSync(aiReviewSettingsNormalizationPath, 'utf-8');
+const unknownValueGuardsSrc = fs.readFileSync(unknownValueGuardsPath, 'utf-8');
+const aiReviewSettingsLines = aiReviewSettingsSrc.split(/\r?\n/).length;
+
+assert.ok(aiReviewSettingsSrc.includes("from './aiReviewProfiles'"), 'AI settings should import/re-export profile helpers from the profile module');
+assert.ok(aiReviewProfilesSrc.includes('export function createDefaultAiProfile'), 'profile module should own default profile creation');
+assert.ok(aiReviewProfilesSrc.includes('export function normalizeAiProfile'), 'profile module should own profile normalization');
+assert.ok(aiReviewProfilesSrc.includes('export function resolveActiveProfile'), 'profile module should own active-profile resolution');
+assert.ok(aiReviewProfilesSrc.includes('export function resolveProfileForReportKind'), 'profile module should own report-profile routing');
+assert.ok(aiReviewProfilesSrc.includes('export function isAiProvider'), 'profile module should own provider guards');
+assert.match(unknownValueGuardsSrc, /export function isObjectRecord\b/, 'shared guards should expose an object-record predicate.');
+assert.match(
+  aiReviewProfilesSrc,
+  /import \{ isObjectRecord \} from '\.\.\/unknownValueGuards';/,
+  'AI review profile normalization should reuse the shared object-record predicate.',
+);
+assert.doesNotMatch(
+  aiReviewProfilesSrc,
+  /function isObject\(v: unknown\)/,
+  'AI review profile normalization should not keep a duplicate local object predicate.',
+);
+assert.match(
+  aiReviewSettingsNormalizationSrc,
+  /import \{ isObjectRecord \} from '\.\.\/unknownValueGuards';/,
+  'AI review settings normalization should reuse the shared object-record predicate.',
+);
+assert.doesNotMatch(
+  aiReviewSettingsNormalizationSrc,
+  /function isObject\(/,
+  'AI review settings normalization should not keep a duplicate local object predicate.',
+);
+assert.ok(aiReviewSettingsLines < 300, `aiReviewSettings.ts should stay below 300 lines after profile extraction; got ${aiReviewSettingsLines}`);
+
+assert.equal(typeof createProfileFromModule().id, 'string', 'profile module default profile factory should be executable');
+assert.equal(
+  resolveActiveProfileFromModule(createDefaultAiReviewSettings()).model,
+  resolveActiveProfile(createDefaultAiReviewSettings()).model,
+  'profile module and AI settings re-export should resolve the same default profile',
+);
 
 assert.equal(AI_REVIEW_SETTINGS_KEY, 'aiReviewSettings');
 
@@ -101,6 +160,31 @@ assert.equal(def.dailyReviewProfileId, '', '日报账号默认跟随当前账号
 assert.equal(def.weeklyReportProfileId, '', '周报账号默认跟随当前账号');
 assert.equal(def.monthlyReportProfileId, '', '月报账号默认跟随当前账号');
 assert.equal(def.profiles.length, 0, '新安装默认没有 profiles，迁移时再生成');
+const normalizedDefaultSettings = normalizeAiReviewSettings(createDefaultAiReviewSettings());
+assert.equal(
+  normalizedDefaultSettings.profiles.length,
+  0,
+  'normalizing fresh default AI review settings should preserve the new-format empty profiles state.',
+);
+assert.equal(
+  normalizedDefaultSettings.activeProfileId,
+  '',
+  'normalizing fresh default AI review settings should preserve the empty activeProfileId state.',
+);
+const malformedProfilesLegacy = normalizeAiReviewSettings({
+  profiles: 'not-an-array',
+  provider: 'gemini',
+  baseUrl: 'https://generativelanguage.googleapis.com',
+  apiKey: 'legacy-key',
+  model: 'gemini-1.5-flash',
+  timeoutSeconds: 120,
+});
+assert.equal(
+  malformedProfilesLegacy.profiles.length,
+  1,
+  'malformed non-array profiles should still fall back to legacy single-account migration instead of discarding legacy credentials.',
+);
+assert.equal(malformedProfilesLegacy.profiles[0].apiKey, 'legacy-key');
 
 // 旧版单配置自动迁移成 1 个默认 profile
 const migrated = normalizeAiReviewSettings({
@@ -160,26 +244,55 @@ assert.equal(def.weeklySourceMode, 'daily-notes');
 assert.equal(def.monthlySourceMode, 'weekly-then-daily');
 assert.equal(def.externalWeeklySourceMode, 'daily-notes');
 assert.equal(def.externalMonthlySourceMode, 'weekly-then-daily');
+assert.equal(isWeeklySourceMode('daily-notes'), true, 'daily-notes is a valid weekly source mode');
+assert.equal(isWeeklySourceMode('weekly-reports'), false, 'weekly-reports is not valid for weekly source mode');
+assert.equal(isMonthlySourceMode('weekly-reports'), true, 'weekly-reports is a valid monthly source mode');
+assert.equal(isMonthlySourceMode(null), false, 'non-string monthly source modes should be rejected');
+assert.equal(normalizeWeeklySourceMode('manual-files'), 'manual-files');
+assert.equal(normalizeWeeklySourceMode('weekly-reports'), 'daily-notes');
+assert.equal(normalizeMonthlySourceMode('manual-files'), 'manual-files');
+assert.equal(normalizeMonthlySourceMode('nope'), 'weekly-then-daily');
+
+assert.ok(aiReviewSettingsSrc.includes('export function isWeeklySourceMode'), 'AI settings should export a weekly source-mode guard');
+assert.ok(aiReviewSettingsSrc.includes('export function isMonthlySourceMode'), 'AI settings should export a monthly source-mode guard');
+assert.ok(aiReviewSettingsSrc.includes('isWeeklySourceMode(value) ? value'), 'weekly source normalization should use the shared guard');
+assert.ok(aiReviewSettingsSrc.includes('isMonthlySourceMode(value) ? value'), 'monthly source normalization should use the shared guard');
+assert.ok(!aiReviewSettingsSrc.includes('value as WeeklySourceMode'), 'weekly source normalization should not cast values after includes checks');
+assert.ok(!aiReviewSettingsSrc.includes('value as MonthlySourceMode'), 'monthly source normalization should not cast values after includes checks');
 
 // === SettingsPanel UI references template/source/report account routing controls ===
 const settingsPanelSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/SettingsPanel.tsx'), 'utf-8');
+const aiReviewSettingsSectionSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/AiReviewSettingsSection.tsx'), 'utf-8');
+const aiReviewSourceSectionSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/AiReviewSourceSettingsSection.tsx'), 'utf-8');
+const aiReviewReportRoutingSectionSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/AiReviewReportRoutingSection.tsx'), 'utf-8');
 assert.ok(settingsPanelSrc.includes("'personalWeekly'"), 'SettingsPanel exposes personal weekly template editor');
 assert.ok(settingsPanelSrc.includes("'externalMonthly'"), 'SettingsPanel exposes external monthly template editor');
-assert.ok(settingsPanelSrc.includes('weeklySourceMode'), 'SettingsPanel exposes weekly source mode');
-assert.ok(settingsPanelSrc.includes('monthlySourceMode'), 'SettingsPanel exposes monthly source mode');
-assert.ok(settingsPanelSrc.includes('externalWeeklySourceMode'), 'SettingsPanel exposes external weekly source mode');
-assert.ok(settingsPanelSrc.includes('externalMonthlySourceMode'), 'SettingsPanel exposes external monthly source mode');
-assert.ok(settingsPanelSrc.includes('startupBackfillEnabled'), 'SettingsPanel exposes startup backfill toggle');
-assert.ok(settingsPanelSrc.includes('startupBackfillEnable'));
-assert.ok(settingsPanelSrc.includes('backfillDays'));
-assert.ok(settingsPanelSrc.includes('dailyReviewProfileId'), 'SettingsPanel exposes daily report account routing');
-assert.ok(settingsPanelSrc.includes('weeklyReportProfileId'), 'SettingsPanel exposes weekly report account routing');
-assert.ok(settingsPanelSrc.includes('monthlyReportProfileId'), 'SettingsPanel exposes monthly report account routing');
-assert.ok(settingsPanelSrc.includes('followCurrentAccount'), 'SettingsPanel exposes follow-current account option');
-assert.ok(settingsPanelSrc.includes('reportAccountRouting'), 'SettingsPanel renders report account routing section');
+assert.ok(aiReviewSettingsSectionSrc.includes('AiReviewSourceSettingsSection'), 'AI review settings section should render the source settings module');
+assert.ok(aiReviewSourceSectionSrc.includes('weeklySourceMode'), 'AI review source settings section exposes weekly source mode');
+assert.ok(aiReviewSourceSectionSrc.includes('monthlySourceMode'), 'AI review source settings section exposes monthly source mode');
+assert.ok(aiReviewSourceSectionSrc.includes('externalWeeklySourceMode'), 'AI review source settings section exposes external weekly source mode');
+assert.ok(aiReviewSourceSectionSrc.includes('externalMonthlySourceMode'), 'AI review source settings section exposes external monthly source mode');
+assert.ok(aiReviewSourceSectionSrc.includes('startupBackfillEnabled'), 'AI review source settings section exposes startup backfill toggle');
+assert.ok(aiReviewSourceSectionSrc.includes('startupBackfillEnable'));
+assert.ok(aiReviewSourceSectionSrc.includes('backfillDays'));
+assert.ok(aiReviewSettingsSectionSrc.includes('AiReviewReportRoutingSection'), 'AI review settings section should render the report routing module');
+assert.ok(aiReviewReportRoutingSectionSrc.includes('dailyReviewProfileId'), 'AI review report routing exposes daily report account routing');
+assert.ok(aiReviewReportRoutingSectionSrc.includes('weeklyReportProfileId'), 'AI review report routing exposes weekly report account routing');
+assert.ok(aiReviewReportRoutingSectionSrc.includes('monthlyReportProfileId'), 'AI review report routing exposes monthly report account routing');
+assert.ok(aiReviewReportRoutingSectionSrc.includes('followCurrentAccount'), 'AI review report routing exposes follow-current account option');
+assert.ok(aiReviewReportRoutingSectionSrc.includes('reportAccountRouting'), 'AI review report routing section exposes its structural label');
 
-const appSrc = fs.readFileSync(path.join(process.cwd(), 'src/App.tsx'), 'utf-8');
-assert.ok(appSrc.includes('startupBackfillEnabled'), 'App gates startup daily-review backfill behind startupBackfillEnabled');
-assert.ok(!appSrc.includes('if (!isLoaded) return;\n    void window.electronAPI?.aiReview?.backfill'), 'App must not call backfill unconditionally on startup');
+const aiReviewLifecyclePath = path.join(process.cwd(), 'src/app/appAiReviewLifecycle.ts');
+assert.ok(fs.existsSync(aiReviewLifecyclePath), 'AI review startup lifecycle should live in src/app/appAiReviewLifecycle.ts');
+const aiReviewLifecycleSrc = fs.readFileSync(aiReviewLifecyclePath, 'utf-8');
+assert.ok(
+  aiReviewLifecycleSrc.includes('if (settings.startupBackfillEnabled)')
+    && aiReviewLifecycleSrc.includes('aiReview?.backfill(getCurrentTasks())'),
+  'AI review startup backfill should be guarded by startupBackfillEnabled',
+);
+assert.ok(
+  !aiReviewLifecycleSrc.includes('void aiReview?.getSettings().then(() => {\n    void aiReview?.backfill(getCurrentTasks())'),
+  'AI review startup lifecycle must not backfill unconditionally after loading settings',
+);
 
 console.log('AI settings verification passed');

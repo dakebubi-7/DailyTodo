@@ -1,4 +1,4 @@
-import { formatLocalDateKey } from '../../../shared/taskRollover';
+import { formatLocalDateKey, getTaskDate as getSharedTaskDate } from '../../../shared/taskRollover';
 import { Task } from '../../types/task';
 
 export const weekDays = ['一', '二', '三', '四', '五', '六', '日'];
@@ -27,7 +27,23 @@ export function formatDisplayDate(date: string) {
 }
 
 export function getTaskDate(task: Task) {
-  return task.taskDate || task.createdAt?.slice(0, 10) || formatLocalDateKey();
+  return getSharedTaskDate(task, formatLocalDateKey());
+}
+
+export function buildTasksByDate(tasks: Task[]): Map<string, Task[]> {
+  const tasksByDate = new Map<string, Task[]>();
+  const fallbackDate = formatLocalDateKey();
+  tasks.forEach((task) => {
+    if (task.cleared) return;
+    const key = getSharedTaskDate(task, fallbackDate);
+    const dateTasks = tasksByDate.get(key);
+    if (dateTasks) {
+      dateTasks.push(task);
+    } else {
+      tasksByDate.set(key, [task]);
+    }
+  });
+  return tasksByDate;
 }
 
 export function getDaySummary(dayTasks: Task[]): DaySummary {

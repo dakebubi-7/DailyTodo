@@ -1,5 +1,182 @@
 import { strict as assert } from 'node:assert';
-import { buildAutoCandidates, callChatCompletion, detectProvider, listModels, parseModelList } from '../shared/llm/openaiClient';
+import fs from 'node:fs';
+import path from 'node:path';
+import { buildAutoCandidates, callChatCompletion, detectProvider, listModels, parseModelList, readListModelsResult } from '../shared/llm/openaiClient';
+
+const openaiClientSrc = fs.readFileSync(path.join(process.cwd(), 'shared/llm/openaiClient.ts'), 'utf-8');
+const protocolModulePath = path.join(process.cwd(), 'shared/llm/llmProviderProtocol.ts');
+const discoveryModulePath = path.join(process.cwd(), 'shared/llm/llmProviderDiscovery.ts');
+const responseParsingModulePath = path.join(process.cwd(), 'shared/llm/llmProviderResponseParsing.ts');
+const textValuesModulePath = path.join(process.cwd(), 'shared/llm/llmProviderTextValues.ts');
+const responseMetadataModulePath = path.join(process.cwd(), 'shared/llm/llmProviderResponseMetadata.ts');
+const transportModulePath = path.join(process.cwd(), 'shared/llm/llmClientTransport.ts');
+const errorMessagesModulePath = path.join(process.cwd(), 'shared/llm/llmClientErrorMessages.ts');
+const modelListResultReaderModulePath = path.join(process.cwd(), 'shared/llm/llmModelListResultReader.ts');
+assert.ok(
+  fs.existsSync(protocolModulePath),
+  'provider request construction and response parsing should live in a dedicated protocol module.',
+);
+const protocolSrc = fs.readFileSync(protocolModulePath, 'utf-8');
+assert.ok(
+  fs.existsSync(responseParsingModulePath),
+  'unknown-safe provider response parsing should live outside request construction.',
+);
+const responseParsingSrc = fs.readFileSync(responseParsingModulePath, 'utf-8');
+assert.ok(
+  fs.existsSync(textValuesModulePath),
+  'provider text-value normalization should live outside provider-specific response parsing.',
+);
+const textValuesSrc = fs.readFileSync(textValuesModulePath, 'utf-8');
+assert.ok(
+  fs.existsSync(responseMetadataModulePath),
+  'provider usage and model-list parsing should live outside chat response text parsing.',
+);
+const responseMetadataSrc = fs.readFileSync(responseMetadataModulePath, 'utf-8');
+assert.ok(
+  fs.existsSync(errorMessagesModulePath),
+  'LLM client error-message policy should live outside request orchestration.',
+);
+const errorMessagesSrc = fs.readFileSync(errorMessagesModulePath, 'utf-8');
+assert.ok(
+  fs.existsSync(discoveryModulePath),
+  'provider URL detection and automatic endpoint candidates should live outside response protocol parsing.',
+);
+const discoverySrc = fs.readFileSync(discoveryModulePath, 'utf-8');
+assert.ok(
+  fs.existsSync(transportModulePath),
+  'single-provider HTTP execution should live outside the public LLM client facade.',
+);
+const transportSrc = fs.readFileSync(transportModulePath, 'utf-8');
+assert.ok(
+  fs.existsSync(modelListResultReaderModulePath),
+  'model-list IPC result validation should live in a focused reader module.',
+);
+const modelListResultReaderSrc = fs.readFileSync(modelListResultReaderModulePath, 'utf-8');
+assert.match(
+  openaiClientSrc,
+  /from '\.\/llmModelListResultReader'/,
+  'the public LLM client should re-export the focused model-list result reader.',
+);
+assert.doesNotMatch(
+  openaiClientSrc,
+  /export function readListModelsResult\(value: unknown\): ListModelsResult \| undefined \{[\s\S]*?\n\}/,
+  'the public LLM client should not retain inline model-list IPC result validation.',
+);
+assert.match(
+  modelListResultReaderSrc,
+  /export function readListModelsResult\(value: unknown\): ListModelsResult \| undefined/,
+  'the focused model-list reader should own runtime result validation.',
+);
+assert.match(protocolSrc, /from '\.\/llmProviderDiscovery'/);
+assert.match(discoverySrc, /export function detectProvider\(baseUrl: string\): LlmProvider/);
+assert.match(discoverySrc, /export function buildAutoCandidates\(baseUrl: string\): AutoCandidate\[\]/);
+assert.match(
+  openaiClientSrc,
+  /from '\.\/llmProviderProtocol'/,
+  'the HTTP client should compose the provider protocol adapter instead of owning protocol details.',
+);
+assert.match(
+  openaiClientSrc,
+  /from '\.\/llmClientTransport'/,
+  'the public LLM client should delegate individual HTTP attempts to the transport module.',
+);
+assert.match(
+  transportSrc,
+  /export async function callChatCompletionOnce\([\s\S]*?export async function listModelsOnce\(/,
+  'the transport module should own both single-provider chat and model-list execution.',
+);
+assert.doesNotMatch(
+  openaiClientSrc,
+  /async function callChatCompletionOnce\([\s\S]*?async function listModelsOnce\(/,
+  'the facade should not retain duplicate single-provider HTTP execution.',
+);
+assert.doesNotMatch(
+  openaiClientSrc,
+  /async function (?:callChatCompletionOnceLegacy|listModelsOnceLegacy)\(/,
+  'the facade should not retain legacy single-provider HTTP execution after transport extraction.',
+);
+assert.match(
+  protocolSrc,
+  /export function buildProviderRequest\([\s\S]*?ProviderRequest/,
+  'the provider protocol module should own request construction and unknown-safe SSE parsing.',
+);
+assert.match(protocolSrc, /from '\.\/llmProviderResponseParsing'/);
+assert.match(responseParsingSrc, /export function parseSse\(raw: string\): unknown\[\]/);
+assert.match(
+  responseParsingSrc,
+  /from '\.\/llmProviderResponseMetadata'/,
+  'chat response parsing should re-export metadata readers through a dedicated metadata module.',
+);
+assert.doesNotMatch(
+  responseParsingSrc,
+  /from '\.\.\/aiReview\/runDiagnostics'/,
+  'chat response text parsing should not depend directly on AI review usage diagnostics.',
+);
+assert.match(
+  responseMetadataSrc,
+  /export function extractUsage\(provider: LlmProvider, data: unknown\): AiReviewTokenUsage/,
+  'provider response metadata should own usage extraction.',
+);
+assert.match(
+  responseMetadataSrc,
+  /export function parseModelList\(provider: LlmProvider, data: unknown\): string\[\]/,
+  'provider response metadata should own model-list parsing.',
+);
+assert.match(
+  responseParsingSrc,
+  /const contentParts: string\[\] = \[\];[\s\S]*?contentParts\.push\(piece\);[\s\S]*?content: contentParts\.join\(''\)\.trim\(\)/,
+  'stream aggregators should collect text chunks before joining them once.',
+);
+assert.doesNotMatch(
+  responseParsingSrc,
+  /if \(piece\) content \+= piece;/,
+  'OpenAI-compatible stream aggregation should not repeatedly concatenate growing content strings.',
+);
+assert.doesNotMatch(
+  responseMetadataSrc,
+  /\[\.\.\.events\]\.reverse\(\)\.find\(/,
+  'SSE usage extraction should scan backward without copying and reversing every event list.',
+);
+assert.match(
+  responseMetadataSrc,
+  /for \(let index = events\.length - 1; index >= 0; index -= 1\)/,
+  'SSE usage extraction should inspect events from newest to oldest.',
+);
+assert.doesNotMatch(
+  responseParsingSrc,
+  /return value\.map\(\(part\) => \(isObjectRecord\(part\) && typeof part\.text === 'string' \? part\.text : ''\)\)\.join\(''\);/,
+  'text-part extraction should append directly instead of allocating a mapped array for every response chunk.',
+);
+assert.doesNotMatch(
+  responseParsingSrc,
+  /const piece = parts\.map\(\(part\) => \(isObjectRecord\(part\) && typeof part\.text === 'string' \? part\.text : ''\)\)\.join\(''\);/,
+  'Gemini stream aggregation should append text parts directly instead of allocating an array per event.',
+);
+assert.doesNotMatch(
+  responseMetadataSrc,
+  /\.map\(\(model\) => \(isObjectRecord\(model\) && typeof model\.(?:name|id) === 'string' \?[^\n]+: ''\)\)\s*\.filter\(Boolean\)/,
+  'model-list parsing should collect valid model ids directly instead of mapping placeholder strings before filtering.',
+);
+assert.match(
+  responseMetadataSrc,
+  /const models: string\[\] = \[\];[\s\S]*?for \(const model of entries\)/,
+  'model-list parsing should collect valid model ids in a single traversal.',
+);
+assert.match(
+  protocolSrc,
+  /function splitSystem\(messages: ChatMessage\[\]\)[\s\S]*?for \(const message of messages\) \{[\s\S]*?systemParts\.push[\s\S]*?turns\.push/,
+  'provider message preparation should split system and non-system messages in one traversal.',
+);
+assert.doesNotMatch(
+  protocolSrc,
+  /const sys = messages\.filter\([\s\S]*?const turns = messages\.filter/,
+  'provider message preparation should not filter the same message list twice.',
+);
+assert.doesNotMatch(
+  protocolSrc,
+  /for \(const line of raw\.split\(\/\\r\?\\n\/\)\)/,
+  'SSE parsing should scan response lines without allocating an array for the whole stream.',
+);
 
 const base = { baseUrl: 'https://x/v1', apiKey: 'sk-test', model: 'm' };
 const messages = [{ role: 'user' as const, content: 'hi' }];
@@ -450,5 +627,59 @@ const gemMl = await listModels({ baseUrl: 'https://generativelanguage.googleapis
 assert.equal(gemMl.ok, true);
 assert.ok(gemUrl.includes('/v1beta/models'), 'Gemini 走 /v1beta/models');
 assert.ok(gemUrl.includes('key=AIza'), 'Gemini key 入 query');
+
+assert.deepEqual(readListModelsResult({ ok: true, models: ['a', 'b'] }), { ok: true, models: ['a', 'b'] });
+assert.deepEqual(readListModelsResult({ ok: false, error: 'nope' }), { ok: false, error: 'nope' });
+assert.equal(readListModelsResult({ ok: true, models: [1] }), undefined);
+assert.equal(readListModelsResult({ ok: false }), undefined);
+assert.equal(readListModelsResult(null), undefined);
+assert.ok(
+  !/readListModelsResult[\s\S]*?const candidate = value as Record<string, unknown>;/.test(openaiClientSrc),
+  'readListModelsResult should narrow runtime objects with a guard instead of casting to Record<string, unknown>.',
+);
+assert.ok(
+  !/let data:\s*any;[\s\S]*?data = JSON\.parse\(text\);/.test(openaiClientSrc),
+  'non-streaming LLM response JSON should enter the client as unknown rather than any.',
+);
+assert.ok(
+  /export function parseModelList\(provider: LlmProvider, data: unknown\): string\[\]/.test(responseMetadataSrc),
+  'model-list network data should remain unknown until the parser validates its fields.',
+);
+assert.ok(
+  /export function parseSse\(raw: string\): unknown\[\]/.test(responseParsingSrc),
+  'SSE JSON should enter provider aggregation as unknown events until each provider narrows its fields.',
+);
+assert.ok(
+  /export \{ isObjectRecord \} from '\.\.\/unknownValueGuards';/.test(responseParsingSrc),
+  'Provider response parsing should re-export the shared unknown object-record guard.',
+);
+assert.ok(
+  /from '\.\/llmClientErrorMessages'/.test(openaiClientSrc),
+  'The LLM client should compose focused error-message policy.',
+);
+assert.ok(
+  /from '\.\/llmProviderResponseParsing'/.test(errorMessagesSrc),
+  'LLM error-message policy should reuse the response parser object-record guard.',
+);
+assert.ok(
+  !/function isObjectRecord\(value: unknown\): value is Record<string, unknown>/.test(errorMessagesSrc),
+  'LLM error-message policy should not retain a duplicate object-record guard.',
+);
+assert.ok(
+  /from '\.\/llmProviderTextValues'/.test(responseParsingSrc),
+  'Provider-specific parsing should compose focused text-value normalization.',
+);
+assert.ok(
+  /export function textFromValue\(value: unknown\): string[\s\S]*?export function firstText\(\.\.\.values: unknown\[\]\): string \| undefined[\s\S]*?export function firstTextPreserveWhitespace\(\.\.\.values: unknown\[\]\): string \| undefined/.test(textValuesSrc),
+  'Text-value normalization should accept unknown values and preserve stream chunk whitespace when requested.',
+);
+assert.ok(
+  /export function createProviderResponseParser\(provider: LlmProvider\): ProviderResponseParser/.test(responseParsingSrc),
+  'provider-specific non-streaming parsers should receive unknown network values and narrow their response envelopes.',
+);
+assert.ok(
+  /export function extractUsage\(provider: LlmProvider, data: unknown\): AiReviewTokenUsage[\s\S]*?export function extractSseUsage\(provider: LlmProvider, events: unknown\[\]\): AiReviewTokenUsage[\s\S]*?export function isUsageOnlyStream\(events: unknown\[\]\): boolean/.test(responseMetadataSrc),
+  'usage diagnostics should receive unknown network values and narrow provider-specific usage records before field access.',
+);
 
 console.log('OpenAI client verification passed');

@@ -1,4 +1,4 @@
-import { shiftDateKey } from '../taskRollover';
+import { getTaskDate, shiftDateKey } from '../taskRollover';
 
 export interface StatTask {
   completed: boolean;
@@ -24,13 +24,19 @@ export interface RangeStats {
 }
 
 function dateOf(task: StatTask): string {
-  return task.taskDate || task.createdAt?.slice(0, 10) || '';
+  return getTaskDate(task, '');
 }
 
 export function computeDailyStats(tasks: StatTask[], date: string): DailyStats {
-  const ofDay = tasks.filter((t) => dateOf(t) === date);
-  const completed = ofDay.filter((t) => t.completed).length;
-  const total = ofDay.length;
+  let completed = 0;
+  let total = 0;
+
+  for (const task of tasks) {
+    if (dateOf(task) !== date) continue;
+    total += 1;
+    if (task.completed) completed += 1;
+  }
+
   return {
     date,
     total,
@@ -40,11 +46,17 @@ export function computeDailyStats(tasks: StatTask[], date: string): DailyStats {
 }
 
 export function computeRangeStats(tasks: StatTask[], start: string, end: string): RangeStats {
-  const inRange = tasks.filter((t) => {
-    const d = dateOf(t);
-    return d >= start && d <= end;
-  });
-  const activeDates = new Set(inRange.map(dateOf).filter(Boolean));
+  const activeDates = new Set<string>();
+  let totalCompleted = 0;
+  let totalTasks = 0;
+
+  for (const task of tasks) {
+    const taskDate = dateOf(task);
+    if (taskDate < start || taskDate > end) continue;
+    totalTasks += 1;
+    if (taskDate) activeDates.add(taskDate);
+    if (task.completed) totalCompleted += 1;
+  }
 
   let streak = 0;
   let cursor = end;
@@ -57,8 +69,8 @@ export function computeRangeStats(tasks: StatTask[], start: string, end: string)
     start,
     end,
     activeDays: activeDates.size,
-    totalCompleted: inRange.filter((t) => t.completed).length,
-    totalTasks: inRange.length,
+    totalCompleted,
+    totalTasks,
     streak,
   };
 }

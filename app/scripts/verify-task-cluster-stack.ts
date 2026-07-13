@@ -4,6 +4,11 @@ import { join } from 'node:path';
 const cwd = process.cwd();
 const root = existsSync(join(cwd, 'src')) ? cwd : join(cwd, 'app');
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
+const subtasksViewport = readFileSync(join(root, 'src/components/taskItem/TaskSubtasksViewport.tsx'), 'utf8');
+const subtaskCard = readFileSync(join(root, 'src/components/taskItem/SubtaskCard.tsx'), 'utf8');
+const subtaskCardControls = readFileSync(join(root, 'src/components/taskItem/subtaskCardControls.tsx'), 'utf8');
+const taskItemStack = readFileSync(join(root, 'src/components/taskItem/taskItemStack.ts'), 'utf8');
+const taskStackSegments = readFileSync(join(root, 'src/components/taskItem/TaskStackSegments.tsx'), 'utf8');
 const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8');
 
 function assert(condition: unknown, message: string) {
@@ -28,26 +33,28 @@ const neumorphismStackSegmentBlock = getCssBlock(globals, ".app-shell[data-theme
 const neumorphismCollapsedMainCardBlock = getCssBlock(globals, ".app-shell[data-theme='neumorphism'] .task-cluster-collapsed.task-cluster-has-children .task-cluster-main-card.task-card");
 const darkCollapsedMainCardBlock = getCssBlock(globals, '.dark .task-cluster-collapsed.task-cluster-has-children .task-cluster-main-card.task-card');
 
-assert(taskItem.includes('TASK_CLUSTER_SPRING'), 'TaskItem should define a shared spring config for the cluster container.');
-assert(taskItem.includes('stiffness: 180') && taskItem.includes('damping: 25') && taskItem.includes('mass: 1'), 'Task cluster animation should use the requested spring parameters.');
-assert(taskItem.includes("const TASK_STACK_SEGMENT_CLASSES = ['task-stack-segment-1', 'task-stack-segment-2', 'task-stack-segment-3'] as const;"), 'Collapsed stack should define up to three stack segment classes.');
-assert(taskItem.includes('const TASK_STACK_SEGMENT_TRANSITIONS = TASK_STACK_SEGMENT_CLASSES.map'), 'Collapsed stack should precompute segment transitions.');
+assert(taskItemStack.includes('TASK_CLUSTER_SPRING'), 'Stack helper should define a shared spring config for the cluster container.');
+assert(taskItemStack.includes('stiffness: 180') && taskItemStack.includes('damping: 25') && taskItemStack.includes('mass: 1'), 'Task cluster animation should use the requested spring parameters.');
+assert(taskItemStack.includes("export const TASK_STACK_SEGMENT_CLASSES = ['task-stack-segment-1', 'task-stack-segment-2', 'task-stack-segment-3'] as const;"), 'Collapsed stack should define up to three stack segment classes.');
+assert(taskItemStack.includes('export const TASK_STACK_SEGMENT_TRANSITIONS = TASK_STACK_SEGMENT_CLASSES.map'), 'Collapsed stack should precompute segment transitions.');
 assert(taskItem.includes('const stackSegmentCount = getStackSegmentCount(subtaskCount);'), 'Collapsed stack segment count should be derived through the shared helper.');
-assert(taskItem.includes("'--task-stack-segment-count': segmentCount"), 'Collapsed stack shell should receive the segment count through a CSS variable.');
-assert(taskItem.includes('className="task-stack-segments"'), 'Collapsed clusters should render a dedicated segment container.');
-assert(taskItem.includes('className={`task-stack-segment ${segmentClass}`}'), 'Collapsed clusters should render stack segment elements rather than faux cards.');
-assert(taskItem.includes('return Math.min(subtaskCount, TASK_STACK_SEGMENT_CLASSES.length);'), 'Stack segment helper should cap visible segments at three.');
+assert(taskItemStack.includes("'--task-stack-segment-count': segmentCount"), 'Collapsed stack shell should receive the segment count through a CSS variable.');
+assert(taskStackSegments.includes('className="task-stack-segments"'), 'Collapsed clusters should render a dedicated segment container.');
+assert(taskStackSegments.includes('className={`task-stack-segment ${segmentClass}`}'), 'Collapsed clusters should render stack segment elements rather than faux cards.');
+assert(taskItemStack.includes('return Math.min(subtaskCount, TASK_STACK_SEGMENT_CLASSES.length);'), 'Stack segment helper should cap visible segments at three.');
 assert(!taskItem.includes('task-stack-layer task-cluster-faux-card task-card'), 'Collapsed clusters should not render faux rear cards once segments are introduced.');
-assert(taskItem.includes('animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1 }}'), 'Stack segments should only animate opacity so CSS geometry remains stable.');
-assert(taskItem.includes('exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0 }}'), 'Stack segments should only animate opacity on exit so CSS geometry remains stable.');
+assert(taskStackSegments.includes('animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1 }}'), 'Stack segments should only animate opacity so CSS geometry remains stable.');
+assert(taskStackSegments.includes('exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0 }}'), 'Stack segments should only animate opacity on exit so CSS geometry remains stable.');
 assert(!taskItem.includes('className="task-subtasks task-subtasks-preview"'), 'Collapsed clusters should not render the preview well shell.');
 assert(!taskItem.includes('task-subtask-preview-card'), 'Collapsed clusters should not render hidden preview subtask rows.');
 assert(!taskItem.includes('task-subtask-preview-priority'), 'Collapsed clusters should not render hidden preview priority dots.');
 assert(taskItem.includes('useVirtualSubtasks'), 'Expanded subtasks should use local virtual rendering logic.');
-assert(taskItem.includes('visibleVirtualItems'), 'Only visible initialized subtask items should be rendered in the scroll viewport.');
-assert(taskItem.includes('TASK_SUBTASK_VIEWPORT_HEIGHT'), 'Expanded subtask viewport should have a capped internal height.');
-assert(taskItem.includes('TASK_SUBTASK_STAGGER_MS') && taskItem.includes('* 0.001'), 'Subtask cards should stagger by millisecond constants converted to seconds.');
-assert(taskItem.includes('task-subtask-delete task-icon-action task-delete-action'), 'Expanded subtasks should show delete buttons again.');
+assert(taskItem.includes("lazy(() => import('./taskItem/TaskSubtasksViewport')") && taskItem.includes('<TaskSubtasksViewport'), 'Expanded subtasks should lazy-load and render through the extracted viewport component.');
+assert(subtasksViewport.includes('visibleVirtualItems'), 'Only visible initialized subtask items should be rendered in the scroll viewport.');
+assert(subtasksViewport.includes('TASK_SUBTASK_VIEWPORT_HEIGHT'), 'Expanded subtask viewport should have a capped internal height.');
+assert(subtasksViewport.includes('TASK_SUBTASK_STAGGER_MS') && subtasksViewport.includes('* 0.001'), 'Subtask cards should stagger by millisecond constants converted to seconds.');
+assert(subtaskCard.includes('<SubtaskActionLayer'), 'Expanded subtasks should route actions through the extracted subtask action layer.');
+assert(subtaskCardControls.includes('task-subtask-delete task-icon-action task-delete-action'), 'Expanded subtasks should show delete buttons again.');
 assert(!taskItem.includes('task-subtask-count-badge'), 'Collapsed main task should not render a subtask count badge.');
 
 assert(taskClusterBlock.includes('display: grid;'), 'Task cluster should remain a structural grid wrapper.');

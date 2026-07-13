@@ -1,110 +1,32 @@
-import { Task, TabType, TaskSource } from '../types/task';
+import type { Task, TabType, TaskSource } from '../types/task';
+import {
+  isTaskSource,
+  type TaskListDateOrder,
+  type TaskListOrderByDate,
+} from './taskOrderPersistence';
+import { DEFAULT_SOURCE_ORDER } from './taskDisplayOrdering';
+
+export {
+  isTaskSource,
+  parseTaskListOrderByDate,
+  type TaskListDateOrder,
+  type TaskListOrderByDate,
+} from './taskOrderPersistence';
+
+export {
+  DEFAULT_SOURCE_ORDER,
+  getSourceOrderForDate,
+  getTaskSource,
+  sortTasksForDisplay,
+} from './taskDisplayOrdering';
 
 export const TASK_LIST_ORDER_KEY = 'taskListOrderByDate';
-export const DEFAULT_SOURCE_ORDER: TaskSource[] = ['personal', 'external'];
-
-export interface TaskListDateOrder {
-  sourceOrder?: TaskSource[];
-  taskOrderBySource?: Partial<Record<TaskSource, string[]>>;
-}
-
-export type TaskListOrderByDate = Record<string, TaskListDateOrder>;
 
 export interface TaskDragFilterState {
   activeTab: TabType;
   searchQuery: string;
   showOpenOnly: boolean;
   priorityFilter: 'all' | Task['priority'];
-}
-
-const priorityOrder: Record<Task['priority'], number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-};
-
-export function getTaskSource(task: Task): TaskSource {
-  return task.source || 'personal';
-}
-
-function isTaskSource(value: unknown): value is TaskSource {
-  return value === 'personal' || value === 'external';
-}
-
-export function getSourceOrderForDate(orderByDate: TaskListOrderByDate, date: string): TaskSource[] {
-  const saved = orderByDate[date]?.sourceOrder?.filter(isTaskSource) || [];
-  const merged = [...saved, ...DEFAULT_SOURCE_ORDER.filter((source) => !saved.includes(source))];
-  return merged.length ? merged : DEFAULT_SOURCE_ORDER;
-}
-
-function byDefaultTaskOrder(a: Task, b: Task) {
-  if (a.completed !== b.completed) return a.completed ? 1 : -1;
-  const priorityDelta = priorityOrder[a.priority] - priorityOrder[b.priority];
-  if (priorityDelta !== 0) return priorityDelta;
-  return 0;
-}
-
-function sortMissingTasksByPriority(tasks: Task[]) {
-  return [...tasks].sort((a, b) => {
-    const priorityDelta = priorityOrder[a.priority] - priorityOrder[b.priority];
-    if (priorityDelta !== 0) return priorityDelta;
-    return 0;
-  });
-}
-
-function insertMissingTasksByPriority(orderedTasks: Task[], missingTasks: Task[]) {
-  const result = [...orderedTasks];
-  sortMissingTasksByPriority(missingTasks).forEach((task) => {
-    const insertAt = result.findIndex((existing) => priorityOrder[existing.priority] > priorityOrder[task.priority]);
-    if (insertAt === -1) {
-      result.push(task);
-    } else {
-      result.splice(insertAt, 0, task);
-    }
-  });
-  return result;
-}
-
-function sortCompletionBucket(tasks: Task[], manualOrder?: string[]) {
-  if (!manualOrder?.length) return sortMissingTasksByPriority(tasks);
-
-  const taskById = new Map(tasks.map((task) => [task.id, task]));
-  const orderedTasks = manualOrder
-    .map((id) => taskById.get(id))
-    .filter((task): task is Task => Boolean(task));
-  const orderedIds = new Set(orderedTasks.map((task) => task.id));
-  const missingTasks = tasks.filter((task) => !orderedIds.has(task.id));
-
-  return insertMissingTasksByPriority(orderedTasks, missingTasks);
-}
-
-function sortSourceTasks(tasks: Task[], manualOrder?: string[]) {
-  const openTasks = tasks.filter((task) => !task.completed);
-  const doneTasks = tasks.filter((task) => task.completed);
-  return [
-    ...sortCompletionBucket(openTasks, manualOrder),
-    ...sortCompletionBucket(doneTasks, manualOrder),
-  ];
-}
-
-export function sortTasksForDisplay(tasks: Task[], selectedDate: string, orderByDate: TaskListOrderByDate) {
-  const dateOrder = orderByDate[selectedDate];
-  const sourceOrder = getSourceOrderForDate(orderByDate, selectedDate);
-  const knownSources = new Set(sourceOrder);
-  const sourcesInTasks = tasks.map(getTaskSource).filter((source, index, all) => all.indexOf(source) === index);
-  const orderedSources = [
-    ...sourceOrder,
-    ...sourcesInTasks.filter((source) => !knownSources.has(source)),
-  ];
-
-  return orderedSources.flatMap((source) => {
-    const sourceTasks = tasks.filter((task) => getTaskSource(task) === source);
-    if (!sourceTasks.length) return [];
-    const manualOrder = dateOrder?.taskOrderBySource?.[source];
-    return manualOrder?.length
-      ? sortSourceTasks(sourceTasks, manualOrder)
-      : [...sourceTasks].sort(byDefaultTaskOrder);
-  });
 }
 
 export function moveSourceInOrder(sourceOrder: TaskSource[], activeSource: TaskSource, overSource: TaskSource): TaskSource[] {
@@ -135,21 +57,92 @@ export function buildTaskOrderAfterMove(tasks: Task[], previousOrder: string[], 
   return next;
 }
 
-export function removeTaskIdFromOrder(orderByDate: TaskListOrderByDate, taskId: string): TaskListOrderByDate {
-  const next: TaskListOrderByDate = {};
-  Object.entries(orderByDate).forEach(([date, dateOrder]) => {
-    const taskOrderBySource: Partial<Record<TaskSource, string[]>> = {};
-    (Object.keys(dateOrder.taskOrderBySource || {}) as TaskSource[]).forEach((source) => {
-      const ids = dateOrder.taskOrderBySource?.[source]?.filter((id) => id !== taskId) || [];
-      if (ids.length) taskOrderBySource[source] = ids;
-    });
+function cleanDateOrder(
+  dateOrder: TaskListDateOrder,
+  taskId: string,
+): TaskListDateOrder | undefined | null {
+  const savedTaskOrderBySource = dateOrder.taskOrderBySource;
+  let changed = false;
+  let hasSavedOrder = false;
 
-    const cleaned: TaskListDateOrder = {};
-    if (dateOrder.sourceOrder?.length) cleaned.sourceOrder = dateOrder.sourceOrder.filter(isTaskSource);
-    if (Object.keys(taskOrderBySource).length) cleaned.taskOrderBySource = taskOrderBySource;
-    if (cleaned.sourceOrder?.length || cleaned.taskOrderBySource) next[date] = cleaned;
-  });
-  return next;
+  if (dateOrder.sourceOrder?.length) {
+    for (const source of dateOrder.sourceOrder) {
+      if (!isTaskSource(source)) {
+        changed = true;
+        break;
+      }
+    }
+  } else if (dateOrder.sourceOrder) {
+    changed = true;
+  }
+
+  if (savedTaskOrderBySource) {
+    for (const source in savedTaskOrderBySource) {
+      if (!Object.hasOwn(savedTaskOrderBySource, source)) continue;
+      if (!isTaskSource(source)) {
+        changed = true;
+        continue;
+      }
+      const savedIds = savedTaskOrderBySource[source];
+      if (!savedIds?.length) {
+        changed = true;
+        continue;
+      }
+      hasSavedOrder = true;
+      for (const id of savedIds) {
+        if (id === taskId) {
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!dateOrder.sourceOrder?.length && !hasSavedOrder) changed = true;
+  if (!changed) return null;
+
+  const taskOrderBySource: Partial<Record<TaskSource, string[]>> = {};
+  if (savedTaskOrderBySource) {
+    for (const source in savedTaskOrderBySource) {
+      if (!Object.hasOwn(savedTaskOrderBySource, source) || !isTaskSource(source)) continue;
+      const savedIds = savedTaskOrderBySource[source];
+      if (!savedIds?.length) continue;
+      const ids: string[] = [];
+      for (const id of savedIds) {
+        if (id !== taskId) ids.push(id);
+      }
+      if (ids.length) taskOrderBySource[source] = ids;
+    }
+  }
+
+  const cleaned: TaskListDateOrder = {};
+  if (dateOrder.sourceOrder?.length) {
+    const sourceOrder: TaskSource[] = [];
+    for (const source of dateOrder.sourceOrder) {
+      if (isTaskSource(source)) sourceOrder.push(source);
+    }
+    if (sourceOrder.length) cleaned.sourceOrder = sourceOrder;
+  }
+  if (Object.keys(taskOrderBySource).length) cleaned.taskOrderBySource = taskOrderBySource;
+  if (!cleaned.sourceOrder?.length && !cleaned.taskOrderBySource) return undefined;
+  return cleaned;
+}
+
+export function removeTaskIdFromOrder(orderByDate: TaskListOrderByDate, taskId: string): TaskListOrderByDate {
+  let next: TaskListOrderByDate | undefined;
+
+  for (const date in orderByDate) {
+    if (!Object.hasOwn(orderByDate, date)) continue;
+    const cleaned = cleanDateOrder(orderByDate[date], taskId);
+    if (cleaned === null) continue;
+    if (!next) next = { ...orderByDate };
+    if (cleaned) {
+      next[date] = cleaned;
+    } else {
+      delete next[date];
+    }
+  }
+  return next || orderByDate;
 }
 
 export function isTaskDragDisabled(state: TaskDragFilterState) {

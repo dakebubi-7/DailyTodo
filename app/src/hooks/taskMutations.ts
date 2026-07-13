@@ -90,22 +90,43 @@ export function markTaskDoneWithoutReview(task: Task, completedAt: string): Task
 }
 
 export function clearCompletedTasks(tasks: Task[], selectedDate: string, currentDate: string): Task[] {
-  return tasks.map((task) =>
-    taskMatchesDate(task, selectedDate, currentDate) && task.completed && !task.cleared
-      ? { ...task, cleared: true }
-      : task
-  );
+  let nextTasks = tasks;
+
+  for (let index = 0; index < tasks.length; index += 1) {
+    const task = tasks[index];
+    if (!taskMatchesDate(task, selectedDate, currentDate) || !task.completed || task.cleared) continue;
+
+    if (nextTasks === tasks) nextTasks = tasks.slice();
+    nextTasks[index] = { ...task, cleared: true };
+  }
+
+  return nextTasks;
 }
 
 export function changeTaskPriority(tasks: Task[], id: string, priority: Task['priority']): Task[] {
-  return tasks.map((task) => (task.id === id ? { ...task, priority } : task));
+  const taskIndex = tasks.findIndex((task) => task.id === id);
+  if (taskIndex === -1 || tasks[taskIndex].priority === priority) return tasks;
+
+  const nextTasks = tasks.slice();
+  nextTasks[taskIndex] = { ...tasks[taskIndex], priority };
+  return nextTasks;
 }
 
 export function editTaskText(task: Task, text: string): Task {
+  if (task.text === text) return task;
   return { ...task, text };
 }
 
+function areTaskFieldValuesEqual(key: keyof Task, current: unknown, next: unknown): boolean {
+  if (current === next) return true;
+  if (key !== 'tags' && key !== 'scheduledDates') return false;
+  if (!Array.isArray(current) || !Array.isArray(next) || current.length !== next.length) return false;
+  return current.every((value, index) => value === next[index]);
+}
+
 export function updateTaskFields(task: Task, updates: TaskFieldUpdates): Task {
+  const updateKeys = Object.keys(updates) as Array<keyof Task>;
+  if (updateKeys.every((key) => areTaskFieldValuesEqual(key, task[key], updates[key]))) return task;
   return { ...task, ...updates };
 }
 

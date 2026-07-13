@@ -1,3 +1,14 @@
+import {
+  readBackfillReport,
+  readDailyInspection,
+  readGenerationResult,
+} from './aiReviewIpcResultReaders';
+export {
+  isAiReviewProgressEvent,
+  isAiReviewRunDiagnostic,
+  readAiReviewRunDiagnostic,
+} from './aiReviewDiagnosticsValidation';
+
 export type AiReviewRunReportKind = 'daily' | 'weekly' | 'monthly';
 
 export type AiReviewRunFinalStatus =
@@ -80,18 +91,62 @@ export function safeBaseUrlHost(baseUrl: string): string | undefined {
 }
 
 export function mergeTokenUsage(items: Array<AiReviewTokenUsage | undefined>): AiReviewTokenUsage | undefined {
-  const present = items.filter((item): item is AiReviewTokenUsage => Boolean(item));
-  if (!present.length) return undefined;
-  const usable = present.filter((item) => item.source !== 'missing');
-  if (!usable.length) return { source: 'missing' };
-  const sum = (field: 'promptTokens' | 'completionTokens' | 'totalTokens') => {
-    const values = usable.map((item) => item[field]).filter((value): value is number => typeof value === 'number');
-    return values.length ? values.reduce((acc, value) => acc + value, 0) : undefined;
-  };
+  let hasUsage = false;
+  let source: AiReviewTokenUsage['source'] | undefined;
+  let promptTokens: number | undefined;
+  let completionTokens: number | undefined;
+  let totalTokens: number | undefined;
+
+  for (const item of items) {
+    if (!item) continue;
+    hasUsage = true;
+    if (item.source === 'missing') continue;
+    source ??= item.source;
+    if (typeof item.promptTokens === 'number') promptTokens = (promptTokens ?? 0) + item.promptTokens;
+    if (typeof item.completionTokens === 'number') completionTokens = (completionTokens ?? 0) + item.completionTokens;
+    if (typeof item.totalTokens === 'number') totalTokens = (totalTokens ?? 0) + item.totalTokens;
+  }
+
+  if (!hasUsage) return undefined;
+  if (!source) return { source: 'missing' };
   return {
-    source: usable[0].source,
-    promptTokens: sum('promptTokens'),
-    completionTokens: sum('completionTokens'),
-    totalTokens: sum('totalTokens'),
+    source,
+    promptTokens,
+    completionTokens,
+    totalTokens,
   };
+}
+
+export interface AiReviewGenerationResult {
+  ok: boolean;
+  error?: string;
+  filePath?: string;
+  truncated?: boolean;
+  filledMarkers?: string[];
+  skippedMarkers?: string[];
+}
+
+export interface AiReviewDailyInspection {
+  exists: boolean;
+  hasAiContent: boolean;
+  filePath: string;
+  error?: string;
+}
+
+export function readAiReviewGenerationResult(value: unknown): AiReviewGenerationResult | undefined {
+  return readGenerationResult(value);
+}
+
+export function readAiReviewDailyInspection(value: unknown): AiReviewDailyInspection | undefined {
+  return readDailyInspection(value);
+}
+
+export interface AiReviewBackfillReport {
+  processed: string[];
+  filled: string[];
+  errors: Array<{ date: string; error: string }>;
+}
+
+export function readAiReviewBackfillReport(value: unknown): AiReviewBackfillReport | undefined {
+  return readBackfillReport(value);
 }
