@@ -33,8 +33,29 @@ export function buildDevRendererUrl(baseUrl: string, route: RendererRoute): stri
   return url.toString();
 }
 
+function extractViewCandidate(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  if (isRendererView(trimmed)) return trimmed;
+
+  try {
+    if (trimmed.includes('://')) {
+      return new URL(trimmed).searchParams.get('view') || '';
+    }
+  } catch {
+    // Fall through to query-string parsing.
+  }
+
+  if (trimmed.startsWith('?') || trimmed.includes('=')) {
+    const query = trimmed.startsWith('?') ? trimmed.slice(1) : trimmed;
+    return new URLSearchParams(query).get('view') || '';
+  }
+
+  return trimmed;
+}
+
 export function resolveRendererView(value: string): RendererView {
-  // 仅剩主视图；保留函数签名供 main 进程的 loadRenderer 复用。
-  void value;
-  return 'main';
+  const candidate = extractViewCandidate(value);
+  return isRendererView(candidate) ? candidate : 'main';
 }

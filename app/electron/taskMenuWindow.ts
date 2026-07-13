@@ -50,7 +50,7 @@ export function createTaskMenuWindow(
     show: false,
     roundedCorners: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preloadTaskMenu.js'),
       nodeIntegration: false,
       contextIsolation: true,
       backgroundThrottling: false,
@@ -60,7 +60,6 @@ export function createTaskMenuWindow(
   menu.setAlwaysOnTop(true, 'screen-saver');
   loadRenderer(menu, {
     view: 'task-menu',
-    params: { payload: JSON.stringify(payload) },
   });
   menu.once('ready-to-show', () => menu.show());
   menu.on('blur', () => onBlur());

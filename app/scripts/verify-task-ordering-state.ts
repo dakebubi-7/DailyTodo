@@ -354,7 +354,7 @@ assert.ok(
   'manual display ordering should not scan the growing result once for every missing task.',
 );
 assert.ok(
-  taskDisplayOrderingSource.includes('for (const task of tasks) {\n    taskById.set(task.id, task);\n  }'),
+  /for \(const task of tasks\) \{\s*taskById\.set\(task\.id, task\);\s*\}/.test(taskDisplayOrderingSource),
   'manual display ordering should build its task lookup in one pass without an intermediate mapped array.',
 );
 assert.ok(
@@ -387,3 +387,4 @@ assert.ok(
 );
 
 console.log('task ordering state verification passed');
+

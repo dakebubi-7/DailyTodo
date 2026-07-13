@@ -12,6 +12,7 @@ export type CreateMainShellControllerOptions = {
   setTray(nextTray: Tray | null): void;
   getTaskMenuWindow(): BrowserWindow | null;
   setTaskMenuWindow(nextWindow: BrowserWindow | null): void;
+  setTaskMenuPayload(payload: TaskMenuPayload | null): void;
   userHidden: Pick<UserHiddenState, 'setHidden'>;
   getWindowMode(): WindowMode;
   markDesktopInteractive(): void;
@@ -37,6 +38,7 @@ export function createMainShellController({
   setTray,
   getTaskMenuWindow,
   setTaskMenuWindow,
+  setTaskMenuPayload,
   userHidden,
   getWindowMode,
   markDesktopInteractive,
@@ -96,6 +98,7 @@ export function createMainShellController({
       taskMenuWindow.close();
     }
     setTaskMenuWindow(null);
+    setTaskMenuPayload(null);
   }
 
   function openTaskMenuWindow(payload: TaskMenuPayload) {
@@ -106,6 +109,7 @@ export function createMainShellController({
       onClosed: () => {
         if (getTaskMenuWindow() === menu) {
           setTaskMenuWindow(null);
+          setTaskMenuPayload(null);
         }
       },
     });

@@ -55,6 +55,8 @@ export type CreateMainWindowBootstrapOptions = {
   getTaskMenuWindow(): BrowserWindow | null;
   openTaskMenuWindow(payload: TaskMenuPayload): void;
   closeTaskMenuWindow(): void;
+  getTaskMenuPayload(): import('./taskContextMenuIpc').TaskMenuPayload | null;
+  setTaskMenuPayload(payload: import('./taskContextMenuIpc').TaskMenuPayload | null): void;
   getMainWindow(): BrowserWindow | null;
   stopDesktopGuard(): void;
   userHidden: Pick<UserHiddenState, 'isHidden'>;
@@ -133,6 +135,8 @@ export function createMainWindowBootstrap(options: CreateMainWindowBootstrapOpti
   getTaskMenuWindow,
   openTaskMenuWindow,
   closeTaskMenuWindow,
+  getTaskMenuPayload,
+  setTaskMenuPayload,
   getMainWindow,
   stopDesktopGuard,
   userHidden,

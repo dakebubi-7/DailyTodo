@@ -20,6 +20,11 @@ import { callChatCompletion, type ChatMessage } from '../shared/llm/openaiClient
 import type { ElectronStoreLike } from './sharedTypes';
 import { areStoreValuesEqual } from './storeValueEquality';
 import { createObsidianVaultAccessors } from './obsidianVaultAccessors';
+import {
+  protectAiReviewSettingsSecrets,
+  revealAiReviewSettingsSecrets,
+  storedSettingsLookProtected,
+} from './aiReviewSecrets';
 
 const COMPANION_SETTINGS_KEY = 'obsidianCompanionSettings';
 const AI_REVIEW_SECTIONS_KEY = 'aiReviewSections';
@@ -78,16 +83,25 @@ export function createAppStateAccessors({
   }
 
   function getAiReviewSettings(): AiReviewSettings {
-    return normalizeAiReviewSettings(store.get(AI_REVIEW_SETTINGS_KEY));
+    return revealAiReviewSettingsSecrets(normalizeAiReviewSettings(store.get(AI_REVIEW_SETTINGS_KEY)));
   }
 
   function setAiReviewSettings(value: unknown): AiReviewSettings {
     const settings = normalizeAiReviewSettings(value);
     const current = getAiReviewSettings();
     if (areStoreValuesEqual(current, settings)) return current;
-    store.set(AI_REVIEW_SETTINGS_KEY, settings);
+    store.set(AI_REVIEW_SETTINGS_KEY, protectAiReviewSettingsSecrets(settings));
     return settings;
   }
+
+  function migrateAiReviewSecretsIfNeeded() {
+    const raw = store.get(AI_REVIEW_SETTINGS_KEY);
+    if (!raw || storedSettingsLookProtected(raw)) return;
+    const settings = normalizeAiReviewSettings(raw);
+    store.set(AI_REVIEW_SETTINGS_KEY, protectAiReviewSettingsSecrets(settings));
+  }
+
+  migrateAiReviewSecretsIfNeeded();
 
   function getReviewSections(): SectionConfig[] {
     return normalizeSections(store.get(AI_REVIEW_SECTIONS_KEY));

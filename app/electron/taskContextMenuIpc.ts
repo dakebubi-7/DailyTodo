@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import { isObjectRecord } from './unknownValueGuards';
+import { normalizeTaskMenuActionPayload } from '../shared/taskMenuActionUpdates';
 
 export type TaskMenuPayload = {
   task: unknown;
@@ -28,6 +29,8 @@ type RegisterTaskContextMenuIpcHandlersOptions = {
   closeTaskMenuWindow(): void;
   getTaskMenuWindow(): BrowserWindow | null;
   getMainWindow(): BrowserWindow | null;
+  setTaskMenuPayload(payload: TaskMenuPayload | null): void;
+  getTaskMenuPayload(): TaskMenuPayload | null;
 };
 
 function isTaskMenuPayload(value: unknown): value is TaskMenuPayload {
@@ -44,29 +47,27 @@ function isTaskMenuPayload(value: unknown): value is TaskMenuPayload {
   );
 }
 
-function isTaskMenuActionPayload(value: unknown): value is TaskMenuActionPayload {
-  if (!isObjectRecord(value)) return false;
-  const record = value;
-  const updates = record.updates;
-  return Boolean(
-    typeof record.taskId === 'string' && record.taskId.trim() &&
-    isObjectRecord(updates)
-  );
-}
-
 export function registerTaskContextMenuIpcHandlers({
   defaultTaskMenuHeight,
   openTaskMenuWindow,
   closeTaskMenuWindow,
   getTaskMenuWindow,
   getMainWindow,
+  setTaskMenuPayload,
+  getTaskMenuPayload,
 }: RegisterTaskContextMenuIpcHandlersOptions): void {
   ipcMain.handle('taskContextMenu:open', (_event, payload: unknown) => {
     if (!isTaskMenuPayload(payload)) return;
+    setTaskMenuPayload(payload);
     openTaskMenuWindow(payload);
   });
 
+  ipcMain.handle('taskContextMenu:getPayload', () => {
+    return getTaskMenuPayload();
+  });
+
   ipcMain.handle('taskContextMenu:close', () => {
+    setTaskMenuPayload(null);
     closeTaskMenuWindow();
   });
 
@@ -86,15 +87,18 @@ export function registerTaskContextMenuIpcHandlers({
   });
 
   ipcMain.handle('taskContextMenu:action', (_event, payload: unknown) => {
-    if (!isTaskMenuActionPayload(payload)) {
+    const normalized = normalizeTaskMenuActionPayload(payload);
+    if (!normalized) {
+      setTaskMenuPayload(null);
       closeTaskMenuWindow();
       return;
     }
 
     const mainWindow = getMainWindow();
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('taskContextMenu:action', payload);
+      mainWindow.webContents.send('taskContextMenu:action', normalized);
     }
+    setTaskMenuPayload(null);
     closeTaskMenuWindow();
   });
 }

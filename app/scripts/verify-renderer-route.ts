@@ -55,6 +55,9 @@ assert.equal(resolveRendererView('?view=widget'), 'main');
 assert.equal(resolveRendererView('?view=unknown'), 'main');
 assert.equal(resolveRendererView('http://localhost:5173/?view=widget'), 'main');
 assert.equal(resolveRendererView('not a url'), 'main');
+assert.equal(resolveRendererView('task-menu'), 'task-menu');
+assert.equal(resolveRendererView('?view=task-menu'), 'task-menu');
+assert.equal(resolveRendererView('http://localhost:5173/?view=task-menu'), 'task-menu');
 
 const rendererEntry = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 assert.match(

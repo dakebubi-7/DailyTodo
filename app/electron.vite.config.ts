@@ -17,7 +17,10 @@ export default defineConfig({
       outDir: 'dist-electron',
       emptyOutDir: false,
       rollupOptions: {
-        input: path.resolve(__dirname, 'electron/preload.ts')
+        input: {
+          preload: path.resolve(__dirname, 'electron/preload.ts'),
+          preloadTaskMenu: path.resolve(__dirname, 'electron/preloadTaskMenu.ts'),
+        }
       }
     }
   },

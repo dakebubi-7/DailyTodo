@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Task } from '../types/task';
 import { isTaskLike } from '../hooks/taskTransforms';
 import { MenuPane, SubtaskPane } from './taskMenuPopup/TaskMenuPopupPanes';
@@ -59,12 +59,11 @@ export function parseTaskMenuPopupPayload(value: unknown): MenuPayload | null {
   };
 }
 
-function readPayload(): MenuPayload | null {
+async function readPayload(): Promise<MenuPayload | null> {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get('payload');
+    const raw = await window.electronAPI?.getTaskContextMenuPayload?.();
     if (!raw) return null;
-    return parseTaskMenuPopupPayload(JSON.parse(raw));
+    return parseTaskMenuPopupPayload(raw);
   } catch {
     return null;
   }
@@ -79,7 +78,16 @@ function close() {
 }
 
 export function TaskMenuPopup() {
-  const payload = useMemo(readPayload, []);
+  const [payload, setPayload] = useState<MenuPayload | null>(null);
+  useEffect(() => {
+    let active = true;
+    void readPayload().then((next) => {
+      if (active) setPayload(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   const { cardRef, pane, setPane } = useTaskMenuPopupLifecycle({ payload, close });
 
   useEffect(() => {

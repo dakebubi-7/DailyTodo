@@ -1,11 +1,11 @@
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
+import { resolveRendererView } from '../shared/rendererRoute';
 
 const App = lazy(() => import('./App'));
 const TaskMenuPopup = lazy(() => import('./taskMenuView'));
 
-const params = new URLSearchParams(window.location.search);
-const view = params.get('view') || 'main';
+const view = resolveRendererView(window.location.search || 'main');
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 

@@ -1,5 +1,5 @@
 import type { Task } from '../types/task';
-import { isObjectRecord } from '../../shared/unknownValueGuards';
+import { normalizeTaskMenuActionPayload } from '../../shared/taskMenuActionUpdates';
 
 export type TaskMenuActionPayload = {
   taskId: string;
@@ -18,22 +18,14 @@ export type ParsedTaskMenuAction =
   | { kind: 'edit'; taskId: string }
   | { kind: 'update'; taskId: string; updates: Partial<Task> };
 
-function isTaskMenuActionPayload(payload: unknown): payload is TaskMenuActionPayload {
-  if (!isObjectRecord(payload)) return false;
-  const record = payload;
-  const updates = record.updates;
-  return Boolean(
-    typeof record.taskId === 'string' && record.taskId.trim() &&
-    isObjectRecord(updates)
-  );
-}
-
 export function parseTaskMenuAction(payload: unknown): ParsedTaskMenuAction {
-  if (!isTaskMenuActionPayload(payload)) {
+  const normalized = normalizeTaskMenuActionPayload(payload);
+  if (!normalized) {
     return { kind: 'noop' };
   }
 
-  const { taskId, updates } = payload;
+  const taskId = normalized.taskId;
+  const updates = normalized.updates as TaskMenuActionPayload['updates'];
   const action = updates.__action;
 
   if (action === 'addSubtask') {
@@ -48,9 +40,10 @@ export function parseTaskMenuAction(payload: unknown): ParsedTaskMenuAction {
     return { kind: 'edit', taskId };
   }
 
-  return { kind: 'update', taskId, updates };
+  // Drop control fields before applying generic task updates.
+  const { __action: _action, text: _text, ...taskUpdates } = updates;
+  return { kind: 'update', taskId, updates: taskUpdates };
 }
-
 
 export type TaskMenuActionHandlers = {
   addSubtask: (taskId: string, text: string) => void;
@@ -89,13 +82,12 @@ export function createEditRequest(prev: EditRequest | null, taskId: string): Edi
   return { id: taskId, nonce: (prev?.nonce || 0) + 1 };
 }
 
-
 export type TaskMenuElectronApi = {
-  onTaskMenuAction?: (handler: (payload: unknown) => void) => (() => void) | undefined;
+  onTaskMenuAction?: (handler: (payload: unknown) => () => void) => (() => void) | undefined;
 };
 
 export function registerTaskMenuActionListener(
-  electronAPI: TaskMenuElectronApi | undefined,
+  electronAPI: { onTaskMenuAction?: (handler: (payload: unknown) => void) => (() => void) | undefined } | undefined,
   handlers: TaskMenuActionHandlers,
 ): (() => void) | undefined {
   return electronAPI?.onTaskMenuAction?.((payload) => {

@@ -203,6 +203,7 @@ assert(mainWindowBootstrap.includes("from './mainWindowIpcRegistration'"), 'Main
 assert(mainWindowIpcRegistration.includes('registerTaskContextMenuIpcHandlers'), 'Main-window IPC composition should register task context menu IPC handlers.');
 assert(mainShellController.includes('createTaskMenuWindow(payload'), 'Main shell controller should delegate popup BrowserWindow creation to the task-menu window helper.');
 assert(taskContextMenuIpc.includes("ipcMain.handle('taskContextMenu:open'"), 'Task context menu IPC module should handle taskContextMenu:open.');
+assert(taskContextMenuIpc.includes("ipcMain.handle('taskContextMenu:getPayload'"), 'Task context menu IPC module should expose payload hydration.');
 assert(taskContextMenuIpc.includes("ipcMain.handle('taskContextMenu:action'"), 'Task context menu IPC module should forward taskContextMenu:action to the main window.');
 assert(taskMenuWindow.includes('screen.getDisplayNearestPoint('), 'Task-menu window helper should clamp popup placement to the display nearest the trigger point.');
 assert(!taskMenuWindow.includes('const { workArea } = screen.getPrimaryDisplay();'), 'Task-menu window helper should not always clamp popup placement to the primary display.');
@@ -222,6 +223,7 @@ assert(taskMenuWindow.includes("menu.setAlwaysOnTop(true, 'screen-saver')"), 'Ta
 
 // Preload bridge
 assert(preload.includes('openTaskContextMenu'), 'Preload should expose openTaskContextMenu.');
+assert(preload.includes('getTaskContextMenuPayload'), 'Preload should expose getTaskContextMenuPayload for IPC payload hydration.');
 assert(preload.includes('dispatchTaskMenuAction'), 'Preload should expose dispatchTaskMenuAction.');
 assert(preload.includes('onTaskMenuAction'), 'Preload should expose onTaskMenuAction.');
 
@@ -271,3 +273,5 @@ assert(globalsCss.includes('.theme-invisible .add-task') && globalsCss.includes(
   'Invisible theme should make the bottom add-task bar transparent (no opaque square).');
 
 console.log('Context menu (popup window) verification passed');
+
+assert(!taskMenuWindow.includes('JSON.stringify(payload)'), 'Task-menu window helper must not serialize task menu payload into the renderer URL.');

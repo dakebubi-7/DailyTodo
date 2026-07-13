@@ -18,6 +18,8 @@ type MainWindowIpcRegistrationOptions = Pick<
   | 'getTaskMenuWindow'
   | 'openTaskMenuWindow'
   | 'closeTaskMenuWindow'
+  | 'getTaskMenuPayload'
+  | 'setTaskMenuPayload'
   | 'getMainWindow'
   | 'getWindowMode'
   | 'hideMainWindow'
@@ -77,6 +79,8 @@ export function createMainWindowIpcRegistrations({
   getTaskMenuWindow,
   openTaskMenuWindow,
   closeTaskMenuWindow,
+  getTaskMenuPayload,
+  setTaskMenuPayload,
   getMainWindow,
   getWindowMode,
   hideMainWindow,
@@ -147,6 +151,8 @@ export function createMainWindowIpcRegistrations({
       closeTaskMenuWindow,
       getTaskMenuWindow,
       getMainWindow,
+      getTaskMenuPayload,
+      setTaskMenuPayload,
     }),
     registerCompanionIpc: () => registerCompanionIpcHandlers({
       getCompanionSettings,

@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,7 @@ const bootstrapPath = join(root, 'electron/mainWindowBootstrap.ts');
 const ipcRegistrationPath = join(root, 'electron/mainWindowIpcRegistration.ts');
 const settingsIpcPath = join(root, 'electron/settingsIpc.ts');
 const storeValueEqualityPath = join(root, 'electron/storeValueEquality.ts');
+const rendererStoreKeysPath = join(root, 'shared/rendererStoreKeys.ts');
 const preloadPath = join(root, 'electron/preload.ts');
 const viteEnvPath = join(root, 'src/vite-env.d.ts');
 
@@ -21,9 +22,11 @@ const viteEnv = readFileSync(viteEnvPath, 'utf8');
 
 assert.ok(existsSync(settingsIpcPath), 'Electron settings IPC module should exist.');
 assert.ok(existsSync(storeValueEqualityPath), 'Electron store value equality helper should exist.');
+assert.ok(existsSync(rendererStoreKeysPath), 'Renderer store key allowlist should exist.');
 
 const settingsIpc = readFileSync(settingsIpcPath, 'utf8');
 const storeValueEquality = readFileSync(storeValueEqualityPath, 'utf8');
+const rendererStoreKeys = readFileSync(rendererStoreKeysPath, 'utf8');
 
 assert.match(settingsIpc, /export function registerSettingsIpcHandlers\b/, 'settingsIpc should export registerSettingsIpcHandlers.');
 assert.match(settingsIpc, /type RegisterSettingsIpcHandlersOptions\b/, 'settingsIpc should define explicit registration dependencies.');
@@ -34,28 +37,31 @@ assert.match(settingsIpc, /ElectronStoreLike/, 'settingsIpc should use a small s
 assert.match(settingsIpc, /import \{ isObjectRecord \} from '\.\/unknownValueGuards';/, 'settingsIpc should reuse the Electron object-record guard for batched IPC entries.');
 assert.doesNotMatch(settingsIpc, /entries as Record<string, unknown>/, 'settingsIpc should not narrow batched IPC entries with a Record assertion.');
 assert.match(settingsIpc, /from '\.\/storeValueEquality'/, 'settingsIpc should reuse the store-value equality helper before writing.');
+assert.match(settingsIpc, /from '\.\.\/shared\/rendererStoreKeys'/, 'settingsIpc should reuse the renderer store key allowlist.');
 assert.match(settingsIpc, /if \(areStoreValuesEqual\(store\.get\(key\), value\)\) return false;/, 'settings IPC should skip writes whose persisted value has not changed.');
-assert.match(settingsIpc, /for \(const \[key, value\] of Object\.entries\(entries\)\) \{[\s\S]*?if \(setStoreValueIfChanged\(key, value\) && key === 'tasks'\) \{[\s\S]*?tasksChanged = true;/, 'batched writes should process every entry and broadcast task updates only when the task value changed.');
+assert.match(settingsIpc, /for \(const \[key, value\] of Object\.entries\(allowedEntries\)\) \{[\s\S]*?if \(setStoreValueIfChanged\(key, value\) && key === 'tasks'\) \{[\s\S]*?tasksChanged = true;/, 'batched writes should process every allowed entry and broadcast task updates only when the task value changed.');
 assert.match(storeValueEquality, /export function areStoreValuesEqual\(left: unknown, right: unknown\): boolean/, 'store value equality helper should expose structural comparison.');
+assert.match(rendererStoreKeys, /export const RENDERER_STORE_KEYS = \[/, 'renderer store keys should export an explicit allowlist.');
+assert.match(rendererStoreKeys, /export function isRendererStoreKey\b/, 'renderer store keys should expose a key guard.');
 assert.match(
   settingsIpc,
-  /ipcMain\.handle\('store:get', \(_, key: unknown\) => \{[\s\S]*?if \(typeof key !== 'string'\) return undefined;[\s\S]*?return store\.get\(key\);[\s\S]*?\}\);/,
-  'store:get should expose unknown runtime keys and read only after string narrowing.'
+  /ipcMain\.handle\('store:get', \(_, key: unknown\) => \{[\s\S]*?if \(!isRendererStoreKey\(key\)\) return undefined;[\s\S]*?return store\.get\(key\);[\s\S]*?\}\);/,
+  'store:get should read only allowlisted renderer store keys.',
 );
 assert.match(
   settingsIpc,
-  /ipcMain\.handle\('store:set', \(event, key: unknown, value: unknown\) => \{[\s\S]*?if \(typeof key !== 'string'\) return;[\s\S]*?const didChange = setStoreValueIfChanged\(key, value\);/,
-  'store:set should expose unknown runtime keys and skip redundant values after string narrowing.'
+  /ipcMain\.handle\('store:set', \(event, key: unknown, value: unknown\) => \{[\s\S]*?if \(!isRendererStoreKey\(key\)\) return;[\s\S]*?const didChange = setStoreValueIfChanged\(key, value\);/,
+  'store:set should write only allowlisted renderer store keys.',
 );
 assert.match(
   settingsIpc,
-  /ipcMain\.handle\('store:getMany', \(_, keys: unknown\) => \{[\s\S]*?Array\.isArray\(keys\)[\s\S]*?\.filter\(\(key\): key is string => typeof key === 'string'\)/,
-  'store:getMany should narrow untrusted keys before reading them.',
+  /ipcMain\.handle\('store:getMany', \(_, keys: unknown\) => \{[\s\S]*?filterRendererStoreKeys\(keys\)/,
+  'store:getMany should filter untrusted keys through the renderer allowlist.',
 );
 assert.match(
   settingsIpc,
-  /ipcMain\.handle\('store:setMany', \(event, entries: unknown\) => \{[\s\S]*?for \(const \[key, value\] of Object\.entries\(entries\)\)[\s\S]*?setStoreValueIfChanged\(key, value\)/,
-  'store:setMany should evaluate each untrusted entry only after validating the entry container.',
+  /ipcMain\.handle\('store:setMany', \(event, entries: unknown\) => \{[\s\S]*?pickRendererStoreEntries\(entries\)[\s\S]*?for \(const \[key, value\] of Object\.entries\(allowedEntries\)\)/,
+  'store:setMany should only persist allowlisted entries after validating the entry container.',
 );
 assert.match(
   preload,
@@ -70,22 +76,12 @@ assert.match(
 assert.match(
   preload,
   /getStoreMany:\s*\(keys:\s*unknown\)\s*=>\s*ipcRenderer\.invoke\('store:getMany', keys\)/,
-  'preload should expose batched store reads.'
+  'preload should forward store:getMany keys as unknown runtime data.'
 );
 assert.match(
   preload,
   /setStoreMany:\s*\(entries:\s*unknown\)\s*=>\s*ipcRenderer\.invoke\('store:setMany', entries\)/,
-  'preload should expose batched store writes.'
-);
-assert.match(
-  preload,
-  /setAppSettings:\s*\(settings:\s*unknown\)\s*=>\s*ipcRenderer\.invoke\('settings:setApp',\s*settings\)/,
-  'preload should forward app settings as unknown runtime data.'
-);
-assert.match(
-  preload,
-  /setObsidianTemplateSettings:\s*\(settings:\s*unknown\)\s*=>\s*ipcRenderer\.invoke\('settings:setObsidianTemplates',\s*settings\)/,
-  'preload should forward Obsidian template settings as unknown runtime data.'
+  'preload should forward store:setMany entries as unknown runtime data.'
 );
 assert.match(
   viteEnv,
@@ -147,7 +143,6 @@ assert.doesNotMatch(
   /setObsidianTemplateSettings:\s*\(settings:\s*import\('\.\.\/shared\/appSettings'\)\.ObsidianTemplateSettings\)/,
   'ambient Obsidian template settings setter should not claim trusted ObsidianTemplateSettings input.'
 );
-
 assert.match(
   viteEnv,
   /getAppSettings:\s*\(\)\s*=>\s*Promise<unknown>/,
@@ -173,7 +168,6 @@ assert.doesNotMatch(
   /getObsidianTemplateSettings:\s*\(\)\s*=>\s*Promise<import\('\.\.\/shared\/appSettings'\)\.ObsidianTemplateSettings>/,
   'ambient Obsidian template settings getter should not claim trusted return values.'
 );
-
 
 for (const channel of [
   'store:get',

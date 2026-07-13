@@ -54,6 +54,8 @@ type CreateMainWindowCompositionOptions = Omit<
     setTray: Parameters<typeof createMainShellController>[0]['setTray'];
     getTaskMenuWindow: MainWindowBootstrapOptions['getTaskMenuWindow'];
     setTaskMenuWindow: Parameters<typeof createMainShellController>[0]['setTaskMenuWindow'];
+    getTaskMenuPayload: () => import('./taskContextMenuIpc').TaskMenuPayload | null;
+    setTaskMenuPayload: (payload: import('./taskContextMenuIpc').TaskMenuPayload | null) => void;
   };
   appQuitState: {
     isQuitting: MainWindowBootstrapOptions['isQuitting'];
@@ -136,6 +138,7 @@ export function createMainWindowComposition({
     setTray: runtimeState.setTray,
     getTaskMenuWindow: runtimeState.getTaskMenuWindow,
     setTaskMenuWindow: runtimeState.setTaskMenuWindow,
+    setTaskMenuPayload: runtimeState.setTaskMenuPayload,
     userHidden,
     getWindowMode: windowModeState.getMode,
     markDesktopInteractive: desktopWindowMode.markDesktopInteractive,
@@ -171,6 +174,8 @@ export function createMainWindowComposition({
       getTaskMenuWindow: runtimeState.getTaskMenuWindow,
       openTaskMenuWindow,
       closeTaskMenuWindow,
+      getTaskMenuPayload: runtimeState.getTaskMenuPayload,
+      setTaskMenuPayload: runtimeState.setTaskMenuPayload,
       getMainWindow: runtimeState.getMainWindow,
       stopDesktopGuard: desktopWindowMode.stopDesktopGuard,
       userHidden,

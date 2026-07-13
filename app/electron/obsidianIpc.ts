@@ -1,5 +1,6 @@
 import { app, dialog, ipcMain, shell, type BrowserWindow } from 'electron';
 import fs from 'fs';
+import { writeTextFileAtomic } from './fileWrite';
 import path from 'path';
 import { resolveActiveProfile, type AiReviewSettings } from '../shared/aiReview/aiReviewSettings';
 import {
@@ -149,7 +150,7 @@ export function registerObsidianIpcHandlers({
           return { ok: false, reason: zh('Daily note target must be a file.') };
         }
       } else {
-        fs.writeFileSync(filePath, buildDailyTemplate(selected), 'utf-8');
+        writeTextFileAtomic(filePath, buildDailyTemplate(selected));
       }
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) };

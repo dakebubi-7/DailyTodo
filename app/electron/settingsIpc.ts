@@ -1,10 +1,15 @@
-﻿import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 import {
   OBSIDIAN_TEMPLATE_SETTINGS_KEY,
   createDefaultObsidianTemplateSettings,
   type AppBehaviorSettings,
   type ObsidianTemplateSettings,
 } from '../shared/appSettings';
+import {
+  filterRendererStoreKeys,
+  isRendererStoreKey,
+  pickRendererStoreEntries,
+} from '../shared/rendererStoreKeys';
 import type { ElectronStoreLike } from './sharedTypes';
 import { areStoreValuesEqual } from './storeValueEquality';
 import { isObjectRecord } from './unknownValueGuards';
@@ -39,19 +44,16 @@ export function registerSettingsIpcHandlers({
   };
 
   ipcMain.handle('store:get', (_, key: unknown) => {
-    if (typeof key !== 'string') return undefined;
+    if (!isRendererStoreKey(key)) return undefined;
     return store.get(key);
   });
   ipcMain.handle('store:getMany', (_, keys: unknown) => {
-    if (!Array.isArray(keys)) return {};
     return Object.fromEntries(
-      keys
-        .filter((key): key is string => typeof key === 'string')
-        .map((key) => [key, store.get(key)]),
+      filterRendererStoreKeys(keys).map((key) => [key, store.get(key)]),
     );
   });
   ipcMain.handle('store:set', (event, key: unknown, value: unknown) => {
-    if (typeof key !== 'string') return;
+    if (!isRendererStoreKey(key)) return;
     const didChange = setStoreValueIfChanged(key, value);
     // Broadcast task changes to other windows while excluding the sender to avoid echo loops.
     if (didChange && key === 'tasks') {
@@ -60,14 +62,15 @@ export function registerSettingsIpcHandlers({
   });
   ipcMain.handle('store:setMany', (event, entries: unknown) => {
     if (!isObjectRecord(entries)) return;
+    const allowedEntries = pickRendererStoreEntries(entries);
     let tasksChanged = false;
-    for (const [key, value] of Object.entries(entries)) {
+    for (const [key, value] of Object.entries(allowedEntries)) {
       if (setStoreValueIfChanged(key, value) && key === 'tasks') {
         tasksChanged = true;
       }
     }
     if (tasksChanged) {
-      broadcastTaskChanges(event, entries.tasks);
+      broadcastTaskChanges(event, allowedEntries.tasks);
     }
   });
 

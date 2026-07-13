@@ -149,7 +149,7 @@ export function createObsidianDailyNoteSyncHelpers({
     }
 
     if (nextContent !== existingFileContent) {
-      fs.writeFileSync(filePath, nextContent, 'utf-8');
+      writeTextFileAtomic(filePath, nextContent);
     }
     return { filePath, nextContent, didWrite: nextContent !== existingFileContent };
   }

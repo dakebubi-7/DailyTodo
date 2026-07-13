@@ -97,7 +97,7 @@ export function writeSyncPlan(plan: SyncPlan) {
           ? replaceManagedBlock(existing, change.ruleId, change.content)
           : insertIntoSection(existing, change.section, change.content);
       if (next !== existing) {
-        fs.writeFileSync(change.filePath, next, 'utf-8');
+        writeTextFileAtomic(change.filePath, next);
       }
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));

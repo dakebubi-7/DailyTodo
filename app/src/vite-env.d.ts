@@ -59,6 +59,7 @@ interface Window {
     ) => Promise<unknown>;
     importMobileInbox: (inboxPath: unknown) => Promise<unknown>;
     openTaskContextMenu: (payload: unknown) => Promise<void>;
+    getTaskContextMenuPayload: () => Promise<unknown>;
     closeTaskContextMenu: () => Promise<void>;
     resizeTaskContextMenu: (height: unknown) => Promise<void>;
     dispatchTaskMenuAction: (payload: unknown) => Promise<void>;

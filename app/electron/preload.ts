@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeCompanionSync: (settings: unknown, items: unknown) => ipcRenderer.invoke('companion:writeSync', settings, items),
   importMobileInbox: (inboxPath: unknown) => ipcRenderer.invoke('companion:importMobileInbox', inboxPath),
   openTaskContextMenu: (payload: unknown) => ipcRenderer.invoke('taskContextMenu:open', payload),
+  getTaskContextMenuPayload: () => ipcRenderer.invoke('taskContextMenu:getPayload'),
   closeTaskContextMenu: () => ipcRenderer.invoke('taskContextMenu:close'),
   resizeTaskContextMenu: (height: unknown) => ipcRenderer.invoke('taskContextMenu:resize', height),
   dispatchTaskMenuAction: (payload: unknown) => ipcRenderer.invoke('taskContextMenu:action', payload),
