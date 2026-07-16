@@ -177,21 +177,17 @@ export function createEdgeAutoHideController({
     if (!retracted || !expandedBounds || win.isDestroyed()) return;
     const from = win.getBounds();
     const target = expandedBounds;
-    const restoredEdge = edge;
     retracted = false;
     // Hide the independent strip first so it cannot sit above the main window
     // and steal clicks after restore.
     activationStrip.hide();
     animateBounds(from, target, RESTORE_ANIMATION_MS, easeOutCubic, () => {
-      // Side hide is intentional push-in only. After the user expands again,
-      // clear the side attachment so a flush side placement stays clickable
-      // and does not immediately re-hide.
-      if (restoredEdge === 'left' || restoredEdge === 'right') {
-        clearAttachment();
-      }
-      // Ensure the strip stays gone after animation.
+      // Keep side/top attachment after restore so the docked window can hide
+      // again when the cursor leaves. Detach only when the user drags away.
       activationStrip.hide();
       diag('edge auto-hide: restored');
+      // If the cursor is already outside, schedule the normal leave-hide path.
+      poll();
     });
   }
 

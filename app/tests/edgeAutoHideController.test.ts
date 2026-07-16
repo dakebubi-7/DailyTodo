@@ -90,6 +90,27 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: -240, y: 120, width: 240, height: 480 });
   });
 
+  it('re-hides a restored side window after the cursor leaves again', () => {
+    attachLeftByPushIn();
+    expect(bounds.x).toBe(-240);
+
+    // Open from the glass handle.
+    cursor = { x: 4, y: 350 };
+    vi.advanceTimersByTime(64);
+    vi.advanceTimersByTime(320);
+    expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
+    expect(hideActivationStrip).toHaveBeenCalled();
+
+    // Leave the restored side window; it should dock again without another push-in.
+    showActivationStrip.mockClear();
+    cursor = { x: 500, y: 700 };
+    vi.advanceTimersByTime(64);
+    vi.advanceTimersByTime(450);
+    vi.advanceTimersByTime(200);
+    expect(showActivationStrip).toHaveBeenCalledWith('left', { x: 0, y: 120, width: 240, height: 480 }, workArea);
+    expect(bounds).toEqual({ x: -240, y: 120, width: 240, height: 480 });
+  });
+
   it('does not re-snap while the user is still dragging away from the edge', () => {
     attachLeftByPushIn();
     // Restore first via activation.
