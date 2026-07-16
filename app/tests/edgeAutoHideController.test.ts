@@ -17,12 +17,21 @@ describe('edge auto-hide controller', () => {
   }
 
   function attachLeftByPushIn() {
-    // Drag past the left edge; settle snaps flush then retracts immediately.
+    // Drag past the left edge; settle snaps flush and attaches without auto-hiding.
     bounds = { x: -24, y: 120, width: 240, height: 480 };
     settle();
-    // Flush the zero-delay side retract, then finish the retract animation.
-    vi.advanceTimersByTime(0);
+    expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
+
+    // Hide only after the cursor touches the absolute left desktop edge.
+    cursor = { x: 2, y: 350 };
+    vi.advanceTimersByTime(64);
+    vi.advanceTimersByTime(450);
     vi.advanceTimersByTime(200);
+    expect(bounds).toEqual({ x: -240, y: 120, width: 240, height: 480 });
+
+    // Leave the strip so a later hover can re-arm restore.
+    cursor = { x: 500, y: 700 };
+    vi.advanceTimersByTime(64);
   }
 
   beforeEach(() => {
@@ -81,10 +90,20 @@ describe('edge auto-hide controller', () => {
     expect(setBounds).not.toHaveBeenCalled();
   });
 
-  it('hides a side window only after it is dragged past the edge', () => {
+  it('attaches a side window after push-in but hides only when the cursor hits the desktop edge', () => {
     bounds = { x: -24, y: 120, width: 240, height: 480 };
+    // Cursor is away from the desktop edge after release.
+    cursor = { x: 120, y: 350 };
     settle();
-    vi.advanceTimersByTime(0);
+    expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
+    vi.advanceTimersByTime(1000);
+    expect(showActivationStrip).not.toHaveBeenCalled();
+    expect(bounds.x).toBe(0);
+
+    // Touch the absolute left desktop edge to hide.
+    cursor = { x: 2, y: 350 };
+    vi.advanceTimersByTime(64);
+    vi.advanceTimersByTime(450);
     vi.advanceTimersByTime(200);
     expect(showActivationStrip).toHaveBeenCalledWith('left', { x: 0, y: 120, width: 240, height: 480 }, workArea);
     expect(bounds).toEqual({ x: -240, y: 120, width: 240, height: 480 });
@@ -396,7 +415,11 @@ describe('edge auto-hide controller', () => {
     });
 
     settle();
-    vi.advanceTimersByTime(0);
+    expect(bounds).toEqual({ x: -1920, y: 120, width: 240, height: 480 });
+
+    cursor = { x: -1918, y: 700 };
+    vi.advanceTimersByTime(64);
+    vi.advanceTimersByTime(450);
     vi.advanceTimersByTime(200);
     expect(bounds).toEqual({ x: -2160, y: 120, width: 240, height: 480 });
   });

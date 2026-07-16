@@ -98,6 +98,9 @@ export function createEdgeAutoHideController({
   let settleTimer: ReturnType<typeof setTimeout> | null = null;
   let animationTimer: ReturnType<typeof setInterval> | null = null;
   let ignoreProgrammaticBoundsEvents = false;
+  // After hiding while the cursor is still on the edge/strip, require the
+  // pointer to leave the strip before hover can expand again.
+  let suppressStripRestore = false;
   const pollTimer = setInterval(poll, POLL_INTERVAL_MS);
 
   function canOperate(): boolean {
@@ -160,6 +163,7 @@ export function createEdgeAutoHideController({
   function restoreImmediate(): void {
     clearLeaveTimer();
     stopAnimation();
+    suppressStripRestore = false;
     if (!retracted || win.isDestroyed()) {
       retracted = false;
       activationStrip.hide();
@@ -178,6 +182,7 @@ export function createEdgeAutoHideController({
     const from = win.getBounds();
     const target = expandedBounds;
     retracted = false;
+    suppressStripRestore = false;
     // Hide the independent strip first so it cannot sit above the main window
     // and steal clicks after restore.
     activationStrip.hide();
@@ -217,12 +222,13 @@ export function createEdgeAutoHideController({
       leaveTimer = null;
       if (!canOperate() || !edge || !expandedBounds || !workArea || retracted || dragging) return;
       const cursor = getCursorPosition();
-      // Immediate side push-in may still have the cursor over the window; allow hide.
-      // Normal hide only fires while the cursor is still touching the desktop edge.
-      if (!immediate && (!cursor || !isPointOnDesktopEdge(cursor, edge, workArea))) return;
+      // Hide only while the cursor is still touching the absolute desktop edge.
+      if (!cursor || !isPointOnDesktopEdge(cursor, edge, workArea)) return;
       const retractedBounds = getRetractedBounds(edge, expandedBounds, workArea);
       const from = win.getBounds();
       retracted = true;
+      // Cursor is often still on the edge/strip when hide starts. Arm only after it leaves.
+      suppressStripRestore = true;
       activationStrip.show(edge, expandedBounds, workArea);
       animateBounds(from, retractedBounds, RETRACT_ANIMATION_MS, easeInCubic, () => {
         diag(`edge auto-hide: retracted ${edge}`);
@@ -241,7 +247,13 @@ export function createEdgeAutoHideController({
       return;
     }
     if (retracted) {
-      if (isPointInActivationStrip(cursor, edge, expandedBounds, workArea)) restore();
+      const onStrip = isPointInActivationStrip(cursor, edge, expandedBounds, workArea);
+      if (!onStrip) {
+        suppressStripRestore = false;
+        return;
+      }
+      if (suppressStripRestore) return;
+      restore();
       return;
     }
     // Only the absolute desktop edge counts as hide intent.
@@ -275,13 +287,9 @@ export function createEdgeAutoHideController({
     } else {
       diag(`edge auto-hide: attached ${attachment}`);
     }
-    // Side attachment only happens after a deliberate push past the edge.
-    // Retract immediately in that case so "drag in a bit" hides, while a
-    // flush side placement never attaches and therefore never hides.
-    if (attachment === 'left' || attachment === 'right') {
-      scheduleRetraction(true);
-      return;
-    }
+    // Side attachment still requires a deliberate push past the edge.
+    // After that, hide uses the same rule as top: only when the cursor
+    // touches the absolute desktop edge. A flush side placement never attaches.
     poll();
   }
 
@@ -305,6 +313,7 @@ export function createEdgeAutoHideController({
       if (retracted && expandedBounds && !win.isDestroyed()) {
         const target = expandedBounds;
         retracted = false;
+        suppressStripRestore = false;
         activationStrip.hide();
         withProgrammaticBounds(() => win.setBounds(target));
       }
@@ -339,6 +348,8 @@ export function createEdgeAutoHideController({
         activationStrip.hide();
         return;
       }
+      // Explicit click/activate always opens, even if the pointer never left the edge.
+      suppressStripRestore = false;
       restore();
     },
     reconcileSettings(enabled = isEnabled()): void {
