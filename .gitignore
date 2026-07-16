@@ -31,6 +31,7 @@ _backup/
 
 # Local process/session artifacts
 .superpowers/
+.worktrees/
 .claude/worktrees/
 
 # Accidental nested project copies
