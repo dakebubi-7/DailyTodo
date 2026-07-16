@@ -10037,6 +10037,14 @@ html:not(.dark) .app-shell[data-theme='invisible'] .date-current {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22) !important;
 }
 
+/* Explorer-owned WorkerW windows cannot use Win10 native Acrylic without turning black.
+   Keep the fallback to this single shell plate so desktop widgets retain frosted glass
+   without stacking backdrop filters on drag and content surfaces. */
+.app-shell[data-theme='invisible'][data-window-mode='desktop'] {
+  backdrop-filter: blur(var(--desktop-glass-blur-strength)) saturate(var(--glass-saturation)) !important;
+  -webkit-backdrop-filter: blur(var(--desktop-glass-blur-strength)) saturate(var(--glass-saturation)) !important;
+}
+
 /* invisible titlebar pressed feedback */
 .app-shell[data-theme='invisible'] :is(.titlebar-icon-button, .titlebar-mode):active {
   border-color: #000000 !important;

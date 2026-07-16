@@ -14,9 +14,16 @@ export function createPerformanceFrostController({
   applyGlass,
   notifyRenderer: _notifyRenderer,
 }: PerformanceFrostControllerOptions) {
+  let configuredGlass = createInvisibleGlassSettings({ enabled: false });
+
   return {
     setConfiguredGlass(next: InvisibleGlassSettings): void {
-      applyGlass(createInvisibleGlassSettings(next));
+      configuredGlass = createInvisibleGlassSettings(next);
+      applyGlass(configuredGlass);
+    },
+
+    reapplyConfiguredGlass(): void {
+      applyGlass(configuredGlass);
     },
 
     // Keep system Acrylic enabled while Windows moves the HWND. Switching the

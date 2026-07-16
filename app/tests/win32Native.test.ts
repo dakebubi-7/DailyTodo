@@ -8,6 +8,7 @@ import {
   decodeNativeWindowHandle,
   getWin32CursorPosition,
   runWin32Operation,
+  shouldDisableWin32GlassForDesktopHost,
   shouldPreferWin32AcrylicFallback,
 } from '../electron/win32Native';
 
@@ -101,6 +102,12 @@ describe('Win32 native operations', () => {
 
   it('keeps Electron Acrylic on Windows 11 builds', () => {
     expect(shouldPreferWin32AcrylicFallback('win32', '10.0.22631')).toBe(false);
+  });
+
+  it('only disables Win32 glass for Windows 10 windows hosted by Explorer', () => {
+    expect(shouldDisableWin32GlassForDesktopHost(true, false)).toBe(false);
+    expect(shouldDisableWin32GlassForDesktopHost(true, true)).toBe(true);
+    expect(shouldDisableWin32GlassForDesktopHost(false, true)).toBe(false);
   });
 
   it('keeps the documented DWM blur path available when the Acrylic composition call is rejected', () => {

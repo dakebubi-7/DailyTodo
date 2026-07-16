@@ -2,6 +2,19 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPerformanceFrostController } from '../electron/performanceFrostController';
 
 describe('performance frost controller', () => {
+  it('reapplies the last configured glass after the desktop host changes', () => {
+    const applyGlass = vi.fn();
+    const notifyRenderer = vi.fn();
+    const controller = createPerformanceFrostController({ applyGlass, notifyRenderer });
+
+    controller.setConfiguredGlass({ enabled: true, opacity: 58, blurStrength: 14 });
+    applyGlass.mockClear();
+
+    controller.reapplyConfiguredGlass();
+
+    expect(applyGlass).toHaveBeenCalledWith({ enabled: true, opacity: 58, blurStrength: 14 });
+  });
+
   it('keeps native acrylic live while the window moves', () => {
     vi.useFakeTimers();
     const applyGlass = vi.fn();

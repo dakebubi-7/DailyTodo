@@ -1,5 +1,6 @@
 ﻿import { createMainShellController } from './mainShellController';
 import { createMainWindowBootstrap } from './mainWindowBootstrap';
+import { createPerformanceFrostController } from './performanceFrostController';
 import { createMainWindowModeController } from './mainWindowModeController';
 import { createMainWindowPersistence } from './mainWindowPersistence';
 import { createMainWindowStarter } from './mainWindowStartup';
@@ -47,12 +48,14 @@ export function createMainWindowComposition({
     legacyAlwaysOnTopKey,
   });
 
+  let reapplyGlass = () => {};
   const { setWindowMode } = createMainWindowModeController({
     store,
     windowModeKey,
     getWindowMode: windowModeState.getMode,
     applyWindowMode: desktopWindowMode.applyWindowMode,
     reapplyWindowZOrder: desktopWindowMode.reapplyWindowZOrder,
+    reapplyGlass: () => reapplyGlass(),
     getTray: runtimeState.getTray,
     refreshTrayMenu: trayRefreshBridge.refreshTrayMenu,
   });
@@ -97,7 +100,8 @@ export function createMainWindowComposition({
     setMainWindow: runtimeState.setMainWindow,
     applyWindowMode: desktopWindowMode.applyWindowMode,
     diag,
-    createBootstrap: (win) => createMainWindowBootstrap({
+    createBootstrap: (win) => {
+      const bootstrap = createMainWindowBootstrap({
       win,
       store,
       diag,
@@ -127,7 +131,10 @@ export function createMainWindowComposition({
       getCursorPosition,
       obsidianPathKey,
       ...bootstrapDependencies,
-    }),
+      });
+      reapplyGlass = bootstrap.reapplyConfiguredGlass;
+      return bootstrap;
+    },
   });
 
   return { createWindow };

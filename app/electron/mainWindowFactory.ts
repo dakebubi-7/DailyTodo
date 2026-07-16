@@ -18,6 +18,7 @@ export type CreateMainBrowserWindowOptions = {
 };
 
 export type SetupMainBrowserWindowOptions = {
+  reapplyConfiguredGlass(): void;
   scheduleAiTimers(): void;
   createTray(): void;
   loadMainRenderer(): void;

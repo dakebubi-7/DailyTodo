@@ -8,6 +8,7 @@ export type CreateMainWindowModeControllerOptions = {
   getWindowMode(): WindowMode;
   applyWindowMode(win: BrowserWindow, mode: WindowMode): void;
   reapplyWindowZOrder(win: BrowserWindow): void;
+  reapplyGlass(): void;
   getTray(): Tray | null;
   refreshTrayMenu(): void;
 };
@@ -18,6 +19,7 @@ export function createMainWindowModeController({
   getWindowMode,
   applyWindowMode,
   reapplyWindowZOrder,
+  reapplyGlass,
   getTray,
   refreshTrayMenu,
 }: CreateMainWindowModeControllerOptions) {
@@ -25,7 +27,10 @@ export function createMainWindowModeController({
     if (mode === getWindowMode()) return;
     store.set(windowModeKey, mode);
     applyWindowMode(win, mode);
-    setTimeout(() => reapplyWindowZOrder(win), 80);
+    setTimeout(() => {
+      reapplyWindowZOrder(win);
+      reapplyGlass();
+    }, 80);
     if (!win.isDestroyed()) {
       win.webContents.send('window:modeChanged', mode);
     }

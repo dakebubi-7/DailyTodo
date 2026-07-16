@@ -33,6 +33,7 @@ export function createAppViewportStyle(
   const blurStrength = clamp(personalization.blurStrength, 0, 100);
   // Invisible theme: keep CSS blur off. Live backdrop-filter over Win10 acrylic freezes window drag.
   const cssAssistBlurPx = isInvisibleTheme ? 0 : resolveCssAssistBlurPx(blurStrength);
+  const desktopGlassBlurPx = isInvisibleTheme ? resolveCssAssistBlurPx(blurStrength) : 0;
   const invisibleFrostMix = isInvisibleTheme ? resolveInvisibleFrostMix(blurStrength) : 0;
   const invisibleSurfaceAlpha = isInvisibleTheme
     ? resolveInvisibleSurfaceAlpha(personalization.windowOpacity, blurStrength)
@@ -58,6 +59,7 @@ export function createAppViewportStyle(
     '--readable-surface-opacity': clamp(panelOpacity + 0.16, 0.62, 0.98),
     '--glass-saturation': glassSaturation,
     '--blur-strength': `${cssAssistBlurPx}px`,
+    '--desktop-glass-blur-strength': `${desktopGlassBlurPx}px`,
     '--invisible-frost-mix': invisibleFrostMix,
     '--invisible-surface-alpha': invisibleSurfaceAlpha,
     '--invisible-veil-alpha': invisibleVeilAlpha,

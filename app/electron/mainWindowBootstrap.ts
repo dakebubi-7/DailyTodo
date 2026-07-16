@@ -64,6 +64,7 @@ export function createMainWindowBootstrap(options: CreateMainWindowBootstrapOpti
   });
 
   return {
+    reapplyConfiguredGlass: performanceFrost.reapplyConfiguredGlass,
     scheduleAiTimers,
     createTray: () => {
       createTray();

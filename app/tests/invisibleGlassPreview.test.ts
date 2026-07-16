@@ -72,6 +72,7 @@ describe('invisible glass css preview', () => {
   it('keeps invisible theme CSS blur at zero so window drag stays fluid', () => {
     const style = createAppViewportStyle(baseSettings, true);
     expect(style['--blur-strength']).toBe('0px');
+    expect(style['--desktop-glass-blur-strength']).not.toBe('0px');
     expect(style['--invisible-frost-mix']).toBe(resolveInvisibleFrostMix(50));
     expect(style['--invisible-surface-alpha']).toBe(resolveInvisibleSurfaceAlpha(58, 50));
     expect(style['--invisible-veil-alpha']).toBe(resolveInvisibleVeilAlpha(50));

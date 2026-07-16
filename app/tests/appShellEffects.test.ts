@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
   buildInvisibleGlassSettings,
+  getDesktopGlassShellAttributes,
   getPerformanceFrostShellAttributes,
   shouldSyncInvisibleGlassSettings,
 } from '../src/app/appShellEffects';
@@ -45,5 +46,10 @@ describe('invisible glass shell effects', () => {
       'data-performance-frost': 'true',
     });
     expect(getPerformanceFrostShellAttributes(false)).toEqual({});
+  });
+
+  it('marks only desktop mode for the CSS glass fallback', () => {
+    expect(getDesktopGlassShellAttributes('desktop')).toEqual({ 'data-window-mode': 'desktop' });
+    expect(getDesktopGlassShellAttributes('normal')).toEqual({});
   });
 });

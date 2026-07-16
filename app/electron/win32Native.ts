@@ -442,6 +442,13 @@ export function shouldPreferWin32AcrylicFallback(
   return !Number.isFinite(build) || build < WINDOWS_11_BUILD;
 }
 
+export function shouldDisableWin32GlassForDesktopHost(
+  prefersWin32AcrylicFallback: boolean,
+  isDesktopHosted: boolean,
+): boolean {
+  return prefersWin32AcrylicFallback && isDesktopHosted;
+}
+
 export function applyNativeWindowDragRegion(
   win32: Pick<Win32Api, 'setWindowDragRegion'> | null,
   win: Pick<BrowserWindow, 'isDestroyed' | 'getNativeWindowHandle'>,
@@ -470,7 +477,8 @@ export function createWin32NativeHelpers({
     applyNativeBackgroundMaterial: (win) => applyNativeBackgroundMaterial(diag, win32, win),
     setInvisibleGlassBackgroundMaterial: (win, payload) => {
       if (process.platform !== 'win32') return false;
-      if (shouldPreferWin32AcrylicFallback()) {
+      const isDesktopHosted = win32?.isAttachedToDesktop(win.getNativeWindowHandle()) ?? false;
+      if (shouldDisableWin32GlassForDesktopHost(shouldPreferWin32AcrylicFallback(), isDesktopHosted)) {
         // A transparent Chromium window hosted by Explorer is composed as opaque black when
         // Windows 10 receives ACCENT_ENABLE_BLURBEHIND. Keep the transparent host clear and
         // let the renderer's existing frost layers provide the visual treatment instead.
@@ -487,7 +495,7 @@ export function createWin32NativeHelpers({
         win,
         payload,
         (settings) => applyWin32GlassFallback(diag, win32, win, settings),
-        false,
+        shouldPreferWin32AcrylicFallback(),
       );
     },
     setNativeWindowDragRegion: (win, region) => applyNativeWindowDragRegion(win32, win, region, diag),

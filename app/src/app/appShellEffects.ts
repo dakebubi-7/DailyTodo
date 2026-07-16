@@ -56,6 +56,10 @@ export function getPerformanceFrostShellAttributes(active: boolean): Record<stri
   return active ? { 'data-performance-frost': 'true' } : {};
 }
 
+export function getDesktopGlassShellAttributes(mode: unknown): Record<string, string> {
+  return mode === 'desktop' ? { 'data-window-mode': 'desktop' } : {};
+}
+
 /**
  * Only re-apply native acrylic when theme/opacity/host-blur state changes.
  * Host acrylic is off at blur 0 (true clear) and on above 0; continuous densify stays CSS-only.
