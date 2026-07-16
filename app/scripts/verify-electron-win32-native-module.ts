@@ -33,6 +33,14 @@ assert.match(helper, /const SWP_NOSIZE = 0x0001;/, 'win32Native should keep the 
 assert.match(helper, /const SWP_NOMOVE = 0x0002;/, 'win32Native should keep the no-move flag.');
 assert.match(helper, /const SWP_NOACTIVATE = 0x0010;/, 'win32Native should keep the no-activate flag.');
 assert.match(helper, /const GWLP_HWNDPARENT = -8;/, 'win32Native should keep the owner-window index constant.');
+assert.match(helper, /function findDesktopComponentHost\b/, 'win32Native should locate the dedicated Explorer component host.');
+assert.match(helper, /FindWindowExW\(null, iconWorker, 'WorkerW', null\)/, 'component hosting should select the WorkerW following the desktop icon host.');
+assert.match(helper, /!FindWindowExW\(host, null, 'SHELLDLL_DefView', null\)/, 'component hosting must not attach to the WorkerW that owns desktop icons.');
+assert.match(helper, /isAttachedToDesktop/, 'win32Native should verify Explorer component-host attachment.');
+assert.match(helper, /GWLP_HWNDPARENT/, 'component hosting should use a top-level owner relationship.');
+assert.match(helper, /SetWindowLongPtrW_Ptr\(hwnd, GWLP_HWNDPARENT, host\)/, 'component hosting should preserve Electron as a top-level window while assigning the Explorer host as owner.');
+assert.match(helper, /SetWindowLongPtrW_Ptr\(hwnd, GWLP_HWNDPARENT, null\)/, 'leaving component mode should clear the Explorer owner.');
+assert.doesNotMatch(helper, /SetParent\(hwnd, host\)/, 'component hosting must not reparent Electron into a child window because that breaks transparent composition.');
 assert.match(helper, /require\('koffi'\)/, 'win32Native should keep the koffi-based Win32 binding.');
 assert.match(helper, /diag\('koffi user32 bound ok'\)/, 'win32Native should preserve successful binding diagnostics.');
 assert.match(helper, /diag\(`koffi bind failed:/, 'win32Native should preserve binding failure diagnostics.');
@@ -47,6 +55,16 @@ assert.match(helper, /export function applyInvisibleGlassBackgroundMaterial\b/, 
 assert.match(helper, /from '\.\.\/shared\/invisibleGlass'/, 'win32Native should share invisible-glass opacity/blur normalization with the renderer.');
 assert.match(helper, /export function shouldPreferWin32AcrylicFallback\b/, 'win32Native should expose the OS-version Acrylic preference helper.');
 assert.match(helper, /build < WINDOWS_11_BUILD/, 'win32Native should prefer Win32 Acrylic on Windows 10 builds.');
+assert.doesNotMatch(
+  helper,
+  /setInvisibleGlassBackgroundMaterial:[\s\S]*?applyInvisibleGlassBackgroundMaterial\([\s\S]*?true,\s*\);/,
+  'transparent BrowserWindow glass must not force the Win32 Acrylic fallback because Windows 10 composes it as an opaque black surface under Explorer.',
+);
+assert.match(
+  helper,
+  /shouldPreferWin32AcrylicFallback\(\)[\s\S]*?win\.setBackgroundMaterial\('none'\)/,
+  'Windows 10 transparent windows should clear native material rather than enable Acrylic.',
+);
 assert.match(helper, /createWin32AccentPolicyFromGlass/, 'win32Native Acrylic policy should come from shared glass opacity/blur settings.');
 assert.match(helper, /native background material unavailable/, 'win32Native should preserve missing-material diagnostics.');
 
@@ -64,7 +82,7 @@ const appEffects = readFileSync(join(root, 'src', 'app', 'appShellEffects.ts'), 
 const runtimeEffects = readFileSync(join(root, 'src', 'app', 'useAppRuntimeEffects.ts'), 'utf8');
 
 assert.match(preload, /setInvisibleGlass:\s*\(payload:\s*unknown\)\s*=>\s*ipcRenderer\.invoke\('window:setInvisibleGlass', payload\)/, 'preload should expose the invisible-glass payload control.');
-assert.match(windowIpc, /ipcMain\.handle\('window:setInvisibleGlass',[\s\S]*setInvisibleGlassBackgroundMaterial\(win, payload\)/, 'window IPC should forward the invisible-glass payload to the native helper.');
+assert.match(windowIpc, /ipcMain\.handle\('window:setInvisibleGlass',[\s\S]*performanceFrost\.setConfiguredGlass\.bind\(performanceFrost\)/, 'window IPC should forward the invisible-glass payload through the performance-frost controller.');
 assert.match(appEffects, /setInvisibleGlass\?\.\([\s\S]*buildInvisibleGlassSettings|setInvisibleGlass\?\.\(/, 'renderer should synchronize invisible glass through the restricted preload API.');
 assert.match(runtimeEffects, /syncInvisibleGlassTheme\([\s\S]*activeThemeId === 'invisible'[\s\S]*windowOpacity[\s\S]*blurStrength/, 'renderer should synchronize native material whenever the active theme, opacity, or blur changes.');
 

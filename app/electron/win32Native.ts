@@ -18,6 +18,9 @@ export type Win32Api = {
   setTopmost: (handle: Buffer) => void;
   clearTopmost: (handle: Buffer) => void;
   sendToBottom: (handle: Buffer) => void;
+  attachToDesktop: (handle: Buffer) => boolean;
+  detachFromDesktop: (handle: Buffer) => void;
+  isAttachedToDesktop: (handle: Buffer) => boolean;
   setDesktopOwner: (handle: Buffer) => boolean;
   clearDesktopOwner: (handle: Buffer) => void;
   getCursorPosition: () => Win32CursorPosition | null;
@@ -67,6 +70,8 @@ const SWP_NOSIZE = 0x0001;
 const SWP_NOMOVE = 0x0002;
 const SWP_NOACTIVATE = 0x0010;
 const GWLP_HWNDPARENT = -8;
+const SMTO_NORMAL = 0x0000;
+const PROGMAN_SPAWN_WORKERW = 0x052c;
 const WCA_ACCENT_POLICY = 19;
 const WINDOWS_11_BUILD = 22000;
 
@@ -121,6 +126,7 @@ function createWin32Api(diag: (message: string) => void): Win32Api | null {
     const dwmapi = koffi.load('dwmapi.dll');
 
     const GetWindowLongPtrW = user32.func('intptr_t __stdcall GetWindowLongPtrW(void* hWnd, int nIndex)');
+    const GetWindowLongPtrW_Ptr = user32.func('void* __stdcall GetWindowLongPtrW(void* hWnd, int nIndex)');
     const SetWindowLongPtrW = user32.func('intptr_t __stdcall SetWindowLongPtrW(void* hWnd, int nIndex, intptr_t dwNewLong)');
     const SetWindowLongPtrW_Ptr = user32.func('void* __stdcall SetWindowLongPtrW(void* hWnd, int nIndex, void* dwNewLong)');
     const GetForegroundWindow = user32.func('void* __stdcall GetForegroundWindow()');
@@ -132,6 +138,9 @@ function createWin32Api(diag: (message: string) => void): Win32Api | null {
     const GetCursorPos = user32.func('bool __stdcall GetCursorPos(POINT* lpPoint)');
     const SetWindowPos = user32.func('bool __stdcall SetWindowPos(void* hWnd, void* hWndInsertAfter, int X, int Y, int cx, int cy, uint32_t uFlags)');
     const FindWindowW = user32.func('void* __stdcall FindWindowW(const char16_t* lpClassName, const char16_t* lpWindowName)');
+    const FindWindowExW = user32.func('void* __stdcall FindWindowExW(void* hWndParent, void* hWndChildAfter, const char16_t* lpszClass, const char16_t* lpszWindow)');
+    const IsWindow = user32.func('bool __stdcall IsWindow(void* hWnd)');
+    const SendMessageTimeoutW = user32.func('intptr_t __stdcall SendMessageTimeoutW(void* hWnd, uint Msg, uintptr_t wParam, intptr_t lParam, uint fuFlags, uint uTimeout, uintptr_t* lpdwResult)');
     const hitTestDllPath = [
       join(process.resourcesPath, 'native', 'win32-hit-test', 'win32-hit-test.dll'),
       join(__dirname, '..', 'native', 'win32-hit-test', 'bin', 'win32-hit-test.dll'),
@@ -159,6 +168,29 @@ function createWin32Api(diag: (message: string) => void): Win32Api | null {
     });
     const SetWindowCompositionAttribute = user32.func('bool __stdcall SetWindowCompositionAttribute(void* hWnd, WINDOWCOMPOSITIONATTRIBDATA* data)');
     const DwmEnableBlurBehindWindow = dwmapi.func('int __stdcall DwmEnableBlurBehindWindow(void* hWnd, DWM_BLURBEHIND* pBlurBehind)');
+
+    function findDesktopComponentHost(): unknown | null {
+      let iconWorker: unknown | null = null;
+      while (true) {
+        iconWorker = FindWindowExW(null, iconWorker, 'WorkerW', null);
+        if (!iconWorker) return null;
+        if (FindWindowExW(iconWorker, null, 'SHELLDLL_DefView', null)) break;
+      }
+
+      let host = FindWindowExW(null, iconWorker, 'WorkerW', null);
+      while (host) {
+        if (!FindWindowExW(host, null, 'SHELLDLL_DefView', null)) return host;
+        host = FindWindowExW(null, host, 'WorkerW', null);
+      }
+      return null;
+    }
+
+    function isHostedByDesktopComponentHost(hwnd: unknown): boolean {
+      const host = findDesktopComponentHost();
+      if (!host || !IsWindow(host)) return false;
+      const owner = GetWindowLongPtrW_Ptr(hwnd, GWLP_HWNDPARENT);
+      return String(owner) === String(host);
+    }
 
     const win32: Win32Api = {
       ptr: (handle: Buffer) => decodeNativeWindowHandle(handle),
@@ -198,6 +230,31 @@ function createWin32Api(diag: (message: string) => void): Win32Api | null {
         runWin32Operation(diag, 'sendToBottom', () => {
           SetWindowPos(decodeNativeWindowHandle(handle), createHwndBuffer(HWND_BOTTOM), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         }, undefined);
+      },
+      attachToDesktop: (handle: Buffer) => {
+        return runWin32Operation(diag, 'attachToDesktop', () => {
+          const progman = FindWindowW('Progman', null);
+          if (!progman) return false;
+          const result = [BigInt(0)];
+          SendMessageTimeoutW(progman, PROGMAN_SPAWN_WORKERW, 0n, 0n, SMTO_NORMAL, 1000, result);
+
+          const host = findDesktopComponentHost();
+          if (!host) return false;
+          const hwnd = decodeNativeWindowHandle(handle);
+          SetWindowLongPtrW_Ptr(hwnd, GWLP_HWNDPARENT, host);
+          return isHostedByDesktopComponentHost(hwnd);
+        }, false);
+      },
+      detachFromDesktop: (handle: Buffer) => {
+        runWin32Operation(diag, 'detachFromDesktop', () => {
+          const hwnd = decodeNativeWindowHandle(handle);
+          SetWindowLongPtrW_Ptr(hwnd, GWLP_HWNDPARENT, null);
+        }, undefined);
+      },
+      isAttachedToDesktop: (handle: Buffer) => {
+        return runWin32Operation(diag, 'isAttachedToDesktop', () => {
+          return isHostedByDesktopComponentHost(decodeNativeWindowHandle(handle));
+        }, false);
       },
       setDesktopOwner: (handle: Buffer) => {
         return runWin32Operation(diag, 'setDesktopOwner', () => {
@@ -413,13 +470,24 @@ export function createWin32NativeHelpers({
     applyNativeBackgroundMaterial: (win) => applyNativeBackgroundMaterial(diag, win32, win),
     setInvisibleGlassBackgroundMaterial: (win, payload) => {
       if (process.platform !== 'win32') return false;
-      // TickTick-style: native acrylic/blur owns desktop frost; opacity stays continuous.
+      if (shouldPreferWin32AcrylicFallback()) {
+        // A transparent Chromium window hosted by Explorer is composed as opaque black when
+        // Windows 10 receives ACCENT_ENABLE_BLURBEHIND. Keep the transparent host clear and
+        // let the renderer's existing frost layers provide the visual treatment instead.
+        if (hasNativeBackgroundMaterial(win)) {
+          win.setBackgroundMaterial('none');
+          diag('Windows 10 transparent window: native Acrylic disabled to preserve desktop composition');
+          return true;
+        }
+        return false;
+      }
+
       return applyInvisibleGlassBackgroundMaterial(
         diag,
         win,
         payload,
         (settings) => applyWin32GlassFallback(diag, win32, win, settings),
-        true,
+        false,
       );
     },
     setNativeWindowDragRegion: (win, region) => applyNativeWindowDragRegion(win32, win, region, diag),

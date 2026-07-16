@@ -5,43 +5,41 @@ import { assertCleanupCoreIncludes } from './verifyCleanupCore';
 
 const root = process.cwd();
 const controllerPath = join(root, 'electron', 'desktopWindowMode.ts');
-const applierPath = join(root, 'electron', 'desktopWidgetStateApplier.ts');
+const hostPath = join(root, 'electron', 'desktopWindowHost.ts');
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
   scripts: Record<string, string>;
 };
 
-assert.ok(existsSync(applierPath), 'Desktop widget state application should live in a focused module.');
+assert.ok(existsSync(hostPath), 'Desktop window hosting should live in a focused module.');
 
 const controller = readFileSync(controllerPath, 'utf8');
-const applier = readFileSync(applierPath, 'utf8');
+const host = readFileSync(hostPath, 'utf8');
 
 assert.match(
   controller,
-  /from '\.\/desktopWidgetStateApplier'/,
-  'desktopWindowMode should delegate window state application to the focused applier.',
+  /from '\.\/desktopWindowHost'/,
+  'desktopWindowMode should delegate Explorer hosting to the focused controller.',
 );
 assert.match(
   controller,
-  /const desktopWidgetStateApplier = createDesktopWidgetStateApplier\(/,
-  'desktopWindowMode should compose the focused desktop widget state applier.',
+  /const desktopHost = createDesktopWindowHost\(/,
+  'desktopWindowMode should compose the focused desktop host controller.',
 );
 assert.match(
   controller,
-  /desktopWidgetStateApplier\.apply\(win, nextState, shouldForceAppBackground\)/,
-  'desktopWindowMode should delegate resolved state changes to the focused applier.',
+  /desktopHost\.ensureAttached\(win\)/,
+  'desktopWindowMode should delegate host recovery to the focused controller.',
 );
 assert.doesNotMatch(
   controller,
-  /function applyDesktopWidgetState\b/,
-  'desktopWindowMode should not retain inline desktop widget state application.',
+  /sendToBottom/,
+  'desktopWindowMode should not retain application-background sinking.',
 );
 
-assert.match(applier, /export function createDesktopWidgetStateApplier\b/, 'The focused applier should export its factory.');
-assert.match(applier, /nextState === 'desktop-visible'/, 'The focused applier should own desktop-visible state application.');
-assert.match(applier, /nextState === 'dt-active'/, 'The focused applier should own active desktop state application.');
-assert.match(applier, /win32\.sendToBottom\(handle\)/, 'The focused applier should preserve app-background sink behavior.');
-assert.match(applier, /desktopOwner\.applyDesktopOwner\(win\)/, 'The focused applier should preserve desktop owner attachment.');
-assert.match(applier, /desktopOwner\.clearDesktopOwner\(win\)/, 'The focused applier should preserve desktop owner cleanup.');
+assert.match(host, /export function createDesktopWindowHost\b/, 'The focused host should export its factory.');
+assert.match(host, /win32\.attachToDesktop\(handle\)/, 'The focused host should attach the window to Explorer.');
+assert.match(host, /win32\.isAttachedToDesktop\(handle\)/, 'The focused host should detect Explorer replacement.');
+assert.match(host, /detachFromDesktop/, 'The focused host should restore independent windows on exit.');
 
 assert.equal(
   packageJson.scripts['verify:electron-desktop-widget-state-applier-module'],

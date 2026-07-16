@@ -134,7 +134,6 @@ const desktopWindowMode = createDesktopWindowModeController({
   diag,
   getWindowMode: windowModeState.getMode,
   setWindowModeState: windowModeState.setMode,
-  userHidden,
   getWin32: () => win32,
 });
 

@@ -1,21 +1,13 @@
 import { BrowserWindow } from 'electron';
 import { isAlwaysOnTop, type WindowMode } from '../shared/windowMode';
-import {
-  resolveDesktopWidgetState,
-} from './desktopWidgetState';
-import {
-  createDesktopWidgetStateApplier,
-  type DesktopWindowModeWin32Like,
-} from './desktopWidgetStateApplier';
-import type { UserHiddenState } from './userHiddenState';
+import { createDesktopWindowHost, type DesktopWindowHostWin32Like } from './desktopWindowHost';
 
-export type { DesktopWindowModeWin32Like } from './desktopWidgetStateApplier';
+export type DesktopWindowModeWin32Like = DesktopWindowHostWin32Like;
 
 export type CreateDesktopWindowModeControllerOptions = {
   diag(message: string): void;
   getWindowMode(): WindowMode;
   setWindowModeState(mode: WindowMode): void;
-  userHidden: Pick<UserHiddenState, 'isHidden'>;
   getWin32(): DesktopWindowModeWin32Like | null;
 };
 
@@ -24,79 +16,27 @@ export type DesktopWindowModeController = {
   clearDesktopOwner(win: BrowserWindow): void;
   applyWindowMode(win: BrowserWindow, mode: WindowMode): void;
   reapplyWindowZOrder(win: BrowserWindow): void;
+  ensureDesktopHosted(win: BrowserWindow): void;
   markDesktopInteractive(): void;
 };
 
-const DESKTOP_FG_CLASSES = new Set([
-  'WorkerW',
-  'Progman',
-  'SHELLDLL_DefView',
-  'SysListView32',
-]);
-
-const DESKTOP_GUARD_INTERVAL_MS = 64;
+const DESKTOP_HOST_RECOVERY_INTERVAL_MS = 2_000;
 
 export function createDesktopWindowModeController({
   diag,
   getWindowMode,
   setWindowModeState,
-  userHidden,
   getWin32,
 }: CreateDesktopWindowModeControllerOptions): DesktopWindowModeController {
   let desktopGuardTimer: ReturnType<typeof setInterval> | null = null;
-  let desktopShellSeenAt = 0;
-  let lastDesktopGuardSnapshot = '';
-  let lastAppForegroundClass = '';
-  const desktopWidgetStateApplier = createDesktopWidgetStateApplier({ diag, getWindowMode, userHidden, getWin32 });
-
-  function applyDesktopTopmost(win: BrowserWindow) {
-    if (win.isDestroyed() || getWindowMode() !== 'desktop') return;
-    const win32 = getWin32();
-    if (!win32) return;
-
-    const handle = win.getNativeWindowHandle();
-    if (!handle) return;
-
-    const fgClass = win32.getForegroundClass();
-    const ownForeground = win32.isForegroundWindow(handle);
-    const now = Date.now();
-    const state = resolveDesktopWidgetState({
-      foregroundClass: fgClass,
-      ownForeground,
-      currentState: desktopWidgetStateApplier.getState(),
-      desktopShellSeenAt,
-      now,
-      desktopForegroundClasses: DESKTOP_FG_CLASSES,
-    });
-    desktopShellSeenAt = state.desktopShellSeenAt;
-    const {
-      nextState,
-      shellForeground,
-      withinDesktopGrace,
-      shouldForceAppBackground,
-    } = state;
-
-    if (nextState === 'app-background' && fgClass && !ownForeground && fgClass !== lastAppForegroundClass) {
-      lastAppForegroundClass = fgClass;
-    }
-    if (nextState !== 'app-background') {
-      lastAppForegroundClass = '';
-    }
-
-    const snapshot = `fg=${fgClass || '(none)'} own=${ownForeground} shell=${shellForeground} grace=${withinDesktopGrace} state=${desktopWidgetStateApplier.getState()}->${nextState} force=${shouldForceAppBackground} owner=${desktopWidgetStateApplier.isDesktopOwnerApplied()}`;
-    if (snapshot !== lastDesktopGuardSnapshot) {
-      lastDesktopGuardSnapshot = snapshot;
-      diag(`desktop guard snapshot: ${snapshot}`);
-    }
-
-    desktopWidgetStateApplier.apply(win, nextState, shouldForceAppBackground);
-  }
+  const desktopHost = createDesktopWindowHost({ diag, getWin32 });
 
   function startDesktopGuard(win: BrowserWindow) {
     stopDesktopGuard();
-    desktopWidgetStateApplier.reset();
-    applyDesktopTopmost(win);
-    desktopGuardTimer = setInterval(() => applyDesktopTopmost(win), DESKTOP_GUARD_INTERVAL_MS);
+    desktopHost.attach(win);
+    desktopGuardTimer = setInterval(() => {
+      if (getWindowMode() === 'desktop') desktopHost.ensureAttached(win);
+    }, DESKTOP_HOST_RECOVERY_INTERVAL_MS);
   }
 
   function stopDesktopGuard() {
@@ -104,7 +44,6 @@ export function createDesktopWindowModeController({
       clearInterval(desktopGuardTimer);
       desktopGuardTimer = null;
     }
-    desktopWidgetStateApplier.reset();
   }
 
   function applyWindowMode(win: BrowserWindow, mode: WindowMode) {
@@ -116,7 +55,7 @@ export function createDesktopWindowModeController({
         startDesktopGuard(win);
       } else {
         stopDesktopGuard();
-        desktopWidgetStateApplier.clearDesktopOwner(win);
+        desktopHost.detach(win);
         win.setAlwaysOnTop(isAlwaysOnTop(mode));
       }
       diag(`applyWindowMode mode=${mode} alwaysOnTop=${isAlwaysOnTop(mode)} skipTaskbar=${mode !== 'normal'}`);
@@ -130,7 +69,7 @@ export function createDesktopWindowModeController({
     try {
       if (getWindowMode() === 'desktop') {
         win.setAlwaysOnTop(false, 'normal');
-        applyDesktopTopmost(win);
+        desktopHost.ensureAttached(win);
         return;
       }
       win.setAlwaysOnTop(isAlwaysOnTop(getWindowMode()), 'normal');
@@ -139,15 +78,26 @@ export function createDesktopWindowModeController({
     }
   }
 
+  function ensureDesktopHosted(win: BrowserWindow) {
+    if (win.isDestroyed() || getWindowMode() !== 'desktop') return;
+    try {
+      win.setAlwaysOnTop(false, 'normal');
+      desktopHost.ensureAttached(win);
+    } catch (error) {
+      diag(`ensureDesktopHosted failed: ${String(error)}`);
+    }
+  }
+
   function markDesktopInteractive() {
-    desktopWidgetStateApplier.markInteractive();
+    // A window hosted by Explorer remains interactive without changing z-order.
   }
 
   return {
     stopDesktopGuard,
-    clearDesktopOwner: desktopWidgetStateApplier.clearDesktopOwner,
+    clearDesktopOwner: desktopHost.detach,
     applyWindowMode,
     reapplyWindowZOrder,
+    ensureDesktopHosted,
     markDesktopInteractive,
   };
 }

@@ -220,6 +220,7 @@
     "verify:electron-app-lifecycle-module": "tsx scripts/verify-electron-app-lifecycle-module.ts",
     "verify:electron-desktop-window-mode-module": "tsx scripts/verify-electron-desktop-window-mode-module.ts",
     "verify:electron-desktop-widget-state-applier-module": "tsx scripts/verify-electron-desktop-widget-state-applier-module.ts",
+    "verify:desktop-window-host": "tsx electron/desktopWindowHost.verify.ts",
     "verify:electron-main-shell-controller-module": "tsx scripts/verify-electron-main-shell-controller-module.ts",
     "verify:electron-win32-native-module": "tsx scripts/verify-electron-win32-native-module.ts",
     "verify:electron-app-state-accessors-module": "tsx scripts/verify-electron-app-state-accessors-module.ts",

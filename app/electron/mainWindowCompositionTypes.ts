@@ -20,6 +20,7 @@ export type CreateMainWindowCompositionOptions = Omit<
   | 'setTaskMenuPayload'
   | 'getMainWindow'
   | 'stopDesktopGuard'
+  | 'ensureDesktopHosted'
   | 'userHidden'
   | 'getWindowMode'
   | 'isQuitting'
@@ -76,6 +77,7 @@ export type CreateMainWindowCompositionOptions = Omit<
   desktopWindowMode: {
     applyWindowMode: Parameters<typeof createMainWindowModeController>[0]['applyWindowMode'];
     reapplyWindowZOrder: MainWindowBootstrapOptions['reapplyWindowZOrder'];
+    ensureDesktopHosted: MainWindowBootstrapOptions['ensureDesktopHosted'];
     markDesktopInteractive: Parameters<typeof createMainShellController>[0]['markDesktopInteractive'];
     stopDesktopGuard: MainWindowBootstrapOptions['stopDesktopGuard'];
   };

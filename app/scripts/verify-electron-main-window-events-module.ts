@@ -37,6 +37,10 @@ assert.match(helper, /needsDesktopGuard\(/, 'mainWindowEvents should preserve de
 assert.match(helper, /win\.showInactive\(\)/, 'mainWindowEvents should preserve desktop guard recovery.');
 assert.match(helper, /win\.on\('blur'/, 'mainWindowEvents should own blur diagnostics.');
 assert.match(helper, /win\.on\('focus'/, 'mainWindowEvents should own focus diagnostics.');
+assert.match(helper, /ensureDesktopHosted\(win\)/, 'mainWindowEvents should immediately restore component hosting after window lifecycle changes.');
+assert.match(helper, /win\.on\('show',[\s\S]*ensureDesktopHosted\(win\)/, 'show should immediately confirm component hosting.');
+assert.match(helper, /win\.on\('restore',[\s\S]*ensureDesktopHosted\(win\)/, 'restore should immediately confirm component hosting.');
+assert.match(helper, /win\.on\('blur',[\s\S]*ensureDesktopHosted\(win\)/, 'blur should immediately return a component window to its Explorer host.');
 assert.match(helper, /win\.webContents\.on\('render-process-gone'/, 'mainWindowEvents should own renderer crash diagnostics.');
 assert.match(helper, /win\.on\('unresponsive'/, 'mainWindowEvents should own unresponsive diagnostics.');
 assert.match(helper, /win\.on\('move'/, 'mainWindowEvents should own window-state persistence event wiring.');

@@ -31,7 +31,7 @@ export function refreshMainTrayMenu({
     Menu.buildFromTemplate([
       { label: zh('\u6253\u5f00 DailyTodo'), click: showMainWindow },
       {
-        label: zh('\u9489\u5728\u684c\u9762\uff08\u7ec4\u4ef6\u6a21\u5f0f\uff09'),
+        label: zh('\u7ec4\u4ef6\u6a21\u5f0f'),
         type: 'checkbox',
         checked: getWindowMode() === 'desktop',
         click: (menuItem) => {

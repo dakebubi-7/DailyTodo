@@ -53,6 +53,7 @@ export type CreateMainWindowBootstrapOptions = {
   setTaskMenuPayload(payload: import('./taskContextMenuIpc').TaskMenuPayload | null): void;
   getMainWindow(): BrowserWindow | null;
   stopDesktopGuard(): void;
+  ensureDesktopHosted(win: BrowserWindow): void;
   userHidden: Pick<UserHiddenState, 'isHidden'>;
   getWindowMode(): WindowMode;
   isQuitting(): boolean;

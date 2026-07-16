@@ -110,6 +110,7 @@ export function createMainWindowComposition({
       setTaskMenuPayload: runtimeState.setTaskMenuPayload,
       getMainWindow: runtimeState.getMainWindow,
       stopDesktopGuard: desktopWindowMode.stopDesktopGuard,
+      ensureDesktopHosted: desktopWindowMode.ensureDesktopHosted,
       userHidden,
       getWindowMode: windowModeState.getMode,
       isQuitting: appQuitState.isQuitting,

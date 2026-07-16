@@ -14,6 +14,7 @@ type RegisterMainWindowEventHandlersOptions = {
   win: BrowserWindow;
   diag(message: string): void;
   stopDesktopGuard(): void;
+  ensureDesktopHosted(win: BrowserWindow): void;
   userHidden: Pick<UserHiddenState, 'isHidden'>;
   getWindowMode(): WindowMode;
   isQuitting(): boolean;
@@ -30,6 +31,7 @@ export function registerMainWindowEventHandlers({
   win,
   diag,
   stopDesktopGuard,
+  ensureDesktopHosted,
   userHidden,
   getWindowMode,
   isQuitting,
@@ -71,6 +73,7 @@ export function registerMainWindowEventHandlers({
 
   win.on('show', () => {
     rescueIfOffscreen('show');
+    ensureDesktopHosted(win);
     diag('evt: show');
   });
   win.on('closed', () => {
@@ -98,9 +101,13 @@ export function registerMainWindowEventHandlers({
   });
   win.on('restore', () => {
     rescueIfOffscreen('restore');
+    ensureDesktopHosted(win);
     diag('evt: restore');
   });
-  win.on('blur', () => diag('evt: blur'));
+  win.on('blur', () => {
+    ensureDesktopHosted(win);
+    diag('evt: blur');
+  });
   win.on('focus', () => diag('evt: focus'));
 
   win.webContents.on('render-process-gone', (_event, details) => {
