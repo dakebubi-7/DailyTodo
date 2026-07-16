@@ -3,11 +3,11 @@ import type { CustomBlock, RenderType } from '../../../shared/aiReview/sectionCo
 import { RENDER_TYPES, isRenderType } from '../../../shared/aiReview/sectionConfig';
 
 const RENDER_TYPE_LABELS: Record<RenderType, string> = {
-  text: '纯文本',
-  list: '列表',
-  table: '表格',
-  callout: '引用框',
-  dataview: '数据视图',
+  text: '\u7eaf\u6587\u672c',
+  list: '\u5217\u8868',
+  table: '\u8868\u683c',
+  callout: '\u5f15\u7528\u6846',
+  dataview: '\u6570\u636e\u89c6\u56fe',
 };
 
 interface TemplateBlockControlsProps {
@@ -30,7 +30,7 @@ export function TemplateBlockControls({
     if (!isRenderType(nextRenderType)) return;
     if (
       nextRenderType === 'dataview' &&
-      !confirm('导出 PDF/Word 时该块会降级为说明文字，继续?')
+      !confirm('\u5bfc\u51fa PDF/Word \u65f6\u8be5\u533a\u5757\u4f1a\u964d\u7ea7\u4e3a\u8bf4\u660e\u6587\u5b57\uff0c\u7ee7\u7eed\uff1f')
     )
       return;
     onUpdate(block.id, { renderType: nextRenderType });
@@ -42,9 +42,9 @@ export function TemplateBlockControls({
         <input
           type="checkbox"
           checked={block.aiGenerate}
-          onChange={(e) => onUpdate(block.id, { aiGenerate: e.target.checked })}
+          onChange={(event) => onUpdate(block.id, { aiGenerate: event.target.checked })}
         />
-        AI生成
+        AI{'\u751f\u6210'}
       </label>
       <select
         className="render-type-select"
@@ -65,10 +65,10 @@ export function TemplateBlockControls({
         aria-expanded={promptExpanded}
         onClick={() => onTogglePrompt(block.id)}
       >
-        {promptExpanded ? '收起提示词' : '提示词'}
+        {promptExpanded ? '\u6536\u8d77\u63d0\u793a\u8bcd' : '\u63d0\u793a\u8bcd'}
       </button>
       <button className="block-delete-btn" onClick={() => onDelete(block.id)}>
-        删
+        {'\u5220\u9664'}
       </button>
     </div>
   );
@@ -89,8 +89,8 @@ export function TemplateBlockPromptInput({ block, expanded, onUpdate }: Template
       rows={3}
       value={block.prompt}
       disabled={!block.aiGenerate}
-      onChange={(e) => onUpdate(block.id, { prompt: e.target.value })}
-      placeholder="自定义提示词，留空则使用默认提示词"
+      onChange={(event) => onUpdate(block.id, { prompt: event.target.value })}
+      placeholder="\u81ea\u5b9a\u4e49\u63d0\u793a\u8bcd\uff0c\u7559\u7a7a\u5219\u4f7f\u7528\u9ed8\u8ba4\u63d0\u793a\u8bcd"
     />
   );
 }

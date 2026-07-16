@@ -27,6 +27,7 @@ const templateEditorModelPath = join(root, 'src/components/templateEditor/templa
 const templateEditorBlockListPath = join(root, 'src/components/templateEditor/TemplateEditorBlockList.tsx');
 const sortableBlockRowPath = join(root, 'src/components/templateEditor/SortableBlockRow.tsx');
 const templateBlockControlsPath = join(root, 'src/components/templateEditor/TemplateBlockControls.tsx');
+const templateEditorStylesPath = join(root, 'src/styles/globals.css');
 const packagePath = join(root, 'package.json');
 
 assert.ok(existsSync(helperPath), 'App template editor helper module should exist.');
@@ -51,6 +52,7 @@ const templateEditorModel = readFileSync(templateEditorModelPath, 'utf8');
 const templateEditorBlockList = readFileSync(templateEditorBlockListPath, 'utf8');
 const sortableBlockRow = readFileSync(sortableBlockRowPath, 'utf8');
 const templateBlockControls = readFileSync(templateBlockControlsPath, 'utf8');
+const templateEditorStyles = readFileSync(templateEditorStylesPath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
 const model = await import('../src/components/templateEditor/templateEditorModel');
@@ -137,10 +139,17 @@ assert.ok(templateEditorModal.split(/\r?\n/).length < 300, 'TemplateEditorModal 
 assert.match(sortableBlockRow, /export function SortableBlockRow\b/, 'sortable row component should export SortableBlockRow.');
 assert.match(sortableBlockRow, /useSortable\(/, 'sortable row component should own dnd-kit sortable wiring.');
 assert.match(sortableBlockRow, /useSortableMotion\(/, 'sortable row component should own the drag motion behavior.');
+assert.match(sortableBlockRow, /aria-label="\\u62d6\\u52a8\\u8c03\\u6574\\u533a\\u5757\\u987a\\u5e8f"/, 'sortable row should provide an understandable drag-handle label.');
+assert.match(sortableBlockRow, /className="drag-handle-dots"/, 'sortable row should render a dedicated six-dot drag glyph.');
+assert.match(sortableBlockRow, /Array\.from\(\{ length: 6 \},/, 'sortable row should render six drag dots without text glyphs.');
+assert.doesNotMatch(sortableBlockRow, /String\.fromCharCode/, 'sortable row should not render the drag handle with a text glyph.');
+assert.match(templateEditorStyles, /\.drag-handle-dots\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, 3px\)/, 'drag handle dots should use a two-column grid.');
 assert.match(templateBlockControls, /export function TemplateBlockControls\b/, 'block controls component should export TemplateBlockControls.');
 assert.match(templateBlockControls, /export function TemplateBlockPromptInput\b/, 'block controls component should export TemplateBlockPromptInput.');
 assert.match(templateBlockControls, /isRenderType\(nextRenderType\)/, 'block controls should narrow render-type select values.');
 assert.match(templateBlockControls, /RENDER_TYPES\.map/, 'block controls should render labels from canonical render-type keys.');
+assert.match(templateBlockControls, /text: '\\u7eaf\\u6587\\u672c'/, 'text render type should have a readable Chinese label.');
+assert.match(templateBlockControls, /placeholder="\\u81ea\\u5b9a\\u4e49\\u63d0\\u793a\\u8bcd/, 'prompt input should have a readable Chinese placeholder.');
 assert.match(templateEditorBlockList, /export function TemplateEditorBlockList\b/, 'block list component should be exported.');
 assert.match(templateEditorBlockList, /<DndContext/, 'block list component should own drag context.');
 assert.match(templateEditorBlockList, /<SortableBlockRow/, 'block list component should render sortable rows.');

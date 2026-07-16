@@ -26,9 +26,11 @@ export function SortableBlockRow({ sortableId, isDragActive, children }: Sortabl
       className="drag-handle"
       role="button"
       tabIndex={0}
-      aria-label="鎷栧姩璋冩暣鍖哄潡椤哄簭"
+      aria-label="\u62d6\u52a8\u8c03\u6574\u533a\u5757\u987a\u5e8f"
     >
-      鈮?
+      <span className="drag-handle-dots" aria-hidden="true">
+        {Array.from({ length: 6 }, (_, index) => <i key={index} />)}
+      </span>
     </span>
   );
 

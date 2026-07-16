@@ -2291,17 +2291,44 @@ button, .select-none {
 }
 
 .drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  min-height: 2.1rem;
   color: #a1a1aa;
   cursor: grab;
-  font-size: 1rem;
-  font-weight: 900;
-  line-height: 1;
   user-select: none;
   touch-action: none;
+  border-radius: 0.35rem;
+  opacity: 0.56;
+  transition: color 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+}
+
+.drag-handle-dots {
+  display: grid;
+  grid-template-columns: repeat(2, 3px);
+  gap: 3px;
+}
+
+.drag-handle-dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.template-block-row:hover .drag-handle,
+.drag-handle:focus-visible {
+  color: var(--personal-accent);
+  background: rgba(39, 39, 42, 0.08);
+  opacity: 1;
 }
 
 .drag-handle:active {
+  color: var(--personal-accent);
   cursor: grabbing;
+  opacity: 1;
 }
 
 .block-name-input,

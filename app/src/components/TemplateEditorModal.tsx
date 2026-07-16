@@ -43,11 +43,11 @@ export function TemplateEditorModal({ kind, initialTemplate, onSave, onCancel }:
     markDirty();
   };
   const addBlock = () => {
-    setTemplate(addTemplateCustomBlock(template, { id: crypto.randomUUID(), name: '新区块', aiGenerate: true, renderType: 'text', prompt: '' }));
+    setTemplate(addTemplateCustomBlock(template, { id: crypto.randomUUID(), name: '\u65b0\u533a\u5757', aiGenerate: true, renderType: 'text', prompt: '' }));
     markDirty();
   };
   const deleteBlock = (id: string) => {
-    if (!confirm('删除后该块及其内容将被移除，确定?')) return;
+    if (!confirm('\u5220\u9664\u540e\u8be5\u533a\u5757\u53ca\u5176\u5185\u5bb9\u5c06\u88ab\u79fb\u9664\uff0c\u786e\u5b9a\uff1f')) return;
     setCustomBlocks(customBlocks.filter((block) => block.id !== id));
   };
   const renameFixed = (id: FixedBlock['id'], name: string) => {
@@ -75,29 +75,29 @@ export function TemplateEditorModal({ kind, initialTemplate, onSave, onCancel }:
     setRecognitionOpen(false);
   };
   const handleReset = () => {
-    if (!confirm('将重置为默认模板，自定义内容丢失，确定?')) return;
+    if (!confirm('\u5c06\u91cd\u7f6e\u4e3a\u9ed8\u8ba4\u6a21\u677f\uff0c\u81ea\u5b9a\u4e49\u5185\u5bb9\u4e22\u5931\uff0c\u786e\u5b9a\uff1f')) return;
     setTemplate(isReportTemplateKind(kind) ? createDefaultReportTemplate(kind) : createDefaultDailyTemplate());
     setDirty(true);
   };
   const handleCancel = () => {
-    if (dirty && !confirm('有未保存的修改，确定离开?')) return;
+    if (dirty && !confirm('\u6709\u672a\u4fdd\u5b58\u7684\u4fee\u6539\uff0c\u786e\u5b9a\u79bb\u5f00\uff1f')) return;
     onCancel();
   };
+
+  const editorTitle = kind === 'daily'
+    ? '\u65e5\u62a5\u6a21\u677f\u7f16\u8f91\u5668'
+    : kind === 'personalWeekly'
+    ? '\u4e2a\u4eba\u5468\u62a5\u6a21\u677f\u7f16\u8f91\u5668'
+    : kind === 'personalMonthly'
+    ? '\u4e2a\u4eba\u6708\u62a5\u6a21\u677f\u7f16\u8f91\u5668'
+    : kind === 'externalWeekly'
+    ? '\u5bf9\u5916\u5468\u62a5\u6a21\u677f\u7f16\u8f91\u5668'
+    : '\u5bf9\u5916\u6708\u62a5\u6a21\u677f\u7f16\u8f91\u5668';
 
   return (
     <div className="template-editor-overlay" onClick={(event) => { if (event.target === event.currentTarget) handleCancel(); }}>
       <div className="template-editor-modal">
-        <h2 className="template-editor-title">
-          {kind === 'daily'
-            ? '日报模板编辑器'
-            : kind === 'personalWeekly'
-            ? '个人周报模板编辑器'
-            : kind === 'personalMonthly'
-            ? '个人月报模板编辑器'
-            : kind === 'externalWeekly'
-            ? '对外周报模板编辑器'
-            : '对外月报模板编辑器'}
-        </h2>
+        <h2 className="template-editor-title">{editorTitle}</h2>
         <TemplateEditorBlockList
           isDaily={isDaily}
           dailyBlocks={dailyVisualBlocks}
@@ -110,14 +110,14 @@ export function TemplateEditorModal({ kind, initialTemplate, onSave, onCancel }:
           onMove={moveBlocks}
         />
         <div className="template-editor-actions-row">
-          <button onClick={addBlock}>+ 添加区块</button>
-          <button onClick={() => setRecognitionOpen(true)}>AI 识别并套用模板</button>
+          <button onClick={addBlock}>+ {'\u6dfb\u52a0\u533a\u5757'}</button>
+          <button onClick={() => setRecognitionOpen(true)}>AI {'\u8bc6\u522b\u5e76\u5957\u7528\u6a21\u677f'}</button>
         </div>
         <div className="template-editor-footer">
-          <button className="btn-reset" onClick={handleReset}>恢复默认</button>
+          <button className="btn-reset" onClick={handleReset}>{'\u6062\u590d\u9ed8\u8ba4'}</button>
           <div>
-            <button className="btn-cancel" onClick={handleCancel}>取消</button>
-            <button className="btn-save" onClick={() => onSave(completeTemplateForSave(template))}>保存</button>
+            <button className="btn-cancel" onClick={handleCancel}>{'\u53d6\u6d88'}</button>
+            <button className="btn-save" onClick={() => onSave(completeTemplateForSave(template))}>{'\u4fdd\u5b58'}</button>
           </div>
         </div>
         {recognitionOpen && <TemplateRecognitionModal existingBlocks={customBlocks} onApply={applyRecognizedBlocks} onCancel={() => setRecognitionOpen(false)} />}
