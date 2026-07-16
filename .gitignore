@@ -1,18 +1,29 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 
 # Build output
 app/dist/
 app/dist-electron/
 app/release/
+app/release-*/
 dist/
 dist-electron/
 release/
 
+# Native build artifacts
+app/native/*/bin/
+
+# Local verification / temp artifacts
+app/.codex-*.png
+app/.tmp-*
+app/App-*.css
+app/watercolor-theme-*.css
+app/.acrylic-probe-main.js
+
 # TypeScript incremental build cache
 *.tsbuildinfo
 
-# Electron user data / runtime (local app state — not source)
+# Electron user data / runtime (local app state – not source)
 data/
 
 # Local cleanup backups
