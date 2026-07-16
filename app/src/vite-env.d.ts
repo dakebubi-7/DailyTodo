@@ -13,6 +13,10 @@ interface Window {
     close: () => Promise<void>;
     getAlwaysOnTop: () => Promise<unknown>;
     toggleAlwaysOnTop: () => Promise<unknown>;
+    setInvisibleGlass: (payload: unknown) => Promise<unknown>;
+    setNativeWindowRadius: (radius: unknown) => Promise<unknown>;
+    onPerformanceFrostChanged: (callback: (active: boolean) => void) => () => void;
+    setNativeWindowDragRegion: (region: unknown) => void;
     getWindowMode: () => Promise<unknown>;
     setWindowMode: (mode: unknown) => Promise<unknown>;
     onWindowModeChanged: (callback: (mode: unknown) => void) => () => void;

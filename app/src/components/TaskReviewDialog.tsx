@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Task } from '../types/task';
 import { getCompletionReviews } from '../../shared/completionReviews';
+import { useDialogFocus } from './useDialogFocus';
 
 interface TaskReviewDialogProps {
   task: Task | null;
@@ -16,6 +17,7 @@ const statusLabel = {
 };
 
 export function TaskReviewDialog({ task, onClose, onAddRecord, onDeleteRecord }: TaskReviewDialogProps) {
+  const { dialogRef, handleKeyDown } = useDialogFocus(Boolean(task), onClose);
   if (!task) return null;
   const reviews = getCompletionReviews(task);
   if (reviews.length === 0) return null;
@@ -23,16 +25,22 @@ export function TaskReviewDialog({ task, onClose, onAddRecord, onDeleteRecord }:
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/25 p-4 backdrop-blur-sm">
       <motion.div
+        ref={dialogRef}
         initial={{ opacity: 0, y: 16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.96 }}
         className="completion-dialog w-full max-w-[25rem] rounded-[24px] border border-white/60 bg-white/86 p-4 shadow-[0_24px_80px_rgba(31,41,55,0.28)] backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-950/86"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-review-dialog-title"
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
       >
         <div className="mb-3">
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
             完成记录查看
           </p>
-          <h2 className="mt-1 break-words text-[1rem] font-bold text-forest dark:text-white">
+          <h2 id="task-review-dialog-title" className="mt-1 break-words text-[1rem] font-bold text-forest dark:text-white">
             {task.text}
           </h2>
           <p className="mt-1 text-[0.76rem] text-zinc-500 dark:text-zinc-400">

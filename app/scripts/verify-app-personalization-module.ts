@@ -142,7 +142,16 @@ assert.match(
 assert.match(app, /useAppShellComposition\(\{/, 'App should delegate personalization shell wiring through the runtime composition hook.');
 assert.match(shellInputs, /appPersonalizationActions,/, 'Pure shell-inputs helper should pass personalization actions into the shell composition helper.');
 assert.match(overlayHelper, /const settingsPanelProps = \{[\s\S]*onApplyTheme: appPersonalizationActions\.applyThemePreset,[\s\S]*onResetTheme: appPersonalizationActions\.resetCurrentThemeDefaults,[\s\S]*onChange: appPersonalizationActions\.changePersonalization,[\s\S]*\};/, 'SettingsPanel personalization actions should flow through the shell overlay composition prop bag.');
-assert.match(shellHelper, /toggleDarkModeAction: appPersonalizationActions\.toggleDarkModeAction,/, 'Shell composition should pass the dark-mode toggle action into main-content composition.');
+assert.match(
+  shellInputs,
+  /mainContent: \{[\s\S]*toggleDarkModeAction: appPersonalizationActions\.toggleDarkModeAction,[\s\S]*\},/,
+  'Shell input composition should place the dark-mode toggle action in the main-content group.',
+);
+assert.match(
+  shellHelper,
+  /const mainContentProps = createAppShellMainContentComposition\(mainContent\);/,
+  'Shell composition should delegate grouped main-content inputs unchanged to the main-content composition helper.',
+);
 assert.match(mainContentComposition, /const headerProps = \{[\s\S]*onToggleDark: toggleDarkModeAction,[\s\S]*\};/, 'Header dark-mode toggle should flow through the main-content composition header prop bag.');
 assert.match(topContent, /<Header \{\.\.\.headerProps\} \/>/, 'AppTopContent should forward Header props.');
 assert.doesNotMatch(app, /const settingsPanelProps = \{/, 'App should not inline SettingsPanel props once shell composition owns them.');

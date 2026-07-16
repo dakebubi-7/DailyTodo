@@ -13,6 +13,7 @@ const modeControllerPath = join(root, 'electron', 'mainWindowModeController.ts')
 const desktopWindowModePath = join(root, 'electron', 'desktopWindowMode.ts');
 const shellControllerPath = join(root, 'electron', 'mainShellController.ts');
 const bootstrapPath = join(root, 'electron', 'mainWindowBootstrap.ts');
+const bootstrapTypesPath = join(root, 'electron', 'mainWindowBootstrapTypes.ts');
 const lifecyclePath = join(root, 'electron', 'appLifecycle.ts');
 const packagePath = join(root, 'package.json');
 
@@ -25,6 +26,7 @@ const modeController = readFileSync(modeControllerPath, 'utf8');
 const desktopWindowMode = readFileSync(desktopWindowModePath, 'utf8');
 const shellController = readFileSync(shellControllerPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
+const bootstrapTypes = readFileSync(bootstrapTypesPath, 'utf8');
 const lifecycle = readFileSync(lifecyclePath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
@@ -55,7 +57,8 @@ assert.match(desktopWindowMode, /getWindowMode\(\):\s*WindowMode;/, 'desktopWind
 assert.match(desktopWindowMode, /setWindowModeState\(mode:\s*WindowMode\):\s*void;/, 'desktopWindowMode should continue to depend on a mode writer callback.');
 assert.match(modeController, /applyWindowMode\(win,\s*mode\)/, 'mode controller should continue to apply mode changes through desktopWindowMode.');
 assert.match(shellController, /getWindowMode\(\):\s*WindowMode;/, 'mainShellController should continue to depend on a mode reader callback.');
-assert.match(bootstrap, /getWindowMode\(\):\s*WindowMode;/, 'mainWindowBootstrap should continue to depend on a mode reader callback.');
+assert.match(bootstrap, /from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should depend on its focused dependency contract.');
+assert.match(bootstrapTypes, /getWindowMode\(\):\s*WindowMode;/, 'mainWindowBootstrapTypes should continue to define the mode reader callback.');
 assert.match(lifecycle, /getWindowMode\(\):\s*WindowMode;/, 'appLifecycle should continue to depend on a mode reader callback.');
 
 assert.equal(

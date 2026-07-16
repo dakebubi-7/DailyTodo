@@ -1,4 +1,4 @@
-﻿export interface AppShellClassNameOptions {
+export interface AppShellClassNameOptions {
   themeClass: string;
   layoutDensity: string;
   texture: boolean;
@@ -21,7 +21,7 @@ export function getAppShellClassName({
   animations,
   compactMode,
 }: AppShellClassNameOptions) {
-  return `app-shell ${themeClass} density-${layoutDensity} ${texture ? 'texture-on' : 'texture-off'} ${animations ? 'motion-on' : 'motion-off'} ${compactMode ? 'task-priority-mode' : ''} relative flex h-full flex-col overflow-hidden border border-white/45 text-zinc-900 backdrop-blur-2xl dark:border-white/10 dark:text-zinc-100`;
+  return `app-shell ${themeClass} density-${layoutDensity} ${texture ? 'texture-on' : 'texture-off'} ${animations ? 'motion-on' : 'motion-off'} ${compactMode ? 'task-priority-mode' : ''} relative flex h-full flex-col overflow-hidden border border-white/45 text-zinc-900 dark:border-white/10 dark:text-zinc-100`;
 }
 
 export function getAppShellLowOpacityFlag(isInvisibleTheme: boolean, windowOpacity: number) {

@@ -24,6 +24,7 @@ export interface AppBehaviorSettings {
   subtaskCompletionReviewEnabled: boolean;
   lockWindowPosition: boolean;
   minimizeToTrayOnClose: boolean;
+  edgeAutoHide: boolean;
 }
 
 export interface DailyTodoSettings {
@@ -45,6 +46,7 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
     subtaskCompletionReviewEnabled: true,
     lockWindowPosition: false,
     minimizeToTrayOnClose: true,
+    edgeAutoHide: true,
   };
 }
 
@@ -80,6 +82,7 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
       typeof value.lockWindowPosition === 'boolean' ? value.lockWindowPosition : defaults.lockWindowPosition,
     minimizeToTrayOnClose:
       typeof value.minimizeToTrayOnClose === 'boolean' ? value.minimizeToTrayOnClose : defaults.minimizeToTrayOnClose,
+    edgeAutoHide: typeof value.edgeAutoHide === 'boolean' ? value.edgeAutoHide : defaults.edgeAutoHide,
   };
 }
 

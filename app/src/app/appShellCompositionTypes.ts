@@ -12,9 +12,9 @@ export interface AppShellTitleBarCompositionInputs {
   appModalActions: ReturnType<typeof createAppModalActions>;
 }
 
-export interface AppShellMainContentCompositionInputs extends AppShellMainContentCompositionOptions {}
+export type AppShellMainContentCompositionInputs = AppShellMainContentCompositionOptions;
 
-export interface AppShellOverlayCompositionInputs extends AppShellOverlayCompositionOptions {}
+export type AppShellOverlayCompositionInputs = AppShellOverlayCompositionOptions;
 
 export interface AppShellCompositionOptions {
   titleBar: AppShellTitleBarCompositionInputs;

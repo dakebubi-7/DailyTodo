@@ -39,8 +39,12 @@ assert.ok(appearanceSettingsSection.includes("label={zh ? '模糊强度' : 'Blur
 assert.ok(!appearanceSettingsSection.includes('OPACITY_AREAS.map'), 'Settings should not render old per-area opacity controls.');
 assert.ok(!appearanceSettingsSection.includes('function OpacityAreaControl('), 'Settings should not keep the old opacity area control component.');
 
-assert.ok(mainWindowFactory.includes('transparent: true'), 'Electron windows should stay transparent so CSS glass can show the desktop behind it.');
-assert.ok(mainWindowFactory.includes("backgroundColor: '#00000000'"), 'Electron windows should use a fully transparent background.');
+assert.ok(mainWindowFactory.includes("platform === 'win32'"), 'Windows should use a native DWM composition path for desktop glass.');
+assert.ok(mainWindowFactory.includes('shouldPreferWin32AcrylicFallback'), 'Windows should branch Win10 Win32 Acrylic and Win11 Electron Acrylic host surfaces.');
+assert.ok(mainWindowFactory.includes('transparent: false'), 'Windows 11 should keep an opaque host surface so Electron Acrylic can compose behind the renderer.');
+assert.ok(mainWindowFactory.includes("backgroundColor: '#F2F2F2'"), 'Windows 11 Acrylic should start from a neutral native surface color.');
+assert.ok(mainWindowFactory.includes('transparent: true'), 'Windows 10 and other platforms should preserve transparent fallback window creation.');
+assert.ok(mainWindowFactory.includes("backgroundColor: '#00000000'"), 'Windows 10 and other platforms should preserve fully transparent fallback backgrounds.');
 assert.ok(globals.includes('backdrop-filter: blur(var(--blur-strength)) saturate(var(--glass-saturation));'), 'App shell should use the configured blur strength for frosted glass.');
 
 assert.ok(

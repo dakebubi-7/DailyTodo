@@ -228,6 +228,15 @@ expectIncludes(globals, 'background: #ffffff !important;', 'Primary selected tit
 expectIncludes(globals, 'color: #000000 !important;', 'Primary selected titlebar buttons should use black icons on the selected background.');
 expectIncludes(globals, 'box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22) !important;', 'Primary selected titlebar buttons should use a stronger selected lift.');
 
+expectIncludes(globals, 'invisible titlebar pressed feedback', 'Invisible titlebar controls should have a dedicated pressed-state feedback block.');
+expectIncludes(globals, ".app-shell[data-theme='invisible'] :is(.titlebar-icon-button, .titlebar-mode):active {", 'Invisible light titlebar controls should define a clear pressed state.');
+expectIncludes(globals, 'background: #000000 !important;', 'Invisible light titlebar pressed controls should invert to solid black.');
+expectIncludes(globals, 'color: #ffffff !important;', 'Invisible light titlebar pressed controls should invert icons to white.');
+expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] :is(.titlebar-icon-button, .titlebar-mode):active {", 'Invisible dark titlebar controls should define a clear pressed state.');
+expectIncludes(globals, 'background: #ffffff !important;', 'Invisible dark titlebar pressed controls should invert to solid white.');
+expectIncludes(globals, 'color: #000000 !important;', 'Invisible dark titlebar pressed controls should invert icons to black.');
+expectIncludes(globals, 'transform: translateY(1px) scale(0.94) !important;', 'Invisible titlebar pressed controls should visibly depress without changing layout.');
+
 expectIncludes(globals, "--task-action-safe-space: 4.85rem;", 'Task action column should define a shared trailing safe-space token.');
 expectIncludes(globals, ".task-subtask-row {\n  padding-right: var(--task-action-safe-space) !important;", 'Subtask rows should reserve the same trailing safe space token as the main task action column.');
 expectIncludes(globals, ".task-delete-zone,\n.task-subtask-delete-zone {\n  transform: none !important;", 'Main/subtask delete zones should not be nudged out of vertical alignment.');

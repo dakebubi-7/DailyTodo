@@ -69,7 +69,7 @@ assert.match(header, /<h1>\{dateContextLabel\}[\s\S]*\{formattedDateLabel\}<\/h1
 assert.match(mainContentComposition, /from '\.\.\/components\/AppTopContent'/, 'main-content composition helper should import AppTopContent.');
 assert.match(mainContentComposition, /const topContentProps = \{[\s\S]*headerProps,[\s\S]*dateNavigatorProps,[\s\S]*tabBarProps,[\s\S]*shellText:\s*shellText\.app,[\s\S]*selectedDateTasksForCommands,[\s\S]*onToggleDailyWorkPanel: appUiActions\.toggleDailyWorkPanel,[\s\S]*onCloseInspirationPanel: appUiActions\.closeInspirationPanel,[\s\S]*\};/, 'main-content composition helper should gather top content props.');
 assert.match(mainContentComposition, /topContent:\s*<AppTopContent \{\.\.\.topContentProps\} \/>/, 'main-content composition helper should delegate top-area rendering into AppTopContent.');
-assert.match(helper, /createAppShellMainContentComposition\(\{/, 'outer shell composition should delegate main-content prop construction.');
+assert.match(helper, /const mainContentProps = createAppShellMainContentComposition\(mainContent\);/, 'outer shell composition should delegate the grouped main-content input unchanged.');
 
 assert.match(app, /from '\.\/app\/useAppShellComposition'/, 'App should import the runtime shell composition hook.');
 assert.match(app, /const shellComposition = useAppShellComposition\(\{/, 'App should build shell composition through the runtime hook.');

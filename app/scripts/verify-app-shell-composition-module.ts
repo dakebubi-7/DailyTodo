@@ -71,7 +71,7 @@ assert.doesNotMatch(helper, /const taskListProps = \{/, 'shell composition shoul
 assert.match(overlay, /const overlayStackProps = \{[\s\S]*settingsPanelProps,[\s\S]*companionPanelProps,[\s\S]*reviewDialogProps,[\s\S]*\};/, 'overlay helper should assemble AppOverlayStack props.');
 assert.match(mainContentComposition, /const shellText = getShellText\(appSettings\.language\);/, 'main-content helper should own shell text lookup.');
 assert.doesNotMatch(helper, /const editingTemplateInitialTemplate = /, 'shell composition should not inline template initial-content derivation after overlay extraction.');
-assert.match(compositionTypes, /AppShellMainContentCompositionInputs extends AppShellMainContentCompositionOptions/, 'shell composition input contract should retain the grouped main-content calendar-task input.');
+assert.match(compositionTypes, /AppShellMainContentCompositionInputs = AppShellMainContentCompositionOptions/, 'shell composition input contract should retain the grouped main-content calendar-task input.');
 assert.match(mainContentComposition, /tasks: calendarTasks,/, 'main-content helper should pass prefiltered calendar tasks directly to DateNavigator.');
 assert.doesNotMatch(mainContentComposition, /tasks: allTasks\.filter\(\(task\) => !task\.cleared\)/, 'main-content helper should not refilter calendar tasks on every app render.');
 

@@ -30,6 +30,8 @@ assert.match(helper, /from '\.\/taskMenuWindow'/, 'mainShellController should de
 assert.match(helper, /refreshMainTrayMenu\(\{/, 'mainShellController should delegate tray menu refresh to trayMenu.');
 assert.match(helper, /createMainTray\(\{/, 'mainShellController should delegate tray creation to trayMenu.');
 assert.match(helper, /createTaskMenuWindow\(payload,\s*\{/, 'mainShellController should delegate popup creation to taskMenuWindow.');
+assert.match(helper, /closeTaskMenuWindow\(\{ clearPayload: false \}\)/, 'mainShellController should keep the next popup payload while replacing an open menu.');
+assert.match(helper, /setTaskMenuPayload\(payload\);/, 'mainShellController should re-publish the popup payload after closing a previous menu.');
 assert.match(helper, /userHidden\.setHidden\(false\)/, 'mainShellController should clear the user-hidden flag when showing the main window.');
 assert.match(helper, /userHidden\.setHidden\(true\)/, 'mainShellController should set the user-hidden flag when hiding the main window.');
 assert.match(helper, /markDesktopInteractive\(\)/, 'mainShellController should preserve desktop-mode interaction promotion when showing the main window.');

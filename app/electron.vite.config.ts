@@ -7,6 +7,9 @@ export default defineConfig({
     build: {
       outDir: 'dist-electron',
       emptyOutDir: true,
+      externalizeDeps: {
+        exclude: ['electron-store'],
+      },
       rollupOptions: {
         input: path.resolve(__dirname, 'electron/main.ts')
       }

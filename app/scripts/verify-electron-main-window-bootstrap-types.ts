@@ -9,6 +9,7 @@ const root = join(here, '..');
 const typesPath = join(root, 'electron', 'mainWindowBootstrapTypes.ts');
 const bootstrapPath = join(root, 'electron', 'mainWindowBootstrap.ts');
 const ipcRegistrationPath = join(root, 'electron', 'mainWindowIpcRegistration.ts');
+const ipcRegistrationTypesPath = join(root, 'electron', 'mainWindowIpcRegistrationTypes.ts');
 const packagePath = join(root, 'package.json');
 
 assert.ok(existsSync(typesPath), 'main-window bootstrap options should live in a dedicated type module.');
@@ -16,6 +17,7 @@ assert.ok(existsSync(typesPath), 'main-window bootstrap options should live in a
 const types = readFileSync(typesPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
 const ipcRegistration = readFileSync(ipcRegistrationPath, 'utf8');
+const ipcRegistrationTypes = readFileSync(ipcRegistrationTypesPath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
 
@@ -25,7 +27,8 @@ assert.match(types, /llmResults\?: LlmResult\[\]/, 'type module should retain th
 assert.match(types, /ensureReportLlmAvailable\(reportKind: AiReviewReportKind\): EnsureReportLlmAvailableResult/, 'type module should retain report LLM preflight typing.');
 assert.match(bootstrap, /export type \{[\s\S]*CreateMainWindowBootstrapOptions[\s\S]*\} from '\.\/mainWindowBootstrapTypes'/, 'bootstrap module should retain the established type export path.');
 assert.doesNotMatch(bootstrap, /export type CreateMainWindowBootstrapOptions\b/, 'bootstrap module should not keep the large dependency contract inline.');
-assert.match(ipcRegistration, /import type \{ CreateMainWindowBootstrapOptions \} from '\.\/mainWindowBootstrap'/, 'IPC registration should keep using the stable bootstrap type export.');
+assert.match(ipcRegistration, /from '\.\/mainWindowIpcRegistrationTypes'/, 'IPC registration should depend on its focused dependency contract.');
+assert.match(ipcRegistrationTypes, /import type \{ CreateMainWindowBootstrapOptions \} from '\.\/mainWindowBootstrap'/, 'IPC registration types should keep using the stable bootstrap type export.');
 
 assert.equal(
   scripts['verify:electron-main-window-bootstrap-types'],

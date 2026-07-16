@@ -59,7 +59,8 @@ export function areAppBehaviorSettingsEqual(
     && left.mainTaskCompletionReviewEnabled === right.mainTaskCompletionReviewEnabled
     && left.subtaskCompletionReviewEnabled === right.subtaskCompletionReviewEnabled
     && left.lockWindowPosition === right.lockWindowPosition
-    && left.minimizeToTrayOnClose === right.minimizeToTrayOnClose;
+    && left.minimizeToTrayOnClose === right.minimizeToTrayOnClose
+    && left.edgeAutoHide === right.edgeAutoHide;
 }
 
 export function shouldClearRetainedReviewsOnSettingsUpdate(nextSettings: AppBehaviorSettings): boolean {

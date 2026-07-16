@@ -67,7 +67,7 @@ assert.match(moduleSource, /computeRangeStats\(tasks, first, last\)/, 'monthly r
 assert.match(moduleSource, /generatePersonalMonthly\(\{/, 'monthly report IPC module should call the personal monthly report writer.');
 assert.match(moduleSource, /month,\s*sources,\s*stats,/s, 'monthly report IPC module should pass month, sources, and stats to the monthly report writer.');
 assert.match(moduleSource, /getObsidianTemplateSettings\(\)/, 'monthly report IPC module should read template settings for report paths.');
-assert.match(moduleSource, /relativeFilePath:\s*expandPathTemplate\(templateSettings\.monthlyPath, dateKeyToLocalDate\(selected\)\)/, 'monthly report IPC module should resolve monthly output from the template path.');
+assert.match(moduleSource, /relativeFilePath:\s*expandPathTemplate\(templateSettings\.monthlyPath, dateKeyToLocalDate\(first\)\)/, 'monthly report IPC module should resolve monthly output from the normalized monthly range start.');
 assert.match(moduleSource, /reportTemplate:\s*templateSettings\.monthlyTemplate/, 'monthly report IPC module should pass the monthly report template to generation.');
 assert.match(moduleSource, /systemPrompt:\s*settings\.monthlyPrompt/, 'monthly report IPC module should preserve monthly custom prompt selection.');
 assert.equal(

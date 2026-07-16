@@ -66,6 +66,9 @@ export type CreateMainWindowBootstrapOptions = {
   setWindowMode(win: BrowserWindow, mode: WindowMode): void;
   setAppSettings(value: unknown): AppBehaviorSettings;
   reapplyWindowZOrder(win: BrowserWindow): void;
+  setInvisibleGlassBackgroundMaterial(win: BrowserWindow, payload: unknown): boolean;
+  setNativeWindowDragRegion(win: BrowserWindow, region: import('./win32Native').NativeWindowDragRegion): boolean;
+  getCursorPosition(): import('./win32Native').Win32CursorPosition | null;
   getCompanionSettings(): CompanionSettings;
   setCompanionSettings(settings: unknown): void;
   getAiReviewSettings(): AiReviewSettings;

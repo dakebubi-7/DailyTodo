@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +31,9 @@ assert.match(helper, /document\.documentElement\.style\.fontSize = `\$\{\(14 \* 
 assert.match(helper, /export function syncAlwaysOnTopPreference\b/, 'helper should export syncAlwaysOnTopPreference.');
 assert.match(helper, /setWindowMode\?\.\(alwaysOnTop \? 'onTop' : 'normal'\)/, 'helper should explicitly synchronize the preferred window mode.');
 assert.doesNotMatch(helper, /toggleAlwaysOnTop\?\.\(\)/, 'preference sync should not invert the current window mode.');
+assert.match(helper, /export function buildInvisibleGlassSettings\b/, 'helper should export invisible-glass settings construction.');
+assert.match(helper, /export function shouldSyncInvisibleGlassSettings\b/, 'helper should export invisible-glass previous-state comparison.');
+assert.match(helper, /export function syncInvisibleGlassTheme\b/, 'helper should export invisible-glass theme synchronization.');
 
 assert.match(app, /from '\.\/app\/useAppRuntimeEffects'/, 'App should import the runtime effects hook.');
 assert.match(app, /useAppRuntimeEffects\(\{/, 'App should delegate runtime effects through the runtime hook.');
@@ -40,6 +43,21 @@ assert.match(runtimeHook, /syncDocumentThemeClasses\(taskEffects\.isDark, appSta
 assert.match(runtimeHook, /syncDocumentFontScale\(appState\.personalization\.fontScale\)/, 'runtime hook should delegate document font-scale effect.');
 assert.match(runtimeHook, /syncAlwaysOnTopPreference\(appState\.personalization\.alwaysOnTop\)/, 'runtime hook should delegate always-on-top effect.');
 assert.match(runtimeHook, /\[appState\.personalization\.alwaysOnTop\]/, 'runtime hook should resync window mode when the always-on-top preference changes.');
+assert.match(
+  runtimeHook,
+  /shouldSyncInvisibleGlassSettings\([\s\S]*previousInvisibleGlassRef\.current[\s\S]*nextInvisibleGlass/,
+  'runtime hook should skip unchanged invisible-glass payloads before native IPC.',
+);
+assert.match(
+  runtimeHook,
+  /previousInvisibleGlassRef\.current = nextInvisibleGlass/,
+  'runtime hook should remember the last synchronized invisible-glass payload.',
+);
+assert.match(
+  runtimeHook,
+  /syncInvisibleGlassTheme\([\s\S]*activeThemeId === 'invisible'[\s\S]*windowOpacity[\s\S]*blurStrength/,
+  'runtime hook should still synchronize native material when the invisible-glass payload changes.',
+);
 assert.doesNotMatch(app, /document\.documentElement\.classList\.toggle\('dark', isDark\)/, 'App should not inline dark class toggling.');
 assert.doesNotMatch(app, /document\.documentElement\.style\.fontSize = `\$\{\(14 \* scale\) \/ 100\}px`/, 'App should not inline font-size formula.');
 assert.equal(scripts['verify:app-shell-effects-module'], 'tsx scripts/verify-app-shell-effects-module.ts', 'package.json should expose the focused shell effects verifier.');

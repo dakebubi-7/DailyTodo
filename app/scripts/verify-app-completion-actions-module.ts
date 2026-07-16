@@ -59,7 +59,8 @@ assert.match(shellCompositionHook, /const completionActions = useMemo\(\(\) => c
 assert.match(shellInputs, /completionActions,/, 'Pure shell-inputs helper should pass completion actions into the shell composition helper.');
 assert.match(shellMainContentComposition, /const taskListProps = \{[\s\S]*onToggle: completionActions\.toggleTask,[\s\S]*onViewReview: completionActions\.viewCompletion,[\s\S]*onToggleSubtask: completionActions\.toggleSubtask,[\s\S]*onViewSubtaskReview: completionActions\.viewCompletion,[\s\S]*onChangeSubtaskPriority: completionActions\.changeSubtaskPriority,[\s\S]*\};/, 'main-content composition helper should gather TaskList completion props.');
 assert.match(mainContent, /<TaskList \{\.\.\.taskListProps\} \/>/, 'AppMainContent should forward TaskList props.');
-assert.match(shellHelper, /createAppShellOverlayComposition\(\{[\s\S]*completionActions,[\s\S]*\}\);/, 'shell composition helper should pass completion actions into the overlay prop helper.');
+assert.match(shellInputs, /overlay: \{[\s\S]*completionActions,[\s\S]*\},/, 'Shell input composition should place completion actions in the overlay group.');
+assert.match(shellHelper, /const overlayStackProps = createAppShellOverlayComposition\(overlay\);/, 'shell composition helper should delegate grouped overlay inputs unchanged.');
 assert.match(overlayHelper, /const completionDialogProps = \{[\s\S]*onSave: completionActions\.completeWithReview,[\s\S]*onCompleteWithoutReview: completionActions\.completeWithoutReview,[\s\S]*\};/, 'overlay composition helper should route completion dialog actions through the overlay prop bag.');
 assert.match(overlay, /<TaskCompletionDialog \{\.\.\.completionDialogProps\} \/>/, 'AppOverlayStack should forward completion dialog props.');
 assert.doesNotMatch(app, /const taskListProps = \{/, 'App should not inline TaskList props once shell composition owns them.');

@@ -1,4 +1,4 @@
-import {
+﻿import {
   type Dispatch,
   type MutableRefObject,
   type SetStateAction,
@@ -26,6 +26,7 @@ export function RangeControl({
   max,
   unit = '',
   onChange,
+  onPreview,
   defaultValue,
   resetTitle,
 }: {
@@ -36,11 +37,38 @@ export function RangeControl({
   max: number;
   unit?: string;
   onChange: (value: number) => void;
+  /** Live visual preview while dragging; does not commit React personalization state. */
+  onPreview?: (value: number) => void;
   defaultValue?: number;
   resetTitle?: string;
 }) {
+  const [draft, setDraft] = useState(value);
+  const draggingRef = useRef(false);
+
+  useEffect(() => {
+    if (!draggingRef.current) {
+      setDraft(value);
+    }
+  }, [value]);
+
+  const commit = (next: number) => {
+    setDraft(next);
+    onChange(next);
+  };
+
+  const preview = (next: number) => {
+    setDraft(next);
+    if (onPreview) {
+      onPreview(next);
+      return;
+    }
+    onChange(next);
+  };
+
   const handleReset = () => {
-    if (typeof defaultValue === 'number') onChange(defaultValue);
+    if (typeof defaultValue !== 'number') return;
+    draggingRef.current = false;
+    commit(defaultValue);
   };
   const title = typeof defaultValue === 'number' ? resetTitle : undefined;
 
@@ -56,12 +84,28 @@ export function RangeControl({
           type="range"
           min={min}
           max={max}
-          value={value}
+          value={draft}
           onDoubleClick={handleReset}
-          onChange={(event) => onChange(Number(event.target.value))}
+          onPointerDown={() => {
+            draggingRef.current = true;
+          }}
+          onPointerUp={(event) => {
+            draggingRef.current = false;
+            commit(Number(event.currentTarget.value));
+          }}
+          onPointerCancel={() => {
+            draggingRef.current = false;
+          }}
+          onInput={(event) => preview(Number(event.currentTarget.value))}
+          onChange={(event) => {
+            // Keyboard / accessibility path commits immediately.
+            if (!draggingRef.current) {
+              commit(Number(event.currentTarget.value));
+            }
+          }}
           title={title}
         />
-        <b>{value}{unit}</b>
+        <b>{draft}{unit}</b>
       </div>
     </label>
   );

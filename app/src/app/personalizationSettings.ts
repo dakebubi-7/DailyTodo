@@ -118,5 +118,13 @@ export function rememberThemeOverride(
 ): Record<string, ThemeOpacityOverride> {
   const themeId = next.themeId;
   if (!themeId) return previous;
-  return { ...previous, [themeId]: extractOpacityOverride(next) };
+  const nextOverride = extractOpacityOverride(next);
+  const previousOverride = previous[themeId];
+  if (
+    previousOverride
+    && OPACITY_KEYS.every((key) => previousOverride[key] === nextOverride[key])
+  ) {
+    return previous;
+  }
+  return { ...previous, [themeId]: nextOverride };
 }

@@ -1,9 +1,9 @@
 import type { ObsidianTemplateSettings } from '../shared/appSettings';
 import { writeObsidianSyncBlogDraftOutput } from './obsidianSyncBlogDraftOutput';
 import { createObsidianDailyNoteSyncHelpers } from './obsidianSyncDailyNote';
-import { getDatesAffectedBySync } from './obsidianSyncPlanning';
 import { createObsidianSyncPreviewHelper } from './obsidianSyncPreview';
-import { readObsidianSyncInput, type ObsidianSyncTask } from './obsidianSyncValidation';
+import { createObsidianSyncRequestReader } from './obsidianSyncRequest';
+import type { ObsidianSyncTask } from './obsidianSyncValidation';
 import type { VaultStatus } from './sharedTypes';
 
 type CreateObsidianSyncHelpersOptions = {
@@ -54,6 +54,8 @@ export function createObsidianSyncHelpers({
     getDailyFilePath,
     triggerOverviewUpdate,
     readDailyNoteFileIfPresent,
+    prepareDailyNoteSync,
+    commitDailyNoteSync,
     syncOneDailyNote,
   } = createObsidianDailyNoteSyncHelpers({
     getDateKey,
@@ -73,6 +75,12 @@ export function createObsidianSyncHelpers({
     getDailyFilePath,
     readDailyNoteFileIfPresent,
   });
+  const readSyncRequest = createObsidianSyncRequestReader({
+    getDateKey,
+    getTaskDate,
+    getReviewDate,
+    getVaultStatus,
+  });
 
   function syncTasksToObsidian(
     tasks: unknown,
@@ -81,28 +89,23 @@ export function createObsidianSyncHelpers({
     inspiration: unknown = '',
     beforeTasks?: unknown,
   ) {
-    const vaultStatus = getVaultStatus();
-    if (!vaultStatus.ok || !vaultStatus.vaultPath) return { ok: false, reason: vaultStatus.reason };
-    const input = readObsidianSyncInput(tasks, date, dailyWork, inspiration, beforeTasks);
-    if (!input.ok) return { ok: false, reason: input.error };
-
-    const selected = getDateKey(input.value.date);
-    const affectedDates = getDatesAffectedBySync(
-      input.value.tasks,
-      selected,
-      { getTaskDate, getReviewDate },
-      input.value.beforeTasks,
-    );
+    const request = readSyncRequest(tasks, date, dailyWork, inspiration, beforeTasks);
+    if (!request.ok) return { ok: false, reason: request.error };
+    const { input, selected, affectedDates } = request.value;
     let selectedResult: { filePath: string; nextContent: string; didWrite: boolean };
 
     try {
-      selectedResult = syncOneDailyNote(input.value.tasks, selected, input.value.dailyWork, input.value.inspiration, true);
-
-      affectedDates
-        .filter((affectedDate) => affectedDate !== selected)
-        .forEach((affectedDate) => {
-          syncOneDailyNote(input.value.tasks, affectedDate);
-        });
+      const plans = prepareDailyNoteSync(
+        input.value.tasks,
+        affectedDates,
+        selected,
+        input.value.dailyWork,
+        input.value.inspiration,
+      );
+      const selectedPlan = plans.find((plan) => plan.date === selected);
+      if (!selectedPlan) throw new Error(`Selected daily note plan is missing: ${selected}`);
+      commitDailyNoteSync(plans, selected);
+      selectedResult = selectedPlan;
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) };
     }
@@ -128,38 +131,32 @@ export function createObsidianSyncHelpers({
     inspiration: unknown = '',
     beforeTasks?: unknown,
   ) {
-    const vaultStatus = getVaultStatus();
-    if (!vaultStatus.ok || !vaultStatus.vaultPath) {
+    const request = readSyncRequest(tasks, date, dailyWork, inspiration, beforeTasks);
+    if (!request.ok) {
       return {
         files: [],
         managedBlocks: [],
         taskCount: 0,
         completionRecordCount: 0,
         deletedReviewWillDisappear: false,
-        error: vaultStatus.reason,
-      };
-    }
-    const input = readObsidianSyncInput(tasks, date, dailyWork, inspiration, beforeTasks);
-    if (!input.ok) {
-      return {
-        files: [],
-        managedBlocks: [],
-        taskCount: 0,
-        completionRecordCount: 0,
-        deletedReviewWillDisappear: false,
-        error: input.error,
+        error: request.error,
       };
     }
 
-    const selected = getDateKey(input.value.date);
-    const affectedDates = getDatesAffectedBySync(
-      input.value.tasks,
-      selected,
-      { getTaskDate, getReviewDate },
-      input.value.beforeTasks,
-    );
+    const { input, selected, affectedDates, vaultStatus } = request.value;
     try {
-      return buildObsidianSyncPreview(input.value, selected, affectedDates, vaultStatus);
+      const preview = buildObsidianSyncPreview(input.value, selected, affectedDates, vaultStatus);
+      const plans = prepareDailyNoteSync(
+        input.value.tasks,
+        affectedDates,
+        selected,
+        input.value.dailyWork,
+        input.value.inspiration,
+      );
+      return {
+        ...preview,
+        markerWarnings: plans.flatMap((plan) => plan.markerWarnings.map((warning) => `${plan.filePath}: ${warning}`)),
+      };
     } catch (error) {
       return {
         files: [],

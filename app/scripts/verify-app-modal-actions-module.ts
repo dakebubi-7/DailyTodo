@@ -56,8 +56,10 @@ assert.match(
   'Runtime shell composition hook should preserve modal action references until their captured inputs change.',
 );
 assert.match(shellInputs, /appModalActions,/, 'Pure shell-inputs helper should pass modal actions into the shell composition helper.');
-assert.match(shellHelper, /const titleBarProps = \{[\s\S]*onToggleCompactMode: appModalActions\.toggleCompactMode,[\s\S]*onToggleSettings: appModalActions\.toggleSettings,[\s\S]*onToggleLockWindowPosition: appModalActions\.toggleLockWindowPosition,[\s\S]*\};/, 'shell composition helper should route TitleBar modal actions.');
-assert.match(shellHelper, /createAppShellOverlayComposition\(\{[\s\S]*appModalActions,[\s\S]*\}\);/, 'shell composition helper should pass modal actions into the overlay prop helper.');
+assert.match(shellInputs, /titleBar: \{[\s\S]*appModalActions,[\s\S]*\},/, 'Shell input composition should place modal actions in the title-bar group.');
+assert.match(shellInputs, /overlay: \{[\s\S]*appModalActions,[\s\S]*\},/, 'Shell input composition should place modal actions in the overlay group.');
+assert.match(shellHelper, /const titleBarProps = \{[\s\S]*onToggleCompactMode: titleBar\.appModalActions\.toggleCompactMode,[\s\S]*onToggleSettings: titleBar\.appModalActions\.toggleSettings,[\s\S]*onToggleLockWindowPosition: titleBar\.appModalActions\.toggleLockWindowPosition,[\s\S]*\};/, 'shell composition helper should route grouped TitleBar modal actions.');
+assert.match(shellHelper, /const overlayStackProps = createAppShellOverlayComposition\(overlay\);/, 'shell composition helper should delegate grouped overlay inputs unchanged.');
 assert.match(overlayHelper, /const settingsPanelProps = \{[\s\S]*onEditTemplate: appModalActions\.editTemplate,[\s\S]*onClose: appModalActions\.closeSettings,[\s\S]*onOpenCompanionSettings: appModalActions\.openCompanionSettings,[\s\S]*\};/, 'overlay composition helper should route SettingsPanel modal actions through the overlay prop bag.');
 assert.match(overlayHelper, /const companionPanelProps = \{[\s\S]*onClose: appModalActions\.closeCompanion,[\s\S]*\};/, 'overlay composition helper should route Companion close through the overlay prop bag.');
 assert.match(overlayHelper, /const completionDialogProps = \{[\s\S]*onCancel: appModalActions\.cancelCompletion,[\s\S]*\};/, 'overlay composition helper should route completion cancel through the overlay prop bag.');

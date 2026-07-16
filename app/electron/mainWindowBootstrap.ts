@@ -3,6 +3,10 @@
 } from './mainWindowIpcRegistration';
 import { type SetupMainBrowserWindowOptions } from './mainWindowFactory';
 import { registerMainWindowEventHandlers } from './mainWindowEvents';
+import { createPerformanceFrostController } from './performanceFrostController';
+import { screen } from 'electron';
+import { createEdgeAutoHideController } from './edgeAutoHideController';
+import { createEdgeAutoHideActivationStrip } from './edgeAutoHideActivationStrip';
 import type { CreateMainWindowBootstrapOptions } from './mainWindowBootstrapTypes';
 
 export type {
@@ -28,6 +32,36 @@ export function createMainWindowBootstrap(options: CreateMainWindowBootstrapOpti
   settingsMode,
   } = options;
 
+  const performanceFrost = createPerformanceFrostController({
+    applyGlass: (settings) => {
+      options.setInvisibleGlassBackgroundMaterial(win, settings);
+    },
+    notifyRenderer: (active) => {
+      if (!win.isDestroyed()) win.webContents.send('window:performanceFrostChanged', active);
+    },
+  });
+  let edgeAutoHide: ReturnType<typeof createEdgeAutoHideController>;
+  const activationStrip = createEdgeAutoHideActivationStrip({
+    activate: () => edgeAutoHide?.noteActivationStripActivated(),
+    diag,
+  });
+  edgeAutoHide = createEdgeAutoHideController({
+    win,
+    getWorkAreaForBounds: (bounds) => screen.getDisplayMatching(bounds).workArea,
+    getCursorPosition: () => {
+      // Electron window bounds are DIP; Win32 GetCursorPos is physical pixels.
+      // Using mismatched units makes the 8px side strip unhittable on high-DPI displays.
+      try {
+        return screen.getCursorScreenPoint();
+      } catch {
+        return options.getCursorPosition();
+      }
+    },
+    isEnabled: () => options.getAppSettings().edgeAutoHide,
+    diag,
+    activationStrip,
+  });
+
   return {
     scheduleAiTimers,
     createTray: () => {
@@ -47,7 +81,10 @@ export function createMainWindowBootstrap(options: CreateMainWindowBootstrapOpti
       markQuitting,
       persistWindowState,
       settingsMode,
+      performanceFrost,
+      edgeAutoHide,
     }),
-    ...createMainWindowIpcRegistrations(options),
+    ...createMainWindowIpcRegistrations({ ...options, performanceFrost, edgeAutoHide }),
   };
 }
+

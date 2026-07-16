@@ -62,7 +62,7 @@ export const TitleBar = memo(function TitleBar({
   };
 
   return (
-    <div className="titlebar" style={{ WebkitAppRegion: lockWindowPosition ? 'no-drag' : 'drag' }}>
+    <div className="titlebar" style={{ WebkitAppRegion: 'no-drag' }}>
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}

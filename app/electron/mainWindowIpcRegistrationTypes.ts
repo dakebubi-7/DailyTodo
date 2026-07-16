@@ -1,10 +1,13 @@
 ﻿import type { CreateMainWindowBootstrapOptions } from './mainWindowBootstrap';
 import type { SetupMainBrowserWindowOptions } from './mainWindowFactory';
+import type { PerformanceFrostController } from './performanceFrostController';
+import type { EdgeAutoHideController } from './edgeAutoHideController';
 
 export type MainWindowIpcRegistrationOptions = Pick<
   CreateMainWindowBootstrapOptions,
   | 'win'
   | 'store'
+  | 'diag'
   | 'scheduleAiTimers'
   | 'getTaskMenuWindow'
   | 'openTaskMenuWindow'
@@ -22,6 +25,8 @@ export type MainWindowIpcRegistrationOptions = Pick<
   | 'setWindowMode'
   | 'setAppSettings'
   | 'reapplyWindowZOrder'
+  | 'setInvisibleGlassBackgroundMaterial'
+  | 'setNativeWindowDragRegion'
   | 'getCompanionSettings'
   | 'setCompanionSettings'
   | 'getAiReviewSettings'
@@ -51,7 +56,10 @@ export type MainWindowIpcRegistrationOptions = Pick<
   | 'previewTasksToObsidian'
   | 'buildDailyTemplate'
   | 'triggerOverviewUpdate'
->;
+> & {
+  performanceFrost: Pick<PerformanceFrostController, 'setConfiguredGlass'>;
+  edgeAutoHide: Pick<EdgeAutoHideController, 'noteResizeOrReset' | 'noteSettingsMode' | 'noteWindowModeChanged' | 'reconcileSettings'>;
+};
 
 export type MainWindowIpcRegistrations = Pick<
   SetupMainBrowserWindowOptions,

@@ -1,14 +1,24 @@
-import { useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from 'react';
+﻿import { useEffect, useRef, type Dispatch, type RefObject, type SetStateAction } from 'react';
 import { getCompanionSettings, getObsidianTemplateSettings } from '../store/taskStore';
 import { useFloatingScrollbar } from '../hooks/useFloatingScrollbar';
 import type { Task } from '../types/task';
 import { registerAiReviewLifecycle, requestAiReviewOnboarding } from './appAiReviewLifecycle';
 import { registerAppKeyboardShortcutListener } from './appKeyboardShortcuts';
-import { syncAlwaysOnTopPreference, syncDocumentFontScale, syncDocumentThemeClasses, syncSettingsMode } from './appShellEffects';
+import {
+  buildInvisibleGlassSettings,
+  shouldSyncInvisibleGlassSettings,
+  syncAlwaysOnTopPreference,
+  syncDocumentFontScale,
+  syncDocumentThemeClasses,
+  syncInvisibleGlassTheme,
+  syncNativeWindowRadius,
+  syncSettingsMode,
+} from './appShellEffects';
 import { loadAppStartupState } from './appStartupSettings';
 import { persistAppUiState } from './appUiStatePersistence';
 import { registerTaskMenuActionListener } from './taskMenuActions';
 import type { AppLocalState } from './useAppLocalState';
+import type { InvisibleGlassSettings } from '../../shared/invisibleGlass';
 
 export interface AppRuntimeTaskEffects {
   allTasks: Task[];
@@ -52,6 +62,33 @@ export function useAppRuntimeEffects({
   useEffect(() => {
     syncAlwaysOnTopPreference(appState.personalization.alwaysOnTop);
   }, [appState.personalization.alwaysOnTop]);
+
+  useEffect(() => {
+    syncNativeWindowRadius(appState.personalization.radius);
+  }, [appState.personalization.radius]);
+
+  const previousInvisibleGlassRef = useRef<InvisibleGlassSettings | null>(null);
+
+  useEffect(() => {
+    const nextInvisibleGlass = buildInvisibleGlassSettings(
+      activeThemeId === 'invisible',
+      appState.personalization.windowOpacity,
+      appState.personalization.blurStrength,
+    );
+    if (!shouldSyncInvisibleGlassSettings(previousInvisibleGlassRef.current, nextInvisibleGlass)) {
+      return;
+    }
+    previousInvisibleGlassRef.current = nextInvisibleGlass;
+    syncInvisibleGlassTheme(
+      activeThemeId === 'invisible',
+      appState.personalization.windowOpacity,
+      appState.personalization.blurStrength,
+    );
+  }, [
+    activeThemeId,
+    appState.personalization.blurStrength,
+    appState.personalization.windowOpacity,
+  ]);
 
   useEffect(() => {
     loadAppStartupState({

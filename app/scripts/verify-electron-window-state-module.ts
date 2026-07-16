@@ -27,8 +27,38 @@ for (const exportName of [
 }
 
 assert.match(windowState, /export type WindowState/, 'windowState should export the WindowState type.');
-assert.match(windowState, /SETTINGS_WINDOW_WIDTH = 720/, 'windowState should own settings-mode width.');
+assert.match(windowState, /SETTINGS_WINDOW_WIDTH = 800/, 'windowState should own settings-mode width.');
 assert.match(windowState, /width: DEFAULT_WINDOW_WIDTH/, 'windowState should normalize settings-sized windows back to widget width.');
+assert.match(
+  windowState,
+  /from '\.\/unknownValueGuards'/,
+  'windowState should reuse the shared object-record guard.',
+);
+assert.match(
+  windowState,
+  /isObjectRecord\(saved\)/,
+  'normalizeRestoredWindowState should reject non-record store payloads with isObjectRecord.',
+);
+assert.doesNotMatch(
+  windowState,
+  /saved as WindowState/,
+  'normalizeRestoredWindowState should not cast unknown store payloads as WindowState.',
+);
+assert.match(
+  windowState,
+  /function readFiniteNumber\b|const readFiniteNumber\b|typeof value === 'number' && Number\.isFinite\(value\)/,
+  'normalizeRestoredWindowState should accept only finite numeric window bounds fields.',
+);
+assert.match(
+  windowState,
+  /readFiniteNumber\(record\.width\)|typeof record\.width === 'number' && Number\.isFinite\(record\.width\)/,
+  'normalizeRestoredWindowState should narrow width from the unknown store record.',
+);
+assert.match(
+  windowState,
+  /readFiniteNumber\(record\.height\)|typeof record\.height === 'number' && Number\.isFinite\(record\.height\)/,
+  'normalizeRestoredWindowState should narrow height from the unknown store record.',
+);
 
 assert.match(main, /from '\.\/windowState'/, 'main should import window state helpers from windowState.');
 assert.doesNotMatch(main, /function getSettingsWindowWidth\b/, 'main should not define getSettingsWindowWidth inline.');

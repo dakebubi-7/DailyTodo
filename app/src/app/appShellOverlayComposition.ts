@@ -9,7 +9,7 @@ import { createAppModalActions } from './appModalActions';
 import { createAppPersonalizationActions } from './appPersonalization';
 import { createAppCompletionActions } from './appCompletionActions';
 import { getInitialTemplateForKind, type AppTemplateKind } from './appTemplateEditor';
-import type { AppOverlayStack } from '../components/AppOverlayStack';
+import { getTaskDialogIsolation, type AppOverlayStack } from '../components/AppOverlayStack';
 import type { ObsidianCompanionPanel } from '../components/ObsidianCompanionPanel';
 import type { SettingsPanel } from '../components/SettingsPanel';
 
@@ -137,6 +137,10 @@ export function createAppShellOverlayComposition({
     onAddRecord: appModalActions.addCompletionRecord,
     onDeleteRecord: deleteTaskReview,
   };
+  const { inert: isTaskDialogOpen } = getTaskDialogIsolation({
+    completionTask: completionDialogProps.task,
+    reviewTask: reviewDialogProps.task,
+  });
   const overlayStackProps = {
     settingsPanelProps,
     aiOnboarding,
@@ -149,6 +153,7 @@ export function createAppShellOverlayComposition({
     companionPanelProps,
     completionDialogProps,
     reviewDialogProps,
+    isTaskDialogOpen,
   };
 
   return overlayStackProps;

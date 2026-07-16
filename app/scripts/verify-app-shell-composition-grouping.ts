@@ -18,8 +18,8 @@ const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
 
 assert.match(types, /export interface AppShellTitleBarCompositionInputs\b/, 'shell types should define title-bar inputs.');
-assert.match(types, /export interface AppShellMainContentCompositionInputs\b/, 'shell types should define main-content inputs.');
-assert.match(types, /export interface AppShellOverlayCompositionInputs\b/, 'shell types should define overlay inputs.');
+assert.match(types, /export type AppShellMainContentCompositionInputs = AppShellMainContentCompositionOptions;/, 'shell types should define main-content inputs.');
+assert.match(types, /export type AppShellOverlayCompositionInputs = AppShellOverlayCompositionOptions;/, 'shell types should define overlay inputs.');
 assert.match(types, /export interface AppShellCompositionOptions \{[\s\S]*titleBar: AppShellTitleBarCompositionInputs;[\s\S]*mainContent: AppShellMainContentCompositionInputs;[\s\S]*overlay: AppShellOverlayCompositionInputs;[\s\S]*\}/, 'shell options should group inputs by rendered region.');
 assert.match(inputs, /return \{[\s\S]*titleBar: \{[\s\S]*mainContent: \{[\s\S]*overlay: \{[\s\S]*\};/, 'input factory should return the three shell input groups.');
 assert.match(inputs, /titleBar: \{[\s\S]*compactMode: appState\.compactMode,[\s\S]*language: taskState\.appSettings\.language,[\s\S]*appModalActions,[\s\S]*\}/, 'input factory should source title-bar inputs from existing state and actions.');

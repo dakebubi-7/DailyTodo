@@ -10,8 +10,10 @@ const modulePath = join(root, 'electron', 'userHiddenState.ts');
 const mainPath = join(root, 'electron', 'main.ts');
 const shellControllerPath = join(root, 'electron', 'mainShellController.ts');
 const bootstrapPath = join(root, 'electron', 'mainWindowBootstrap.ts');
+const bootstrapTypesPath = join(root, 'electron', 'mainWindowBootstrapTypes.ts');
 const eventsPath = join(root, 'electron', 'mainWindowEvents.ts');
 const desktopWindowModePath = join(root, 'electron', 'desktopWindowMode.ts');
+const desktopWidgetStateApplierPath = join(root, 'electron', 'desktopWidgetStateApplier.ts');
 const desktopVerifierPath = join(root, 'scripts', 'verify-electron-desktop-window-mode-module.ts');
 const shellVerifierPath = join(root, 'scripts', 'verify-electron-main-shell-controller-module.ts');
 const packagePath = join(root, 'package.json');
@@ -22,8 +24,10 @@ const helper = readFileSync(modulePath, 'utf8');
 const main = readFileSync(mainPath, 'utf8');
 const shellController = readFileSync(shellControllerPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
+const bootstrapTypes = readFileSync(bootstrapTypesPath, 'utf8');
 const events = readFileSync(eventsPath, 'utf8');
 const desktopWindowMode = readFileSync(desktopWindowModePath, 'utf8');
+const desktopWidgetStateApplier = readFileSync(desktopWidgetStateApplierPath, 'utf8');
 const desktopVerifier = readFileSync(desktopVerifierPath, 'utf8');
 const shellVerifier = readFileSync(shellVerifierPath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
@@ -48,8 +52,9 @@ assert.match(shellController, /userHidden\.setHidden\(false\)/, 'mainShellContro
 assert.match(shellController, /userHidden\.setHidden\(true\)/, 'mainShellController should set user-hidden state when hiding the main window.');
 assert.doesNotMatch(shellController, /setUserHidden\(/, 'mainShellController should not use a bespoke setUserHidden callback after extraction.');
 
-assert.match(bootstrap, /from '\.\/userHiddenState'/, 'mainWindowBootstrap should import the shared UserHiddenState type.');
-assert.match(bootstrap, /userHidden:\s*Pick<UserHiddenState,\s*'isHidden'>;/, 'mainWindowBootstrap should depend only on user-hidden reads.');
+assert.match(bootstrapTypes, /from '\.\/userHiddenState'/, 'mainWindowBootstrapTypes should import the shared UserHiddenState type.');
+assert.match(bootstrapTypes, /userHidden:\s*Pick<UserHiddenState,\s*'isHidden'>;/, 'mainWindowBootstrapTypes should depend only on user-hidden reads.');
+assert.match(bootstrap, /from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should depend on its focused dependency contract.');
 assert.match(bootstrap, /userHidden,\s*\n\s*getWindowMode/, 'mainWindowBootstrap should forward userHidden into main-window events.');
 assert.doesNotMatch(bootstrap, /getUserHidden:\s*\(\)\s*=>/, 'mainWindowBootstrap should not require a separate user-hidden getter callback after extraction.');
 
@@ -61,7 +66,9 @@ assert.doesNotMatch(events, /getUserHidden\(\)/, 'mainWindowEvents should not ke
 
 assert.match(desktopWindowMode, /from '\.\/userHiddenState'/, 'desktopWindowMode should import the shared UserHiddenState type.');
 assert.match(desktopWindowMode, /userHidden:\s*Pick<UserHiddenState,\s*'isHidden'>;/, 'desktopWindowMode should depend on the shared user-hidden read surface.');
-assert.match(desktopWindowMode, /!userHidden\.isHidden\(\) && !win\.isVisible\(\)/, 'desktopWindowMode should preserve hidden-state guarded showInactive behavior.');
+assert.match(desktopWindowMode, /createDesktopWidgetStateApplier\(\{ diag, getWindowMode, userHidden, getWin32 \}\)/, 'desktopWindowMode should pass user-hidden state into the focused desktop state applier.');
+assert.match(desktopWidgetStateApplier, /from '\.\/userHiddenState'/, 'desktopWidgetStateApplier should import the shared UserHiddenState type.');
+assert.match(desktopWidgetStateApplier, /!userHidden\.isHidden\(\) && !win\.isVisible\(\)/, 'desktopWidgetStateApplier should preserve hidden-state guarded showInactive behavior.');
 assert.doesNotMatch(desktopWindowMode, /getUserHidden\(\)/, 'desktopWindowMode should not keep the old getUserHidden callback.');
 
 assert.match(desktopVerifier, /userHidden\\\.isHidden/, 'desktop-window-mode verifier should follow the shared userHidden state boundary.');

@@ -81,6 +81,8 @@ const aiReviewSettingsAccessors = createAppStateAccessors({
   devObsidianPath: '',
   zh: (text) => text,
 });
+// Initialization may migrate legacy plaintext settings; measure only the setter call below.
+aiReviewSettingsWrites = 0;
 aiReviewSettingsAccessors.setAiReviewSettings(aiReviewSettings);
 assert.equal(
   aiReviewSettingsWrites,

@@ -61,6 +61,9 @@ const {
   win32,
   applyToolWindowStyle,
   applyNativeBackgroundMaterial,
+  setInvisibleGlassBackgroundMaterial,
+  setNativeWindowDragRegion,
+  getCursorPosition,
 } = createWin32NativeHelpers({
   diag,
 });
@@ -157,6 +160,9 @@ const { createWindow } = createMainWindowComposition({
     app.quit();
   },
   applyNativeBackgroundMaterial,
+  setInvisibleGlassBackgroundMaterial,
+  setNativeWindowDragRegion,
+  getCursorPosition,
   applyToolWindowStyle,
   runtimeState,
   appQuitState,

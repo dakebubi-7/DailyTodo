@@ -14,6 +14,7 @@ const appStateAccessorsPath = join(root, 'electron', 'appStateAccessors.ts');
 const dailyNoteContentPath = join(root, 'electron', 'obsidianDailyNoteContent.ts');
 const shellControllerPath = join(root, 'electron', 'mainShellController.ts');
 const bootstrapPath = join(root, 'electron', 'mainWindowBootstrap.ts');
+const bootstrapTypesPath = join(root, 'electron', 'mainWindowBootstrapTypes.ts');
 const compositionPath = join(root, 'electron', 'mainWindowComposition.ts');
 const packagePath = join(root, 'package.json');
 
@@ -27,6 +28,7 @@ const appStateAccessors = readFileSync(appStateAccessorsPath, 'utf8');
 const dailyNoteContent = readFileSync(dailyNoteContentPath, 'utf8');
 const shellController = readFileSync(shellControllerPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
+const bootstrapTypes = readFileSync(bootstrapTypesPath, 'utf8');
 const composition = readFileSync(compositionPath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
@@ -47,7 +49,8 @@ assert.match(composition, /createMainWindowBootstrap\(\{[\s\S]*?\.\.\.bootstrapD
 assert.match(appStateAccessors, /zh\(text: string\): string;/, 'appStateAccessors should continue to depend on a localizer callback.');
 assert.match(dailyNoteContent, /zh\(text: string\): string;/, 'obsidianDailyNoteContent should continue to depend on a localizer callback.');
 assert.match(shellController, /zh\(text: string\): string;/, 'mainShellController should continue to depend on a localizer callback.');
-assert.match(bootstrap, /zh\(text: string\): string;/, 'mainWindowBootstrap should continue to depend on a localizer callback.');
+assert.match(bootstrap, /from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should depend on its focused dependency contract.');
+assert.match(bootstrapTypes, /zh\(text: string\): string;/, 'mainWindowBootstrapTypes should continue to define the localizer callback.');
 
 assert.equal(
   scripts['verify:electron-main-localization-module'],

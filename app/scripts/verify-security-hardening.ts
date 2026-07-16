@@ -62,8 +62,33 @@ const companion = readFileSync(new URL('../electron/obsidianCompanion.ts', impor
 assert.match(companion, /import \{ writeTextFileAtomic \} from '\.\/fileWrite'/, 'companion sync should import atomic writes');
 assert.match(companion, /writeTextFileAtomic\(change\.filePath, next\)/, 'companion sync should use atomic writes');
 const daily = readFileSync(new URL('../electron/obsidianSyncDailyNote.ts', import.meta.url), 'utf8');
-assert.match(daily, /import \{ writeTextFileAtomic \} from '\.\/fileWrite'/, 'daily note sync should import atomic writes');
-assert.match(daily, /writeTextFileAtomic\(filePath, nextContent\)/, 'daily note sync should use atomic writes');
+const fileWrite = readFileSync(new URL('../electron/fileWrite.ts', import.meta.url), 'utf8');
+assert.match(daily, /readTextFileWithStamp/, 'daily note sync should read stamped file snapshots');
+assert.match(
+  daily,
+  /writeTextFileAtomicIfUnchanged\(plan\.filePath, plan\.nextContent, plan\.stamp\)/,
+  'daily note sync should conditionally atomically replace the preflighted plan snapshot',
+);
+assert.doesNotMatch(
+  daily,
+  /writeTextFileAtomic\(filePath, nextContent\)/,
+  'daily note sync must not restore unconditional direct daily-note writes',
+);
+assert.match(
+  fileWrite,
+  /current\.stamp\.contentHash === expected\.contentHash/,
+  'conditional daily-note writes should compare the preflight content hash',
+);
+assert.match(
+  fileWrite,
+  /Daily note changed externally before sync/,
+  'conditional daily-note writes should expose external-change conflicts',
+);
+assert.match(
+  fileWrite,
+  /writeTextFileAtomic\(filePath, content\)/,
+  'conditional daily-note writes should use the existing atomic replacement only after comparison',
+);
 const companionIpc = readFileSync(new URL('../electron/companionIpc.ts', import.meta.url), 'utf8');
 assert.match(companionIpc, /getCompanionSettings\(\)\.mobileInboxPath/, 'companion IPC should bind mobile inbox import to configured path');
 assert.match(companionIpc, /resolvedRequestedPath !== resolvedConfiguredPath/, 'companion IPC should reject non-configured mobile inbox paths');

@@ -30,6 +30,33 @@ export type SetupMainBrowserWindowOptions = {
   registerObsidianIpc(): void;
 };
 
+type MainWindowVisualOptions = {
+  transparent: boolean;
+  backgroundColor: string;
+  hasShadow?: boolean;
+};
+
+export function getMainWindowVisualOptions(
+  platform = process.platform,
+  _operatingSystemRelease?: string,
+): MainWindowVisualOptions {
+  void _operatingSystemRelease;
+  if (platform === 'win32') {
+    // Invisible glass always uses the Win32 acrylic path, which needs a transparent host
+    // so intermediate blur/tint values remain visible on Windows 10 and Windows 11.
+    return {
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: false,
+    };
+  }
+
+  return {
+    transparent: true,
+    backgroundColor: '#00000000',
+  };
+}
+
 export function createMainBrowserWindow({
   bounds,
   minWindowWidth,
@@ -38,14 +65,14 @@ export function createMainBrowserWindow({
   applyNativeBackgroundMaterial,
   applyToolWindowStyle,
 }: CreateMainBrowserWindowOptions): BrowserWindow {
+  const visualOptions = getMainWindowVisualOptions();
   const win = new BrowserWindow({
     ...bounds,
     minWidth: minWindowWidth,
     minHeight: 480,
     frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    hasShadow: true,
+    ...visualOptions,
+    hasShadow: visualOptions.hasShadow ?? true,
     skipTaskbar: true,
     resizable: true,
     show: false,

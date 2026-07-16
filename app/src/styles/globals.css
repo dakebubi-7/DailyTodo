@@ -1728,6 +1728,8 @@ button, .select-none {
 
 /* Header, capture, titlebar and personalization refinement */
 .titlebar {
+  position: relative;
+  z-index: 45;
   display: flex;
   height: 2rem;
   align-items: center;
@@ -2116,13 +2118,22 @@ button, .select-none {
 
 .settings-panel {
   position: absolute;
-  left: max(15rem, calc(100% - 34rem - 0.75rem));
+  /*
+    Settings mode layout:
+    - left strip stays the normal compact todo width (15rem ? default widget)
+    - right side is the settings panel and takes the remaining width
+    Do NOT grow the left strip when the settings window gets wider.
+  */
+  left: 15rem;
   right: 0.75rem;
   top: 2.35rem;
+  bottom: 0.75rem;
   z-index: 50;
   display: flex;
-  max-height: calc(100% - 3rem);
-  min-height: min(34rem, calc(100% - 3rem));
+  width: auto;
+  max-width: none;
+  max-height: none;
+  min-height: 0;
   min-width: 0;
   overflow: hidden;
   border: 1px solid rgba(39, 39, 42, 0.12);
@@ -2133,9 +2144,11 @@ button, .select-none {
 
 .settings-v2-layout {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
+  grid-template-columns: minmax(148px, 168px) minmax(0, 1fr);
   width: 100%;
+  height: 100%;
   min-height: 0;
+  min-width: 0;
 }
 
 .settings-v2-sidebar {
@@ -2167,12 +2180,16 @@ button, .select-none {
   display: flex;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
+  overflow: hidden;
   padding: 0.85rem;
 }
 
 .settings-v2-page {
+  flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 0.15rem;
@@ -2928,7 +2945,7 @@ button, .select-none {
 /* ---------- 外观风格卡片 ---------- */
 .theme-preset-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: 0.6rem;
 }
 
@@ -3503,7 +3520,7 @@ button, .select-none {
   }
 
   .app-shell {
-    border-radius: 18px;
+    border-radius: var(--shell-radius);
   }
 
   .daily-panels {
@@ -6765,11 +6782,11 @@ html {
 /* --- 窗口：深色玻璃蒙版 + 柔和模糊 --- */
 .theme-invisible.app-shell,
 .theme-invisible.dark.app-shell {
-  background: color-mix(in srgb, rgba(18, 20, 24, var(--window-opacity)) 54%, transparent) !important;
+  background: color-mix(in srgb, rgba(18, 20, 24, var(--invisible-surface-alpha, var(--window-opacity))) 54%, transparent) !important;
   border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25) !important;
-  backdrop-filter: blur(calc(var(--blur-strength) * 1.08)) saturate(var(--glass-saturation)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--blur-strength) * 1.08)) saturate(var(--glass-saturation)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* --- 顶部区域：透明（继承窗口玻璃），去掉 Tailwind 叠层 --- */
@@ -6777,15 +6794,11 @@ html {
 .theme-invisible.dark .app-top {
   background: transparent !important;
   border-bottom: 0.5px solid rgba(255, 255, 255, 0.06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 /* --- 主滚动区：透明 --- */
 .theme-invisible .app-main-scroll {
   background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 /* --- 内部容器：透明，无独立模糊（统一用窗口那层玻璃）--- */
@@ -6797,8 +6810,6 @@ html {
 .theme-invisible .daily-work-preview,
 .theme-invisible .tabbar,
 .theme-invisible .titlebar {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 /* --- 底部添加栏：透明继承窗口玻璃，去掉那块不透明白底方块 --- */
@@ -7665,16 +7676,16 @@ html {
 
 /* ---------- 窗口外壳：磨砂玻璃 ---------- */
 .theme-invisible.app-shell {
-  background-color: rgba(250, 250, 252, var(--window-opacity)) !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.06'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") !important;
+  background-color: rgba(250, 250, 252, var(--invisible-surface-alpha, var(--window-opacity))) !important;
+  background-image: none !important;
   border: 0.5px solid rgba(255, 255, 255, 0.55) !important;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18) !important;
-  backdrop-filter: blur(18px) saturate(125%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(125%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 .dark .theme-invisible.app-shell {
-  background-color: rgba(16, 18, 22, var(--window-opacity)) !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.08'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") !important;
+  background-color: rgba(16, 18, 22, var(--invisible-surface-alpha, var(--window-opacity))) !important;
+  background-image: none !important;
   border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4) !important;
 }
@@ -7915,8 +7926,8 @@ html {
   background: rgba(250, 250, 252, var(--settings-panel-opacity)) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   color: #2a2a2e !important;
-  backdrop-filter: blur(24px) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 .theme-invisible .titlebar-menu,
 .theme-invisible .priority-popover,
@@ -7924,15 +7935,15 @@ html {
   background: rgba(250, 250, 252, var(--menu-opacity)) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   color: #2a2a2e !important;
-  backdrop-filter: blur(24px) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 .theme-invisible .completion-dialog {
   background: rgba(250, 250, 252, var(--dialog-opacity)) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   color: #2a2a2e !important;
-  backdrop-filter: blur(24px) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 .dark .theme-invisible .settings-panel {
   background: rgba(20, 22, 26, var(--settings-panel-opacity)) !important;
@@ -9064,8 +9075,6 @@ html {
   background-color: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 .app-shell[data-theme='invisible'] .task-card {
@@ -9084,8 +9093,6 @@ html {
   background-image: none !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 .app-shell[data-theme='invisible'] .task-stack-segment {
@@ -9138,8 +9145,6 @@ html {
   background-image: none !important;
   border-color: rgba(255, 255, 255, 0.16) !important;
   box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 .app-shell[data-theme='invisible'] .task-filter-active,
@@ -10005,6 +10010,23 @@ html:not(.dark) .app-shell[data-theme='invisible'] .date-current {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22) !important;
 }
 
+/* invisible titlebar pressed feedback */
+.app-shell[data-theme='invisible'] :is(.titlebar-icon-button, .titlebar-mode):active {
+  border-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.18) !important;
+  transform: translateY(1px) scale(0.94) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.titlebar-icon-button, .titlebar-mode):active {
+  border-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(1px) scale(0.94) !important;
+}
+
 /* 2026-06-20 date navigator theme surface fix
    date navigator themes: forest, morandi, minimal, neumorphism, invisible, watercolor, custom */
 .app-shell[data-theme='forest'] {
@@ -10351,23 +10373,22 @@ html:not(.dark) .app-shell[data-theme='custom'] :is(.date-stepper button, .date-
 /* 2026-06-22 dark minimal settings neutralization */
 /* 2026-06-23 invisible dark settings neutralization */
 .dark .app-shell[data-theme='invisible'] .settings-panel {
-  background: rgba(24, 24, 27, 0.96) !important;
-  background-color: rgba(24, 24, 27, 0.96) !important;
+  background: rgba(24, 24, 27, 0.98) !important;
+  background-color: rgba(24, 24, 27, 0.98) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  color: #f4f4f5 !important;
 }
 
 .dark .app-shell[data-theme='invisible'] .settings-v2-sidebar {
   border-right-color: rgba(255, 255, 255, 0.1) !important;
-  background: rgba(24, 24, 27, 0.96) !important;
-  background-color: rgba(24, 24, 27, 0.96) !important;
+  background: rgba(24, 24, 27, 0.98) !important;
+  background-color: rgba(24, 24, 27, 0.98) !important;
 }
 
 .dark .app-shell[data-theme='invisible'] .settings-v2-content {
-  background: rgba(24, 24, 27, 0.96) !important;
-  background-color: rgba(24, 24, 27, 0.96) !important;
+  background: rgba(24, 24, 27, 0.98) !important;
+  background-color: rgba(24, 24, 27, 0.98) !important;
 }
 
 .dark .app-shell[data-theme='invisible'] .settings-v2-page {
@@ -10438,6 +10459,360 @@ html:not(.dark) .app-shell[data-theme='custom'] :is(.date-stepper button, .date-
   border-color: rgba(255, 255, 255, 0.14) !important;
   box-shadow: none !important;
 }
+
+
+/* Invisible theme glass convergence: native Acrylic supplies desktop blur; opacity is continuous; CSS only tints the foreground. */
+.app-shell[data-theme='invisible'] {
+  /*
+    Continuous frost vars are owned by viewport/shell style and must inherit.
+    --invisible-surface-alpha densifies clear glass -> solid on the main shell only.
+    One unified shell plate only: no stacked chrome fills and no extra frost overlay layer.
+    Settings/floating UI stays high-opacity and readable; do not bind it to blur densify
+    or the settings panel becomes a messy stack of solid dark bars.
+  */
+  --invisible-glass-surface-opacity: max(0.92, var(--window-opacity));
+  --invisible-glass-control-opacity: max(0.92, var(--window-opacity));
+  --date-nav-surface: transparent;
+  --date-nav-surface-hover: rgba(0, 0, 0, 0.05);
+  --date-nav-border: rgba(0, 0, 0, 0.08);
+  position: relative;
+  /* Keep the visual silhouette consistent with the configured window radius. */
+  border-radius: var(--shell-radius) !important;
+  clip-path: inset(0 round var(--shell-radius)) !important;
+  /*
+    Invisible path on Win10:
+    1) native Acrylic stays theme-level (not flipped by blur 0/1)
+    2) blur slider densifies through --invisible-surface-alpha only
+    3) no live CSS backdrop-filter (that freezes full-window drag)
+    4) no stacked content plates / frost veil overlays
+  */
+  background-color: rgba(250, 250, 252, var(--invisible-surface-alpha, var(--window-opacity))) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] {
+  --date-nav-surface: transparent;
+  --date-nav-surface-hover: rgba(255, 255, 255, 0.07);
+  --date-nav-border: rgba(255, 255, 255, 0.12);
+  background-color: rgba(16, 18, 22, var(--invisible-surface-alpha, var(--window-opacity))) !important;
+  background-image: none !important;
+}
+
+/*
+  Keep continuous frost vars live for densify math without painting a second milky plate.
+  The old multi-layer ::before veil stacked over shell alpha and created the gray overlay look.
+  Veil/frost tokens stay referenced so intermediate blur densify remains continuous.
+*/
+.app-shell[data-theme='invisible']::before {
+  content: none;
+  display: none;
+  opacity: 0;
+  background: none;
+  --invisible-veil-token: var(--invisible-veil-alpha, 0);
+  --invisible-frost-token: var(--invisible-frost-mix, 0);
+}
+
+.app-shell[data-theme='invisible'] > * {
+  z-index: 1;
+}
+
+/* Keep the settings overlay absolutely positioned over the compact left strip.
+   The frost-veil stacking rule above must never demote .settings-panel into the
+   flex column, or the whole settings UI overflows and clips. */
+.app-shell[data-theme='invisible'] > .settings-panel {
+  position: absolute;
+}
+
+/* Core transparent surfaces (kept as explicit selectors for continuity checks). */
+.app-shell[data-theme='invisible'] .titlebar,
+.app-shell[data-theme='invisible'] .app-top,
+.app-shell[data-theme='invisible'] .task-toolbar,
+.app-shell[data-theme='invisible'] .task-card,
+.app-shell[data-theme='invisible'] .add-task-inner {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.app-shell[data-theme='invisible'] .task-card {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.app-shell[data-theme='invisible'] .task-toolbar {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .titlebar,
+.dark .app-shell[data-theme='invisible'] .app-top,
+.dark .app-shell[data-theme='invisible'] .task-toolbar,
+.dark .app-shell[data-theme='invisible'] .task-card,
+.dark .app-shell[data-theme='invisible'] .add-task-inner {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Expanded single-plate cleanup: kill remaining stacked chrome fills. */
+.app-shell[data-theme='invisible'] :is(
+  .app-header,
+  .app-main-scroll,
+  .task-toolbar-row,
+  .task-subtask-row,
+  .task-stack-segment,
+  .task-source-group-shell,
+  .task-sortable-shell,
+  .task-cluster,
+  .add-task,
+  .add-task-inner,
+  .date-card,
+  .date-stepper,
+  .date-calendar-button,
+  .daily-panel-switch,
+  .tabbar,
+  .daily-work-preview
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(
+  .app-header,
+  .app-main-scroll,
+  .task-toolbar-row,
+  .task-subtask-row,
+  .task-stack-segment,
+  .task-source-group-shell,
+  .task-sortable-shell,
+  .task-cluster,
+  .add-task,
+  .add-task-inner,
+  .date-card,
+  .date-stepper,
+  .date-calendar-button,
+  .daily-panel-switch,
+  .tabbar,
+  .daily-work-preview
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.app-shell[data-theme='invisible'] :is(.task-card:hover, .task-subtask-row:hover) {
+  background: rgba(0, 0, 0, 0.03) !important;
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.task-card:hover, .task-subtask-row:hover) {
+  background: rgba(255, 255, 255, 0.035) !important;
+  background-color: rgba(255, 255, 255, 0.035) !important;
+  box-shadow: none !important;
+}
+
+/* Settings and floating surfaces stay solid-tint only: nested backdrop-filter freezes drag on Win10. */
+.app-shell[data-theme='invisible'] .settings-panel,
+.app-shell[data-theme='invisible'] :is(.settings-v2-sidebar, .settings-v2-content),
+.app-shell[data-theme='invisible'] .settings-v2-page :is(.settings-section, .settings-zone, .settings-inline-section),
+.app-shell[data-theme='invisible'] :is(.settings-preview-list, .settings-rule-card, .settings-control, .settings-color, .ai-account-inline-row, .ai-account-summary, .ai-account-detail, .recognition-block-row, .template-source-card, .theme-preset-card),
+.app-shell[data-theme='invisible'] :is(.settings-field input, .settings-field select, .settings-field textarea, .titlebar-menu, .priority-popover, .month-calendar, .completion-dialog, .completion-field, .completion-field select, .completion-field textarea, .review-dialog, .review-field, .review-edit-textarea, .review-edit-select) {
+  background: rgba(250, 250, 252, var(--invisible-glass-surface-opacity)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-panel,
+.dark .app-shell[data-theme='invisible'] :is(.settings-v2-sidebar, .settings-v2-content),
+.dark .app-shell[data-theme='invisible'] .settings-v2-page :is(.settings-section, .settings-zone, .settings-inline-section),
+.dark .app-shell[data-theme='invisible'] :is(.settings-preview-list, .settings-rule-card, .settings-control, .settings-color, .ai-account-inline-row, .ai-account-summary, .ai-account-detail, .recognition-block-row, .template-source-card, .theme-preset-card),
+.dark .app-shell[data-theme='invisible'] :is(.settings-field input, .settings-field select, .settings-field textarea, .titlebar-menu, .priority-popover, .month-calendar, .completion-dialog, .completion-field, .completion-field select, .completion-field textarea, .review-dialog, .review-field, .review-edit-textarea, .review-edit-select) {
+  background: rgba(18, 20, 24, var(--invisible-glass-surface-opacity)) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-shell[data-theme='invisible'] :is(.settings-nav-item, .settings-switch-row, .settings-reset-button) {
+  background: rgba(250, 250, 252, var(--invisible-glass-control-opacity)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.settings-nav-item, .settings-switch-row, .settings-reset-button) {
+  background: rgba(24, 27, 32, var(--invisible-glass-control-opacity)) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Toolbar controls inherit the shell plate; only interaction states receive a tint. */
+.app-shell[data-theme='invisible'] :is(.task-search-input, .task-filter-button, .task-filter-select, .task-clear-filter, .task-tool-icon) {
+  background: transparent !important;
+  border-color: rgba(24, 24, 27, 0.12) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* During native window movement Acrylic is paused; this is still the same shell plate, not an overlay. */
+.app-shell[data-theme='invisible'][data-performance-frost='true'] {
+  background-color: rgba(250, 250, 252, max(0.82, var(--invisible-surface-alpha))) !important;
+}
+
+.dark .app-shell[data-theme='invisible'][data-performance-frost='true'] {
+  background-color: rgba(16, 18, 22, max(0.84, var(--invisible-surface-alpha))) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.task-search-input, .task-filter-button, .task-filter-select, .task-clear-filter, .task-tool-icon) {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app-shell[data-theme='invisible'] :is(.task-filter-button, .task-tool-icon):hover {
+  background: rgba(24, 24, 27, 0.06) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.task-filter-button, .task-tool-icon):hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-shell[data-theme='invisible'] :is(.task-filter-active, .task-tool-active) {
+  background: rgba(24, 24, 27, 0.08) !important;
+  border-color: rgba(24, 24, 27, 0.16) !important;
+}
+
+/* Light invisible text sits directly on the single glass plate: no white halo. */
+.theme-invisible .app-brand h1,
+.theme-invisible .task-text,
+.theme-invisible .date-current {
+  text-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.task-filter-active, .task-tool-active) {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* End invisible theme glass convergence. */
+
+/* Settings template list rows (global, not glass-convergence tint). */
+.settings-template-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.settings-template-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  min-height: 3.1rem;
+  border: 1px solid rgba(39, 39, 42, 0.1);
+  border-radius: 0.8rem;
+  background: rgba(244, 244, 245, 0.72);
+  padding: 0.65rem 0.75rem;
+}
+
+.settings-template-label {
+  min-width: 0;
+  color: #27272a;
+}
+
+.settings-template-label strong {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: inherit;
+}
+
+.settings-template-edit {
+  width: auto !important;
+  min-width: 4.6rem !important;
+  margin: 0 !important;
+  justify-self: end !important;
+  white-space: nowrap !important;
+  border: 1px solid rgba(39, 39, 42, 0.14) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #27272a !important;
+}
+
+.dark .settings-template-row {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(39, 39, 42, 0.78);
+}
+
+.dark .settings-template-label,
+.dark .settings-template-label strong {
+  color: #f4f4f5 !important;
+}
+
+.dark .settings-template-edit {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  background: rgba(63, 63, 70, 0.95) !important;
+  color: #fafafa !important;
+}
+
+.app-shell[data-theme='invisible'] .settings-template-row {
+  background: rgba(250, 250, 252, 0.96) !important;
+  border-color: rgba(24, 24, 27, 0.12) !important;
+}
+
+.app-shell[data-theme='invisible'] .settings-template-label,
+.app-shell[data-theme='invisible'] .settings-template-label strong {
+  color: #18181b !important;
+}
+
+.app-shell[data-theme='invisible'] .settings-template-edit {
+  background: #ffffff !important;
+  border-color: rgba(24, 24, 27, 0.16) !important;
+  color: #18181b !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-template-row {
+  background: rgba(39, 39, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-template-label,
+.dark .app-shell[data-theme='invisible'] .settings-template-label strong {
+  color: #f4f4f5 !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .settings-template-edit {
+  background: rgba(82, 82, 91, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #fafafa !important;
+}
+
+
 
 /* 2026-06-23 custom dark settings neutralization */
 .dark .app-shell[data-theme='custom'] .settings-panel {
@@ -10993,4 +11368,13 @@ html:not(.dark) .app-shell[data-theme='custom'] :is(.date-stepper button, .date-
 
 .dark .task-subtask-dot {
   background: var(--personal-secondary);
+}
+
+/* Window silhouette: keep host corners clean in every theme. */
+.app-shell {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.dark .app-shell {
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.1) !important;
 }

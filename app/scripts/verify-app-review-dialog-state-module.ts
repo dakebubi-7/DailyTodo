@@ -39,7 +39,16 @@ assert.match(app, /useAppShellComposition\(\{/, 'App should delegate review dial
 assert.match(shellCompositionHook, /from '\.\/appReviewDialogState'/, 'Runtime shell composition hook should import review dialog state helper.');
 assert.match(shellCompositionHook, /createAppReviewDialogState\(\{\s*allTasks: taskState\.allTasks,\s*completionTask: appState\.completionTask,\s*reviewTask: appState\.reviewTask,\s*\}\)/s, 'Runtime shell composition hook should delegate review dialog state derivation.');
 assert.match(shellInputs, /reviewDialogState,/, 'Pure shell-inputs helper should pass review dialog state into the shell composition helper.');
-assert.match(shellHelper, /createAppShellOverlayComposition\(\{[\s\S]*reviewDialogState,[\s\S]*\}\);/, 'Shell composition should forward derived review dialog state into the overlay helper.');
+assert.match(
+  shellInputs,
+  /overlay: \{[\s\S]*reviewDialogState,[\s\S]*\},/,
+  'Shell input composition should place derived review dialog state in the overlay group.',
+);
+assert.match(
+  shellHelper,
+  /const overlayStackProps = createAppShellOverlayComposition\(overlay\);/,
+  'Shell composition should delegate grouped overlay inputs unchanged to the overlay composition helper.',
+);
 assert.match(overlayHelper, /task: reviewDialogState\.completionTask/, 'Overlay composition should consume derived completion dialog task.');
 assert.match(overlayHelper, /task: reviewDialogState\.currentReviewTask/, 'Overlay composition should consume derived current review task.');
 assert.doesNotMatch(app, /const currentReviewTask = reviewTask \? findTaskInTree\(allTasks, reviewTask\.id\) : null;/, 'App should not inline current review task lookup.');

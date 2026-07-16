@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,9 +39,19 @@ assert.match(helper, /hasShadow:\s*false/, 'Task-menu window module should prese
 assert.match(helper, /path\.join\(__dirname,\s*'preloadTaskMenu\.js'\)/, 'Task-menu window module should own the popup preload path.');
 assert.match(helper, /loadRenderer\(menu,\s*\{\s*view:\s*'task-menu'/, 'Task-menu window module should load the task-menu renderer route.');
 assert.match(helper, /menu\.setAlwaysOnTop\(true,\s*'screen-saver'\)/, 'Task-menu window module should preserve popup z-order behavior.');
-assert.match(helper, /menu\.once\('ready-to-show',\s*\(\)\s*=>\s*menu\.show\(\)\)/, 'Task-menu window module should preserve ready-to-show popup display.');
-assert.match(helper, /menu\.on\('blur',\s*\(\)\s*=>\s*onBlur\(\)\)/, 'Task-menu window module should preserve blur-to-close wiring.');
-assert.match(helper, /menu\.on\('closed',\s*\(\)\s*=>\s*onClosed\(\)\)/, 'Task-menu window module should preserve closed cleanup wiring.');
+assert.match(helper, /menu\.once\('ready-to-show',\s*showMenu\)/, 'Task-menu window module should preserve ready-to-show popup display.');
+assert.match(helper, /menu\.webContents\.once\('did-finish-load',\s*showMenu\)/, 'Task-menu window module should also show the popup after load finishes.');
+assert.match(helper, /menu\.show\(\)/, 'Task-menu window module should show the popup window.');
+assert.match(helper, /menu\.focus\(\)/, 'Task-menu window module should focus the popup after show.');
+assert.match(helper, /blurCloseArmed/, 'Task-menu window module should delay blur-to-close until the popup has settled.');
+assert.match(helper, /parent\?:\s*BrowserWindow \| null/, 'Task-menu window module should accept an optional parent window.');
+assert.match(helper, /focusable:\s*true/, 'Task-menu window module should keep the popup focusable.');
+assert.match(helper, /menu\.on\('blur',\s*\(\)\s*=>\s*\{/, 'Task-menu window module should preserve blur-to-close wiring.');
+assert.match(helper, /if \(!blurCloseArmed \|\| menu\.isDestroyed\(\)\) return;/, 'Task-menu window module should ignore blur events until the popup is armed.');
+assert.match(helper, /blurTimer/, 'Task-menu window module should debounce blur-to-close.');
+assert.match(helper, /dismiss\(\)/, 'Task-menu window module should still close on armed blur.');
+assert.match(helper, /menu\.on\('closed',\s*\(\)\s*=>\s*\{/, 'Task-menu window module should preserve closed cleanup wiring.');
+assert.match(helper, /onClosed\(\);/, 'Task-menu window module should still invoke onClosed during closed cleanup.');
 
 assert.match(ipcRegistration, /from '\.\/taskMenuWindow'/, 'mainWindowIpcRegistration should keep the task-menu window constants import.');
 assert.match(composition, /from '\.\/mainShellController'/, 'main-window composition should delegate popup shell actions through mainShellController.');
@@ -64,3 +74,5 @@ assertCleanupCoreIncludes('verify:electron-task-menu-window-module', 'cleanup-co
 assert.match(helper, /sandbox:\s*true/, 'Task-menu window module should enable renderer sandbox.');
 assert.match(helper, /hardenRendererNavigation\(menu\)/, 'Task-menu window module should harden renderer navigation.');
 console.log('electron task-menu window module verification passed');
+
+

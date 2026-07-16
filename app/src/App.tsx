@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './styles/index.css';
 import { createAppViewportStyle } from './app/appViewportStyle';
 import { createAppThemeState } from './app/appThemeState';
@@ -10,11 +10,13 @@ import { useTasks } from './hooks/useTasks';
 import { TitleBar } from './components/TitleBar';
 import { AppOverlayStack } from './components/AppOverlayStack';
 import { AppMainContent } from './components/AppMainContent';
+import { getPerformanceFrostShellAttributes } from './app/appShellEffects';
 
 export default function App() {
   const taskState = useTasks();
   const appState = useAppLocalState();
   const mainScrollRef = useRef<HTMLDivElement>(null);
+  const [performanceFrostActive, setPerformanceFrostActive] = useState(false);
   const themeState = useMemo(() => createAppThemeState(appState.personalization), [appState.personalization]);
   const viewportStyle = useMemo(() => createAppViewportStyle(appState.personalization, themeState.isInvisibleTheme), [appState.personalization, themeState.isInvisibleTheme]);
 
@@ -42,6 +44,8 @@ export default function App() {
     mainScrollRef,
   });
 
+  useEffect(() => window.electronAPI?.onPerformanceFrostChanged(setPerformanceFrostActive), []);
+
   return (
     <div
       className={getAppViewportClassName(taskState.isLoaded)}
@@ -55,12 +59,20 @@ export default function App() {
           animations: appState.personalization.animations,
           compactMode: appState.compactMode,
         })}
+        style={viewportStyle}
         data-theme={getAppShellThemeValue(themeState.activeThemeId)}
         data-low-opacity={getAppShellLowOpacityFlag(themeState.isInvisibleTheme, appState.personalization.windowOpacity)}
+        {...getPerformanceFrostShellAttributes(performanceFrostActive)}
       >
-        <TitleBar {...shellComposition.titleBarProps} />
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          inert={shellComposition.overlayStackProps.isTaskDialogOpen ? '' : undefined}
+          aria-hidden={shellComposition.overlayStackProps.isTaskDialogOpen || undefined}
+        >
+          <TitleBar {...shellComposition.titleBarProps} />
+          <AppMainContent {...shellComposition.mainContentProps} />
+        </div>
         <AppOverlayStack {...shellComposition.overlayStackProps} />
-        <AppMainContent {...shellComposition.mainContentProps} />
       </div>
     </div>
   );

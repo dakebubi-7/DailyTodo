@@ -1,8 +1,10 @@
-import type { CSSProperties } from 'react';
+﻿import { useRef, type CSSProperties } from 'react';
 import type { AppBehaviorSettings } from '../../../shared/appSettings';
 import type { getShellText } from '../../i18n';
 import type { PersonalizationSettings } from '../../types/personalization';
 import { THEME_PRESETS, type ThemePreset } from '../../types/themePresets';
+import { applyInvisibleGlassCssPreview } from '../../app/invisibleGlassPreview';
+import { buildInvisibleGlassSettings } from '../../app/appShellEffects';
 import { RangeControl } from './SettingsControls';
 import {
   OPACITY_SLIDER_MAX,
@@ -48,15 +50,40 @@ export function AppearanceSettingsSection({
 }: AppearanceSettingsSectionProps) {
   const zh = appSettings.language === 'zh-CN';
   const recommendation = getThemeRecommendation(settings);
-  const resetToThemeDefaultTitle = zh ? '双击恢复当前主题默认值' : 'Double-click to reset to the current theme default';
+  const resetToThemeDefaultTitle = text.resetToThemeDefault;
+  const isInvisibleTheme = settings.themeId === 'invisible';
+  const hostBlurOnRef = useRef(settings.blurStrength > 0);
+  hostBlurOnRef.current = settings.blurStrength > 0;
+
   const updatePersonalization = <K extends keyof PersonalizationSettings>(key: K, value: PersonalizationSettings[K]) => {
     onChange({ ...settings, [key]: value });
+  };
+
+  const previewInvisibleBlur = (value: number) => {
+    // Continuous frost densify is CSS; native acrylic only flips at the true clear end (0).
+    applyInvisibleGlassCssPreview({
+      blurStrength: value,
+      baseOpacity: settings.windowOpacity,
+    });
+    const blurOn = value > 0;
+    if (blurOn === hostBlurOnRef.current) return;
+    hostBlurOnRef.current = blurOn;
+    void window.electronAPI?.setInvisibleGlass?.(
+      buildInvisibleGlassSettings(true, settings.windowOpacity, value),
+    );
+  };
+
+  const previewInvisibleOpacity = (value: number) => {
+    applyInvisibleGlassCssPreview({
+      windowOpacity: value,
+      blurStrength: settings.blurStrength,
+    });
   };
 
   return (
     <>
       <section className="settings-section">
-        <h3>{zh ? '外观风格' : 'Appearance Style'}</h3>
+        <h3>{text.appearanceStyle}</h3>
         <div className="theme-preset-grid">
           {THEME_PRESETS.filter(preset =>
             preset.id === 'minimal' ||
@@ -90,7 +117,7 @@ export function AppearanceSettingsSection({
         </div>
         <div className="settings-action-row">
           <button type="button" className="settings-reset-button" onClick={onResetTheme}>
-            {zh ? '恢复当前主题默认设置' : 'Reset current theme defaults'}
+            {text.resetCurrentThemeDefaults}
           </button>
         </div>
       </section>
@@ -102,8 +129,8 @@ export function AppearanceSettingsSection({
         </div>
         <div className="settings-grid">
           <RangeControl
-            label={zh ? '全局字体' : 'Global Font'}
-            hint={zh ? '整体放大或缩小文字；双击恢复当前主题默认值' : 'Scale all text; double-click to reset to the current theme default'}
+            label={text.globalFont}
+            hint={text.globalFontHint}
             value={settings.fontScale ?? 100}
             min={80}
             max={130}
@@ -113,32 +140,34 @@ export function AppearanceSettingsSection({
             onChange={(value) => updatePersonalization('fontScale', value)}
           />
           <RangeControl
-            label={zh ? '玻璃透明度' : 'Glass opacity'}
-            hint={zh ? '统一调整窗口、卡片、输入框、菜单和弹窗透明度；双击恢复当前主题默认值' : 'Adjust windows, cards, inputs, menus, and dialogs together; double-click to reset to the current theme default'}
+            label={text.glassOpacity}
+            hint={text.glassOpacityHint}
             value={glassOpacityValue(settings)}
             min={OPACITY_SLIDER_MIN}
             max={OPACITY_SLIDER_MAX}
             unit="%"
             defaultValue={opacityValue(recommendation, 'windowOpacity')}
             resetTitle={resetToThemeDefaultTitle}
+            onPreview={isInvisibleTheme ? previewInvisibleOpacity : undefined}
             onChange={(value) => onChange(withUnifiedGlassOpacity(settings, value))}
           />
           <RangeControl
-            label={zh ? '模糊强度' : 'Blur strength'}
-            hint={zh ? '调整毛玻璃背景的模糊程度；双击恢复当前主题默认值' : 'Adjust frosted-glass blur strength; double-click to reset to the current theme default'}
+            label={text.blur}
+            hint={text.blurHint}
             value={settings.blurStrength}
             min={0}
-            max={80}
-            unit="px"
+            max={100}
+            unit="%"
             defaultValue={recommendation.blurStrength}
             resetTitle={resetToThemeDefaultTitle}
+            onPreview={isInvisibleTheme ? previewInvisibleBlur : undefined}
             onChange={(value) => updatePersonalization('blurStrength', value)}
           />
           <RangeControl
             label={text.radius}
             hint={resetToThemeDefaultTitle}
             value={settings.radius}
-            min={4}
+            min={0}
             max={36}
             unit="px"
             defaultValue={recommendation.radius}
@@ -152,11 +181,11 @@ export function AppearanceSettingsSection({
         <h3>{text.colors}</h3>
         <div className="settings-color-grid">
           <label className="settings-color">
-            <span>{zh ? '主色' : 'Primary'}</span>
+            <span>{text.primaryColor}</span>
             <input type="color" value={settings.accentColor} onChange={(event) => updatePersonalization('accentColor', event.target.value)} />
           </label>
           <label className="settings-color">
-            <span>{zh ? '强调色' : 'Secondary'}</span>
+            <span>{text.secondaryColor}</span>
             <input type="color" value={settings.secondaryColor} onChange={(event) => updatePersonalization('secondaryColor', event.target.value)} />
           </label>
         </div>

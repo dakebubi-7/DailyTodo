@@ -11,6 +11,7 @@ type CreateTaskMenuWindowOptions = {
   loadRenderer(win: BrowserWindow, route: RendererRoute): void;
   onBlur(): void;
   onClosed(): void;
+  parent?: BrowserWindow | null;
 };
 
 export function createTaskMenuWindow(
@@ -48,6 +49,7 @@ export function createTaskMenuWindow(
     maximizable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    focusable: true,
     show: false,
     roundedCorners: true,
     webPreferences: {
@@ -64,9 +66,62 @@ export function createTaskMenuWindow(
   loadRenderer(menu, {
     view: 'task-menu',
   });
-  menu.once('ready-to-show', () => menu.show());
-  menu.on('blur', () => onBlur());
-  menu.on('closed', () => onClosed());
+
+  // Transparent frameless popups on Windows often blur/refocus during the first
+  // show handoff. Delay and debounce blur-to-close so the menu can paint first.
+  let blurCloseArmed = false;
+  let shown = false;
+  let armTimer: ReturnType<typeof setTimeout> | null = null;
+  let blurTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const clearTimers = () => {
+    if (armTimer) {
+      clearTimeout(armTimer);
+      armTimer = null;
+    }
+    if (blurTimer) {
+      clearTimeout(blurTimer);
+      blurTimer = null;
+    }
+  };
+
+  const dismiss = () => {
+    if (menu.isDestroyed()) return;
+    onBlur();
+  };
+
+  const showMenu = () => {
+    if (shown || menu.isDestroyed()) return;
+    shown = true;
+    menu.show();
+    menu.focus();
+    armTimer = setTimeout(() => {
+      armTimer = null;
+      if (!menu.isDestroyed()) blurCloseArmed = true;
+    }, 320);
+  };
+
+  menu.once('ready-to-show', showMenu);
+  menu.webContents.once('did-finish-load', showMenu);
+  menu.on('focus', () => {
+    if (blurTimer) {
+      clearTimeout(blurTimer);
+      blurTimer = null;
+    }
+  });
+  menu.on('blur', () => {
+    if (!blurCloseArmed || menu.isDestroyed()) return;
+    if (blurTimer) clearTimeout(blurTimer);
+    blurTimer = setTimeout(() => {
+      blurTimer = null;
+      if (menu.isDestroyed() || menu.isFocused()) return;
+      dismiss();
+    }, 160);
+  });
+  menu.on('closed', () => {
+    clearTimers();
+    onClosed();
+  });
 
   return menu;
 }

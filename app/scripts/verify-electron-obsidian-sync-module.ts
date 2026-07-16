@@ -12,6 +12,7 @@ const planningPath = join(root, 'electron/obsidianSyncPlanning.ts');
 const previewPath = join(root, 'electron/obsidianSyncPreview.ts');
 const blogDraftOutputPath = join(root, 'electron/obsidianSyncBlogDraftOutput.ts');
 const validationPath = join(root, 'electron/obsidianSyncValidation.ts');
+const requestPath = join(root, 'electron/obsidianSyncRequest.ts');
 const unknownValueGuardsPath = join(root, 'electron/unknownValueGuards.ts');
 const servicesPath = join(root, 'electron/mainObsidianServices.ts');
 const aiReviewServicesPath = join(root, 'electron/mainAiReviewServices.ts');
@@ -24,6 +25,7 @@ assert.ok(existsSync(planningPath), 'Electron Obsidian sync planning module shou
 assert.ok(existsSync(previewPath), 'Electron Obsidian sync preview module should exist.');
 assert.ok(existsSync(blogDraftOutputPath), 'Electron Obsidian sync blog-draft output module should exist.');
 assert.ok(existsSync(validationPath), 'Electron Obsidian sync validation module should exist.');
+assert.ok(existsSync(requestPath), 'Electron Obsidian sync request preparation module should exist.');
 assert.ok(existsSync(unknownValueGuardsPath), 'Electron unknown-value guards module should exist.');
 assert.ok(existsSync(servicesPath), 'Electron main Obsidian services module should exist.');
 
@@ -33,6 +35,7 @@ const planning = readFileSync(planningPath, 'utf8');
 const preview = readFileSync(previewPath, 'utf8');
 const blogDraftOutput = readFileSync(blogDraftOutputPath, 'utf8');
 const validation = readFileSync(validationPath, 'utf8');
+const request = readFileSync(requestPath, 'utf8');
 const unknownValueGuards = readFileSync(unknownValueGuardsPath, 'utf8');
 const services = readFileSync(servicesPath, 'utf8');
 const aiReviewServices = readFileSync(aiReviewServicesPath, 'utf8');
@@ -43,8 +46,9 @@ const helperLines = helper.split(/\r?\n/).length;
 
 assert.match(helper, /export function createObsidianSyncHelpers\b/, 'Obsidian sync module should export a helper factory.');
 assert.match(helper, /from '\.\/obsidianSyncDailyNote'/, 'Obsidian sync module should import daily-note write helpers.');
-assert.match(helper, /from '\.\/obsidianSyncPlanning'/, 'Obsidian sync module should import pure affected-date planning.');
-assert.match(helper, /readObsidianSyncInput/, 'Obsidian sync module should reuse shared task payload validation and narrowing.');
+assert.match(request, /from '\.\/obsidianSyncPlanning'/, 'Obsidian sync request preparation should import pure affected-date planning.');
+assert.match(request, /readObsidianSyncInput/, 'Obsidian sync request preparation should reuse shared task payload validation and narrowing.');
+assert.match(helper, /from '\.\/obsidianSyncRequest'/, 'Obsidian sync module should delegate common request preparation.');
 assert.ok(helperLines < 300, `electron/obsidianSync.ts should stay below 300 lines after daily-note extraction; got ${helperLines}`);
 assert.match(helper, /from '\.\/obsidianSyncPreview'/, 'Obsidian sync module should compose the focused sync preview helper.');
 assert.match(preview, /buildSyncPreview/, 'Obsidian sync preview module should own sync preview assembly.');
@@ -52,18 +56,35 @@ assert.match(dailyNote, /resolveTemplatePath/, 'Obsidian daily-note sync helper 
 assert.match(dailyNote, /function getDailyFilePath\b/, 'Obsidian daily-note sync helper should own daily-note path resolution helper.');
 assert.match(dailyNote, /function triggerOverviewUpdate\b/, 'Obsidian daily-note sync helper should own overview refresh orchestration.');
 assert.match(dailyNote, /function syncOneDailyNote\b/, 'Obsidian daily-note sync helper should own single-note sync writes.');
+assert.match(dailyNote, /function prepareDailyNoteSync\b/, 'Obsidian daily-note helper should preflight every affected note before commit.');
+assert.match(dailyNote, /function commitDailyNoteSync\b/, 'Obsidian daily-note helper should own ordered conditional commits.');
 assert.doesNotMatch(helper, /function getDailyFilePath\b/, 'Obsidian sync orchestrator should not keep daily-note path resolution inline.');
 assert.doesNotMatch(helper, /function triggerOverviewUpdate\b/, 'Obsidian sync orchestrator should not keep overview refresh inline.');
 assert.doesNotMatch(helper, /function syncOneDailyNote\b/, 'Obsidian sync orchestrator should not keep single-note writes inline.');
 assert.match(
   dailyNote,
-  /if \(nextContent !== existingFileContent\) \{\s*writeTextFileAtomic\(filePath, nextContent\);\s*\}/,
+  /didWrite: nextContent !== existingFileContent/,
   'Obsidian sync should skip physical daily-note writes when generated content is unchanged.',
 );
 assert.match(
   dailyNote,
-  /return \{ filePath, nextContent, didWrite: nextContent !== existingFileContent \};/,
-  'Single-note sync should report whether it changed the target file.',
+  /if \(!plan\.didWrite\) continue;[\s\S]*writeTextFileAtomicIfUnchanged\(plan\.filePath, plan\.nextContent, plan\.stamp\)/,
+  'Obsidian sync should conditionally atomically replace only changed notes.',
+);
+assert.match(
+  helper,
+  /const plans = prepareDailyNoteSync\([\s\S]*?commitDailyNoteSync\(plans, selected\)/,
+  'Obsidian sync should complete all daily-note preflight planning before any commit.',
+);
+assert.match(
+  dailyNote,
+  /sort\(\(left, right\) => Number\(left\.date === selected\) - Number\(right\.date === selected\)\)/,
+  'Obsidian sync should commit the selected date last.',
+);
+assert.match(
+  helper,
+  /markerWarnings: plans\.flatMap/,
+  'Obsidian sync preview should surface non-blocking marker health warnings.',
 );
 assert.match(
   helper,
@@ -85,7 +106,7 @@ assert.doesNotMatch(
   'Obsidian sync date collection should not sort completion reviews merely to test date membership.',
 );
 assert.doesNotMatch(helper, /function collectAffectedSyncDates\b/, 'Obsidian sync orchestrator should not retain recursive affected-date traversal.');
-assert.doesNotMatch(helper, /function getDatesAffectedBySync\b/, 'Obsidian sync orchestrator should delegate affected-date collection.');
+assert.doesNotMatch(helper, /function getDatesAffectedBySync\b/, 'Obsidian sync orchestrator should not retain affected-date collection.');
 assert.match(helper, /function syncTasksToObsidian\b/, 'Obsidian sync module should own task sync orchestration.');
 assert.match(helper, /function previewTasksToObsidian\b/, 'Obsidian sync module should own sync preview orchestration.');
 assert.match(
@@ -103,7 +124,13 @@ assert.match(helper, /buildBlogDraft/, 'Obsidian sync module should preserve blo
 assert.match(validation, /export function hasValidObsidianSyncTasks\(value: unknown\): value is ObsidianSyncTask\[\]/, 'Obsidian sync task validation should narrow unknown task arrays before template preview calls.');
 assert.match(validation, /export function readObsidianSyncInput\b/, 'Obsidian sync validation should own shared IPC input parsing.');
 assert.match(validation, /type ReadObsidianSyncInputResult/, 'Obsidian sync validation should expose an explicit shared parse result.');
-assert.match(helper, /const input = readObsidianSyncInput\(tasks, date, dailyWork, inspiration, beforeTasks\);/, 'Obsidian sync and preview flows should parse their common unknown inputs through one shared reader.');
+assert.match(request, /export function createObsidianSyncRequestReader\b/, 'request preparation should expose a focused factory.');
+assert.match(request, /const vaultStatus = getVaultStatus\(\);/, 'request preparation should validate the vault before parsing input.');
+assert.match(request, /const input = readObsidianSyncInput\(tasks, date, dailyWork, inspiration, beforeTasks\);/, 'request preparation should parse common unknown inputs through the shared reader.');
+assert.match(request, /const selected = getDateKey\(input\.value\.date\);/, 'request preparation should normalize the selected date once.');
+assert.match(request, /const affectedDates = getDatesAffectedBySync\(/, 'request preparation should calculate affected dates once.');
+assert.match(helper, /const request = readSyncRequest\(tasks, date, dailyWork, inspiration, beforeTasks\);/, 'sync and preview flows should share prepared request data.');
+assert.doesNotMatch(helper, /const input = readObsidianSyncInput\(/, 'sync orchestration should not duplicate common input parsing after request preparation extraction.');
 assert.match(validation, /function isObsidianSyncTask\(value: unknown\): value is ObsidianSyncTask/, 'Obsidian sync validation should own recursive task payload validation.');
 assert.match(unknownValueGuards, /export \{ isObjectRecord \} from '\.\.\/shared\/unknownValueGuards';/, 'Electron unknown-value guards should preserve object-record narrowing through the shared compatibility export.');
 assert.match(validation, /from '\.\/unknownValueGuards'/, 'Obsidian sync validation should reuse the Electron object-record guard.');

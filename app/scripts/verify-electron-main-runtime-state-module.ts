@@ -12,6 +12,7 @@ const compositionPath = join(root, 'electron', 'mainWindowComposition.ts');
 const shellControllerPath = join(root, 'electron', 'mainShellController.ts');
 const startupPath = join(root, 'electron', 'mainWindowStartup.ts');
 const bootstrapPath = join(root, 'electron', 'mainWindowBootstrap.ts');
+const bootstrapTypesPath = join(root, 'electron', 'mainWindowBootstrapTypes.ts');
 const lifecyclePath = join(root, 'electron', 'appLifecycle.ts');
 const modeControllerPath = join(root, 'electron', 'mainWindowModeController.ts');
 const packagePath = join(root, 'package.json');
@@ -24,6 +25,7 @@ const composition = readFileSync(compositionPath, 'utf8');
 const shellController = readFileSync(shellControllerPath, 'utf8');
 const startup = readFileSync(startupPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
+const bootstrapTypes = readFileSync(bootstrapTypesPath, 'utf8');
 const lifecycle = readFileSync(lifecyclePath, 'utf8');
 const modeController = readFileSync(modeControllerPath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
@@ -76,7 +78,9 @@ assert.match(shellController, /setTray\(nextTray:\s*Tray \| null\):\s*void;/, 'm
 assert.match(shellController, /getTaskMenuWindow\(\):\s*BrowserWindow \| null;/, 'mainShellController should continue to depend on runtime task-menu-window reads.');
 assert.match(shellController, /setTaskMenuWindow\(nextWindow:\s*BrowserWindow \| null\):\s*void;/, 'mainShellController should continue to depend on runtime task-menu-window writes.');
 assert.match(startup, /setMainWindow\(win:\s*BrowserWindow\):\s*void;/, 'mainWindowStartup should continue to receive main-window writes.');
-assert.match(bootstrap, /getTaskMenuWindow\(\):\s*BrowserWindow \| null;/, 'mainWindowBootstrap should continue to receive task-menu-window reads.');
+assert.match(bootstrap, /from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should depend on its focused dependency contract.');
+assert.match(bootstrapTypes, /getTaskMenuWindow\(\):\s*BrowserWindow \| null;/, 'mainWindowBootstrapTypes should continue to define task-menu-window reads.');
+assert.match(bootstrap, /createMainWindowIpcRegistrations\(options\)/, 'mainWindowBootstrap should pass its runtime dependencies to the focused IPC registration helper.');
 assert.match(lifecycle, /clearMainWindow\(\):\s*void;/, 'appLifecycle should continue to receive main-window clearing.');
 assert.match(modeController, /getTray\(\):\s*Tray \| null;/, 'mainWindowModeController should continue to receive tray reads.');
 

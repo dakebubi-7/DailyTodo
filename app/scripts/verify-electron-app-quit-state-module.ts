@@ -9,6 +9,7 @@ const root = join(here, '..');
 const modulePath = join(root, 'electron', 'appQuitState.ts');
 const mainPath = join(root, 'electron', 'main.ts');
 const bootstrapPath = join(root, 'electron', 'mainWindowBootstrap.ts');
+const bootstrapTypesPath = join(root, 'electron', 'mainWindowBootstrapTypes.ts');
 const lifecyclePath = join(root, 'electron', 'appLifecycle.ts');
 const packagePath = join(root, 'package.json');
 
@@ -17,6 +18,7 @@ assert.ok(existsSync(modulePath), 'Electron app quit-state module should exist.'
 const helper = readFileSync(modulePath, 'utf8');
 const main = readFileSync(mainPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
+const bootstrapTypes = readFileSync(bootstrapTypesPath, 'utf8');
 const lifecycle = readFileSync(lifecyclePath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const scripts = packageJson.scripts as Record<string, string>;
@@ -35,8 +37,9 @@ assert.match(main, /appQuitState\.markQuitting\(\);\s*\n\s*app\.quit\(\);/, 'mai
 assert.match(main, /isQuitting: appQuitState\.isQuitting/, 'main should pass appQuitState.isQuitting into bootstrap/lifecycle boundaries.');
 assert.match(main, /markQuitting: appQuitState\.markQuitting/, 'main should pass appQuitState.markQuitting into bootstrap/lifecycle boundaries.');
 
-assert.match(bootstrap, /isQuitting\(\):\s*boolean;/, 'mainWindowBootstrap should continue to depend on a quit-state reader callback.');
-assert.match(bootstrap, /markQuitting\(\):\s*void;/, 'mainWindowBootstrap should continue to depend on a quit-state writer callback.');
+assert.match(bootstrap, /from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should depend on its focused dependency contract.');
+assert.match(bootstrapTypes, /isQuitting\(\):\s*boolean;/, 'mainWindowBootstrapTypes should continue to define the quit-state reader callback.');
+assert.match(bootstrapTypes, /markQuitting\(\):\s*void;/, 'mainWindowBootstrapTypes should continue to define the quit-state writer callback.');
 assert.match(lifecycle, /markQuitting\(\):\s*void;/, 'appLifecycle should continue to depend on a quit-state writer callback.');
 assert.match(lifecycle, /isQuitting\(\):\s*boolean;/, 'appLifecycle should continue to depend on a quit-state reader callback.');
 

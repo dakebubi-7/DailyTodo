@@ -9,6 +9,7 @@ const root = join(here, '..');
 const modulePath = join(root, 'electron', 'settingsModeState.ts');
 const mainPath = join(root, 'electron', 'main.ts');
 const bootstrapPath = join(root, 'electron', 'mainWindowBootstrap.ts');
+const bootstrapTypesPath = join(root, 'electron', 'mainWindowBootstrapTypes.ts');
 const windowIpcPath = join(root, 'electron', 'windowIpc.ts');
 const mainWindowEventsPath = join(root, 'electron', 'mainWindowEvents.ts');
 const packagePath = join(root, 'package.json');
@@ -18,6 +19,7 @@ assert.ok(existsSync(modulePath), 'Electron settings-mode state module should ex
 const helper = readFileSync(modulePath, 'utf8');
 const main = readFileSync(mainPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
+const bootstrapTypes = readFileSync(bootstrapTypesPath, 'utf8');
 const windowIpc = readFileSync(windowIpcPath, 'utf8');
 const mainWindowEvents = readFileSync(mainWindowEventsPath, 'utf8');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
@@ -39,8 +41,9 @@ assert.doesNotMatch(main, /let settingsModeOpen = false;/, 'main should not keep
 assert.doesNotMatch(main, /let settingsModeRestoreWidth = RESET_WINDOW_WIDTH;/, 'main should not keep settingsModeRestoreWidth inline after extraction.');
 assert.doesNotMatch(main, /settingsMode:\s*\{\s*isOpen:/, 'main should not rebuild the settings-mode state object inline after extraction.');
 
-assert.match(bootstrap, /from '\.\/settingsModeState'/, 'mainWindowBootstrap should import the shared SettingsModeState type.');
-assert.match(bootstrap, /settingsMode:\s*SettingsModeState;/, 'mainWindowBootstrap should depend on the shared SettingsModeState type.');
+assert.match(bootstrapTypes, /from '\.\/settingsModeState'/, 'mainWindowBootstrapTypes should import the shared SettingsModeState type.');
+assert.match(bootstrapTypes, /settingsMode:\s*SettingsModeState;/, 'mainWindowBootstrapTypes should depend on the shared SettingsModeState type.');
+assert.match(bootstrap, /from '\.\/mainWindowBootstrapTypes'/, 'mainWindowBootstrap should depend on its focused dependency contract.');
 assert.doesNotMatch(bootstrap, /getSettingsModeOpen:\s*\(\)\s*=>/, 'mainWindowBootstrap should not require a separate settings-mode getter callback after extraction.');
 
 assert.match(windowIpc, /from '\.\/settingsModeState'/, 'windowIpc should import the shared SettingsModeState type.');

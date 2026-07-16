@@ -73,6 +73,12 @@ export function GeneralSettingsSection({
           onChange={(value) => updateApp('minimizeToTrayOnClose', value)}
         />
         <ToggleRow
+          title={text.edgeAutoHide}
+          description={text.edgeAutoHideHint}
+          checked={appSettings.edgeAutoHide}
+          onChange={(value) => updateApp('edgeAutoHide', value)}
+        />
+        <ToggleRow
           title={zh ? '启动时窗口置顶' : 'Always on top on start'}
           description={zh ? '应用启动时自动置顶窗口。' : 'Keep window always on top'}
           checked={settings.alwaysOnTop ?? false}

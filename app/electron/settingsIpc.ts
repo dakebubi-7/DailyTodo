@@ -14,6 +14,7 @@ import type { ElectronStoreLike } from './sharedTypes';
 import { areStoreValuesEqual } from './storeValueEquality';
 import { filterValidTasks } from '../shared/taskValidation';
 import { isObjectRecord } from './unknownValueGuards';
+import type { EdgeAutoHideController } from './edgeAutoHideController';
 
 type RegisterSettingsIpcHandlersOptions = {
   store: ElectronStoreLike;
@@ -21,6 +22,7 @@ type RegisterSettingsIpcHandlersOptions = {
   setAppSettings(value: unknown): AppBehaviorSettings;
   getObsidianTemplateSettings(): ObsidianTemplateSettings;
   setObsidianTemplateSettings(value: unknown): ObsidianTemplateSettings;
+  edgeAutoHide?: Pick<EdgeAutoHideController, 'reconcileSettings'>;
 };
 
 export function registerSettingsIpcHandlers({
@@ -29,6 +31,7 @@ export function registerSettingsIpcHandlers({
   setAppSettings,
   getObsidianTemplateSettings,
   setObsidianTemplateSettings,
+  edgeAutoHide,
 }: RegisterSettingsIpcHandlersOptions): void {
   const normalizeStoreValue = (key: string, value: unknown) => {
     if (key === 'tasks') return filterValidTasks(value);
@@ -83,7 +86,8 @@ export function registerSettingsIpcHandlers({
 
   ipcMain.handle('settings:getApp', () => getAppSettings());
   ipcMain.handle('settings:setApp', (_event, settings: unknown) => {
-    setAppSettings(settings);
+    const next = setAppSettings(settings);
+    edgeAutoHide?.reconcileSettings(next.edgeAutoHide);
     return { ok: true };
   });
 

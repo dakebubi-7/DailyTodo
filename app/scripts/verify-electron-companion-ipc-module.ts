@@ -11,6 +11,7 @@ const planningPath = join(root, 'electron/obsidianCompanionPlanning.ts');
 const templateRulesPath = join(root, 'electron/obsidianCompanionTemplateRules.ts');
 const mobileInboxPath = join(root, 'electron/obsidianCompanionMobileInbox.ts');
 const bootstrapPath = join(root, 'electron/mainWindowBootstrap.ts');
+const bootstrapTypesPath = join(root, 'electron/mainWindowBootstrapTypes.ts');
 const ipcRegistrationPath = join(root, 'electron/mainWindowIpcRegistration.ts');
 const mainPath = join(root, 'electron/main.ts');
 const preloadPath = join(root, 'electron/preload.ts');
@@ -30,6 +31,7 @@ const planning = readFileSync(planningPath, 'utf8');
 const templateRules = readFileSync(templateRulesPath, 'utf8');
 const mobileInbox = readFileSync(mobileInboxPath, 'utf8');
 const bootstrap = readFileSync(bootstrapPath, 'utf8');
+const bootstrapTypes = readFileSync(bootstrapTypesPath, 'utf8');
 const ipcRegistration = readFileSync(ipcRegistrationPath, 'utf8');
 const main = readFileSync(mainPath, 'utf8');
 const preload = readFileSync(preloadPath, 'utf8');
@@ -111,9 +113,9 @@ assert.match(
   'Companion IPC registration dependencies should preserve the unknown settings boundary.',
 );
 assert.match(
-  bootstrap,
+  bootstrapTypes,
   /setCompanionSettings\(settings:\s*unknown\):\s*void;/,
-  'mainWindowBootstrap should inject the Companion settings setter as an unknown runtime boundary.',
+  'mainWindowBootstrapTypes should declare the Companion settings setter as an unknown runtime boundary.',
 );
 for (const apiName of ['previewCompanionSync', 'writeCompanionSync']) {
   assert.match(

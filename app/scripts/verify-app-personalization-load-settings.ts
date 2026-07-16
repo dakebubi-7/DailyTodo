@@ -29,6 +29,11 @@ const normalized = normalizeLoadedPersonalization({ themeId: 'minimal', windowOp
 assert.equal(normalized?.windowOpacity, 56, 'Load normalization should retain valid numeric settings.');
 assert.equal(normalized?.texture, false, 'Load normalization should reject malformed boolean settings.');
 assert.equal(normalizeLoadedPersonalization(null), null, 'Load normalization should reject non-object values.');
+assert.equal(
+  normalizeLoadedPersonalization({ themeId: 'invisible', blurStrength: 0 })?.blurStrength,
+  14,
+  'The invisible theme should migrate its legacy zero-blur setting to the frosted-glass minimum.',
+);
 assert.deepEqual(
   parseStoredThemeOpacityOverrides({ minimal: { windowOpacity: 42, panelOpacity: 'bad' }, invalid: [] }),
   { minimal: { windowOpacity: 42 } },

@@ -31,6 +31,7 @@ export type CreateMainWindowCompositionOptions = Omit<
   | 'settingsMode'
   | 'setWindowMode'
   | 'reapplyWindowZOrder'
+  | 'getCursorPosition'
 > & {
   store: MainWindowBootstrapOptions['store'];
   diag: MainWindowBootstrapOptions['diag'];
@@ -47,6 +48,9 @@ export type CreateMainWindowCompositionOptions = Omit<
   createTrayIcon(): ReturnType<Parameters<typeof createMainShellController>[0]['getTrayIcon']>;
   quitApp(): void;
   applyNativeBackgroundMaterial: Parameters<typeof createMainWindowStarter>[0]['applyNativeBackgroundMaterial'];
+  setInvisibleGlassBackgroundMaterial: MainWindowBootstrapOptions['setInvisibleGlassBackgroundMaterial'];
+  setNativeWindowDragRegion: MainWindowBootstrapOptions['setNativeWindowDragRegion'];
+  getCursorPosition: MainWindowBootstrapOptions['getCursorPosition'];
   applyToolWindowStyle: Parameters<typeof createMainWindowStarter>[0]['applyToolWindowStyle'];
   runtimeState: {
     getMainWindow: MainWindowBootstrapOptions['getMainWindow'];

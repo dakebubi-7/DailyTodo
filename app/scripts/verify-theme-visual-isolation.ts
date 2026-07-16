@@ -9,7 +9,8 @@ const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').repla
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
 const appearanceSection = readFileSync(join(root, 'src/components/settings/AppearanceSettingsSection.tsx'), 'utf8');
 const appPersonalization = readFileSync(join(root, 'src/app/appPersonalization.ts'), 'utf8');
-const appShellComposition = readFileSync(join(root, 'src/app/appShellComposition.tsx'), 'utf8');
+const personalizationSettings = readFileSync(join(root, 'src/app/personalizationSettings.ts'), 'utf8');
+const appShellOverlayComposition = readFileSync(join(root, 'src/app/appShellOverlayComposition.ts'), 'utf8');
 
 assert.ok(
   settingsPanel.includes('AppearanceSettingsSection') &&
@@ -23,16 +24,16 @@ assert.ok(
 );
 assert.match(
   appPersonalization,
-  /resetCurrentThemeDefaults: \(\) => \{\s*const reset = getThemeDefaultsReset\(personalization, activeThemeId, themeOverrides\);\s*if \(!reset\) return;\s*setThemeOverrides\(reset\.nextThemeOverrides\);\s*setPersonalization\(reset\.nextPersonalization\);\s*\}/,
+  /resetCurrentThemeDefaults: \(\) => \{[\s\S]*const reset = getThemeDefaultsReset\(personalization, activeThemeId, themeOverrides\);[\s\S]*if \(!reset\) return;[\s\S]*setThemeOverrides\(reset\.nextThemeOverrides\);[\s\S]*setPersonalization\(reset\.nextPersonalization\);[\s\S]*\}/,
   'App personalization actions should reset the active theme preset through the reset helper.',
 );
 assert.match(
-  appPersonalization,
+  personalizationSettings,
   /export function getThemeDefaultsReset\b[\s\S]*const next = \{ \.\.\.themeOverrides \};\s*delete next\[preset\.id\];[\s\S]*nextThemeOverrides: next/,
   'Theme reset should clear per-theme opacity override memory in the personalization helper.',
 );
 assert.match(
-  appShellComposition,
+  appShellOverlayComposition,
   /const settingsPanelProps = \{[\s\S]*onApplyTheme: appPersonalizationActions\.applyThemePreset,[\s\S]*onResetTheme: appPersonalizationActions\.resetCurrentThemeDefaults,[\s\S]*onChange: appPersonalizationActions\.changePersonalization,[\s\S]*\};/,
   'App shell composition should pass the personalization reset action to SettingsPanel.',
 );

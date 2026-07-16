@@ -5,6 +5,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   close: () => ipcRenderer.invoke('window:close'),
   getAlwaysOnTop: () => ipcRenderer.invoke('window:getAlwaysOnTop'),
   toggleAlwaysOnTop: () => ipcRenderer.invoke('window:toggleAlwaysOnTop'),
+  setInvisibleGlass: (payload: unknown) => ipcRenderer.invoke('window:setInvisibleGlass', payload),
+  setNativeWindowRadius: (radius: unknown) => ipcRenderer.invoke('window:setNativeWindowRadius', radius),
+  onPerformanceFrostChanged: (callback: (active: boolean) => void) => {
+    const listener = (_event: unknown, active: unknown) => callback(active === true);
+    ipcRenderer.on('window:performanceFrostChanged', listener);
+    return () => ipcRenderer.removeListener('window:performanceFrostChanged', listener);
+  },
+  setNativeWindowDragRegion: (region: unknown) => ipcRenderer.send('window:setNativeDragRegion', region),
   getWindowMode: () => ipcRenderer.invoke('window:getWindowMode'),
   setWindowMode: (mode: unknown) => ipcRenderer.invoke('window:setWindowMode', mode),
   onWindowModeChanged: (callback: (mode: unknown) => void) => {

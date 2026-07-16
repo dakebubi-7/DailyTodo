@@ -35,8 +35,13 @@ assert.match(helper, /new BrowserWindow\(\{/, 'mainWindowFactory should own main
 assert.match(helper, /minWidth:\s*minWindowWidth/, 'mainWindowFactory should preserve the minimum width wiring.');
 assert.match(helper, /minHeight:\s*480/, 'mainWindowFactory should preserve the minimum height.');
 assert.match(helper, /frame:\s*false/, 'mainWindowFactory should preserve frameless main-window creation.');
-assert.match(helper, /transparent:\s*true/, 'mainWindowFactory should preserve transparent main-window creation.');
-assert.match(helper, /backgroundColor:\s*'#00000000'/, 'mainWindowFactory should preserve transparent background color.');
+assert.match(helper, /export function getMainWindowVisualOptions\b/, 'mainWindowFactory should expose platform-specific native visual options.');
+assert.match(helper, /platform === 'win32'/, 'Windows should use the native Acrylic-compatible window path.');
+assert.match(helper, /shouldPreferWin32AcrylicFallback/, 'Windows visual options should branch between Win10 Win32 Acrylic and Win11 Electron Acrylic.');
+assert.match(helper, /transparent:\s*false/, 'Windows 11 Electron Acrylic should use an opaque native BrowserWindow surface.');
+assert.match(helper, /backgroundColor:\s*'#F2F2F2'/, 'Windows 11 Electron Acrylic should start from a neutral native surface color.');
+assert.match(helper, /transparent:\s*true/, 'Windows 10 and non-Windows platforms should preserve transparent fallback window creation.');
+assert.match(helper, /backgroundColor:\s*'#00000000'/, 'Windows 10 and non-Windows platforms should preserve transparent fallback backgrounds.');
 assert.match(helper, /skipTaskbar:\s*true/, 'mainWindowFactory should preserve skipTaskbar default.');
 assert.match(helper, /alwaysOnTop:\s*initialAlwaysOnTop/, 'mainWindowFactory should preserve initial always-on-top wiring.');
 assert.match(helper, /preload:\s*path\.join\(__dirname,\s*'preload\.js'\)/, 'mainWindowFactory should own the preload path.');

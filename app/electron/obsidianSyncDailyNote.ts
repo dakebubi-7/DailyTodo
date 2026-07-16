@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import type { ObsidianTemplateSettings } from '../shared/appSettings';
 import {
   INSPIRATION_END_MARKER,
@@ -17,7 +15,11 @@ import {
   upsertManagedBlockIfChanged,
 } from './obsidianManagedBlockSync';
 import { triggerObsidianOverviewUpdate } from './obsidianOverviewUpdate';
-import { writeTextFileAtomic } from './fileWrite';
+import {
+  readTextFileWithStamp,
+  writeTextFileAtomicIfUnchanged,
+  type TextFileStamp,
+} from './fileWrite';
 
 function readTemplateModuleEnabled(templates: ObsidianTemplateSettings, moduleId: string, fallback: boolean) {
   const modules = isObjectRecord(templates) ? templates.modules : undefined;
@@ -44,6 +46,15 @@ type CreateObsidianDailyNoteSyncHelpersOptions = {
   upsertMarkedBlock(existing: string, startMarker: string, endMarker: string, block: string): string;
   readMarkedBlockBody(existing: string, startMarker: string, endMarker: string): string;
   migrateLegacyWorkSection(existing: string, dailyWork?: string): string;
+};
+
+export type ObsidianDailyNoteSyncPlan = {
+  date: string;
+  filePath: string;
+  nextContent: string;
+  didWrite: boolean;
+  stamp: TextFileStamp | null;
+  markerWarnings: string[];
 };
 
 export function createObsidianDailyNoteSyncHelpers({
@@ -77,11 +88,98 @@ export function createObsidianDailyNoteSyncHelpers({
   }
 
   function readDailyNoteFileIfPresent(filePath: string) {
-    if (!fs.existsSync(filePath)) return null;
-    if (!fs.statSync(filePath).isFile()) {
-      throw new Error(`Daily note target must be a file: ${filePath}`);
+    return readTextFileWithStamp(filePath).content;
+  }
+
+  function getMarkerWarnings(existing: string, enabledMarkers: Array<[string, string, string]>) {
+    return enabledMarkers.flatMap(([name, startMarker, endMarker]) => {
+      const start = existing.indexOf(startMarker);
+      const end = existing.indexOf(endMarker);
+      const starts = existing.split(startMarker).length - 1;
+      const ends = existing.split(endMarker).length - 1;
+      return start === -1 && end === -1
+        ? []
+        : start === -1 || end === -1 || end <= start || starts !== 1 || ends !== 1
+          ? [`${name} marker health warning.`]
+          : [];
+    });
+  }
+
+  function prepareDailyNoteSync(
+    tasks: ObsidianSyncTask[],
+    affectedDates: string[],
+    selected: string,
+    dailyWork = '',
+    inspiration = '',
+  ): ObsidianDailyNoteSyncPlan[] {
+    const templates = getTemplates();
+    const workEnabled = readTemplateModuleEnabled(templates, 'work', true);
+    const inspirationEnabled = readTemplateModuleEnabled(templates, 'inspiration', true);
+    const tasksEnabled = readTemplateModuleEnabled(templates, 'tasks', true);
+
+    return affectedDates.map((date) => {
+      const filePath = getDailyFilePath(date, templates);
+      const snapshot = readTextFileWithStamp(filePath);
+      const existingFileContent = snapshot.content;
+      const useProvidedDailySections = date === selected;
+      const existing = existingFileContent ?? buildDailyTemplate(
+        date,
+        useProvidedDailySections ? dailyWork : '',
+        useProvidedDailySections ? inspiration : '',
+        templates,
+      );
+      let nextContent = existing;
+
+      if (workEnabled) {
+        nextContent = migrateLegacyWorkSection(nextContent, useProvidedDailySections ? dailyWork : '');
+        const existingWork = readMarkedBlockBody(nextContent, WORK_START_MARKER, WORK_END_MARKER);
+        nextContent = upsertManagedBlockIfChanged(
+          nextContent, WORK_START_MARKER, WORK_END_MARKER,
+          buildWorkBlock(useProvidedDailySections ? dailyWork : existingWork, templates), upsertMarkedBlock,
+        );
+      }
+      if (inspirationEnabled) {
+        nextContent = migrateLegacyInspirationSection(nextContent, useProvidedDailySections ? inspiration : '');
+        const existingInspiration = readMarkedBlockBody(nextContent, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER);
+        const nextInspiration = useProvidedDailySections ? inspiration.trim() || existingInspiration : existingInspiration;
+        nextContent = upsertManagedBlockIfChanged(
+          nextContent, INSPIRATION_START_MARKER, INSPIRATION_END_MARKER,
+          buildInspirationBlock(nextInspiration, templates), upsertMarkedBlock,
+        );
+      }
+      if (tasksEnabled) {
+        const taskBlockStart = nextContent.indexOf(TASK_START_MARKER);
+        const taskBlockEnd = nextContent.indexOf(TASK_END_MARKER);
+        const existingTaskBlock = taskBlockStart !== -1 && taskBlockEnd > taskBlockStart
+          ? nextContent.slice(taskBlockStart, taskBlockEnd + TASK_END_MARKER.length) : '';
+        const nextTaskBlock = preserveTaskSyncTimestamp(existingTaskBlock, buildTaskBlock(date, tasks, templates));
+        nextContent = upsertManagedBlockIfChanged(
+          nextContent, TASK_START_MARKER, TASK_END_MARKER, nextTaskBlock, upsertMarkedBlock,
+        );
+      }
+
+      const enabledMarkers: Array<[string, string, string]> = [];
+      if (workEnabled) enabledMarkers.push(['DAILYTODO:WORK', WORK_START_MARKER, WORK_END_MARKER]);
+      if (inspirationEnabled) enabledMarkers.push(['DAILYTODO:INSPIRATION', INSPIRATION_START_MARKER, INSPIRATION_END_MARKER]);
+      if (tasksEnabled) enabledMarkers.push(['DAILYTODO:TASKS', TASK_START_MARKER, TASK_END_MARKER]);
+      return {
+        date,
+        filePath,
+        nextContent,
+        didWrite: nextContent !== existingFileContent,
+        stamp: snapshot.stamp,
+        markerWarnings: getMarkerWarnings(existingFileContent ?? '', enabledMarkers),
+      };
+    });
+  }
+
+  function commitDailyNoteSync(plans: ObsidianDailyNoteSyncPlan[], selected: string) {
+    const ordered = [...plans].sort((left, right) => Number(left.date === selected) - Number(right.date === selected));
+    for (const plan of ordered) {
+      if (!plan.didWrite) continue;
+      const result = writeTextFileAtomicIfUnchanged(plan.filePath, plan.nextContent, plan.stamp);
+      if (!result.ok) throw new Error(result.reason);
     }
-    return fs.readFileSync(filePath, 'utf-8');
   }
 
   function syncOneDailyNote(
@@ -91,77 +189,23 @@ export function createObsidianDailyNoteSyncHelpers({
     inspiration = '',
     useProvidedDailySections = false,
   ) {
-    const templates = getTemplates();
-    const workEnabled = readTemplateModuleEnabled(templates, 'work', true);
-    const inspirationEnabled = readTemplateModuleEnabled(templates, 'inspiration', true);
-    const tasksEnabled = readTemplateModuleEnabled(templates, 'tasks', true);
-    const filePath = getDailyFilePath(selected);
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    const existingFileContent = readDailyNoteFileIfPresent(filePath);
-    const existing = existingFileContent ?? buildDailyTemplate(selected, dailyWork, inspiration, templates);
-    let nextContent = existing;
-
-    if (workEnabled) {
-      nextContent = migrateLegacyWorkSection(nextContent, dailyWork);
-      const existingWork = readMarkedBlockBody(nextContent, WORK_START_MARKER, WORK_END_MARKER);
-      const nextWork = useProvidedDailySections ? dailyWork : existingWork;
-      nextContent = upsertManagedBlockIfChanged(
-        nextContent,
-        WORK_START_MARKER,
-        WORK_END_MARKER,
-        buildWorkBlock(nextWork, templates),
-        upsertMarkedBlock,
-      );
-    }
-
-    if (inspirationEnabled) {
-      nextContent = migrateLegacyInspirationSection(nextContent, inspiration);
-      const existingInspiration = readMarkedBlockBody(
-        nextContent,
-        INSPIRATION_START_MARKER,
-        INSPIRATION_END_MARKER,
-      );
-      const nextInspiration = useProvidedDailySections
-        ? inspiration.trim() || existingInspiration
-        : existingInspiration;
-      nextContent = upsertManagedBlockIfChanged(
-        nextContent,
-        INSPIRATION_START_MARKER,
-        INSPIRATION_END_MARKER,
-        buildInspirationBlock(nextInspiration, templates),
-        upsertMarkedBlock,
-      );
-    }
-
-    if (tasksEnabled) {
-      const taskBlockStart = nextContent.indexOf(TASK_START_MARKER);
-      const taskBlockEnd = nextContent.indexOf(TASK_END_MARKER);
-      const existingTaskBlock = taskBlockStart !== -1 && taskBlockEnd > taskBlockStart
-        ? nextContent.slice(taskBlockStart, taskBlockEnd + TASK_END_MARKER.length)
-        : '';
-      const nextTaskBlock = preserveTaskSyncTimestamp(
-        existingTaskBlock,
-        buildTaskBlock(selected, tasks, templates),
-      );
-      nextContent = upsertManagedBlockIfChanged(
-        nextContent,
-        TASK_START_MARKER,
-        TASK_END_MARKER,
-        nextTaskBlock,
-        upsertMarkedBlock,
-      );
-    }
-
-    if (nextContent !== existingFileContent) {
-      writeTextFileAtomic(filePath, nextContent);
-    }
-    return { filePath, nextContent, didWrite: nextContent !== existingFileContent };
+    const [plan] = prepareDailyNoteSync(
+      tasks,
+      [selected],
+      selected,
+      useProvidedDailySections ? dailyWork : '',
+      useProvidedDailySections ? inspiration : '',
+    );
+    commitDailyNoteSync([plan], selected);
+    return { filePath: plan.filePath, nextContent: plan.nextContent, didWrite: plan.didWrite };
   }
 
   return {
     getDailyFilePath,
     triggerOverviewUpdate,
     readDailyNoteFileIfPresent,
+    prepareDailyNoteSync,
+    commitDailyNoteSync,
     syncOneDailyNote,
   };
 }

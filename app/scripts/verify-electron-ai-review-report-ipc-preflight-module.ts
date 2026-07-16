@@ -27,7 +27,8 @@ assert.match(moduleSource, /const settings = getAiReviewSettings\(\)/, 'report I
 assert.match(moduleSource, /const llm = ensureReportLlmAvailable\(reportKind\)/, 'report IPC preflight helper should preserve report account resolution.');
 assert.match(moduleSource, /emitAiReviewProgress\(reportKind, 'requestAi', REQUEST_AI_LABEL, 'failed', llm\.error\)/, 'report IPC preflight helper should preserve failed request-AI progress emission.');
 assert.match(moduleSource, /const vaultStatus = getVaultStatus\(\)/, 'report IPC preflight helper should preserve vault-status lookup.');
-assert.match(moduleSource, /emitAiReviewProgress\(reportKind, 'writeObsidian', WRITE_OBSIDIAN_LABEL, 'failed', vaultStatus\.reason\)/, 'report IPC preflight helper should preserve failed write-Obsidian progress emission for vault failures.');
+assert.match(moduleSource, /const vaultError = vaultStatus\.ok[\s\S]*?\? 'Obsidian vault path is missing\.'[\s\S]*?: \(vaultStatus\.reason \|\| 'Obsidian vault path is missing\.'\);/, 'report IPC preflight helper should normalize both unavailable and missing vault-path failures.');
+assert.match(moduleSource, /emitAiReviewProgress\(reportKind, 'writeObsidian', WRITE_OBSIDIAN_LABEL, 'failed', vaultError\)/, 'report IPC preflight helper should preserve failed write-Obsidian progress emission for normalized vault failures.');
 assert.match(moduleSource, /return \{ ok: true, startedAt, settings, llm, vaultPath: vaultStatus\.vaultPath \}/, 'report IPC preflight helper should preserve the successful preflight return shape.');
 
 for (const source of [weekly, monthly]) {

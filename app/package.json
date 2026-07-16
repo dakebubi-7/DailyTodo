@@ -10,8 +10,9 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "icons": "node scripts/generate-icons.mjs",
-    "electron:build": "electron-vite build && electron-builder",
-    "dist": "electron-vite build && electron-builder --win dir",
+    "build:win32-hit-test": "powershell -ExecutionPolicy Bypass -File scripts/build-win32-hit-test.ps1",
+    "electron:build": "npm run build:win32-hit-test && electron-vite build && electron-builder",
+    "dist": "npm run build:win32-hit-test && electron-vite build && electron-builder --win dir",
     "verify:companion": "tsx electron/obsidianCompanion.verify.ts",
     "verify:window-mode": "tsx electron/windowMode.verify.ts",
     "verify:settings-sync": "tsx scripts/verify-settings-sync.ts",
@@ -40,6 +41,7 @@
     "verify:task-completion-dialog-markdown-field": "tsx scripts/verify-task-completion-dialog-markdown-field.ts",
     "verify:header-completion-celebration-hook": "tsx scripts/verify-header-completion-celebration-hook.ts",
     "verify:title-bar-more-menu-hook": "tsx scripts/verify-title-bar-more-menu-hook.ts",
+    "verify:titlebar-menu-layering": "tsx scripts/verify-titlebar-menu-layering.ts",
     "verify:title-bar-primary-actions-module": "tsx scripts/verify-title-bar-primary-actions-module.ts",
     "verify:ux-polish": "tsx scripts/verify-ux-polish.ts",
     "verify:context-menu": "tsx scripts/verify-context-menu.ts",
@@ -119,12 +121,14 @@
     "verify:quick-capture": "tsx scripts/verify-quick-capture.ts",
     "verify:quick-capture-ui": "tsx scripts/verify-quick-capture-ui.ts",
     "verify:frosted-glass-opacity": "tsx scripts/verify-frosted-glass-opacity-controls.ts",
+    "verify:invisible-glass": "tsx scripts/verify-invisible-glass.ts",
     "verify:task-layout-unified-glass": "tsx scripts/verify-task-layout-unified-glass.ts",
     "verify:task-action-alignment": "tsx scripts/verify-task-action-alignment.ts",
     "verify:theme-no-blue": "tsx scripts/verify-theme-no-blue.ts",
     "verify:watercolor-ai-settings": "tsx scripts/verify-watercolor-and-ai-settings.ts",
     "verify:theme-visual-isolation": "tsx scripts/verify-theme-visual-isolation.ts",
     "verify:ui-feedback-regressions": "tsx scripts/verify-ui-feedback-regressions.ts",
+    "verify:invisible-titlebar-feedback": "tsx scripts/verify-invisible-titlebar-feedback.ts",
     "verify:settings-basic-sections": "tsx scripts/verify-settings-basic-sections.ts",
     "verify:settings-sync-section": "tsx scripts/verify-settings-sync-section.ts",
     "verify:electron-window-ipc-module": "tsx scripts/verify-electron-window-ipc-module.ts",
@@ -264,7 +268,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:fast": "npm run typecheck && npm run lint && npm test && npm run verify:task-ordering-state && npm run verify:electron-settings-ipc-module && npm run verify:renderer-route && npm run verify:context-menu && npm run verify:atomic-write && npm run verify:security",
-    "verify:security": "tsx scripts/verify-security-hardening.ts"
+    "verify:security": "tsx scripts/verify-security-hardening.ts",
+    "verify:build-output": "tsx scripts/verify-build-output.ts",
+    "verify:electron-store-bundle": "tsx scripts/verify-electron-store-bundle.ts",
+    "verify:obsidian": "npm run verify:electron-obsidian-sync-module && npm run verify:electron-obsidian-sync-preview-module && npm test -- --run tests/obsidianSyncRequest.test.ts",
+    "verify:ai-review": "npm run verify:electron-ai-review-daily-runner-module && npm run verify:electron-ai-review-runtime-module && npm test -- --run tests/aiReviewDailyRunner.test.ts",
+    "verify:task-ui": "npm run verify:task-completion-actions && npm run verify:task-list-interactions && npm test -- --run tests/taskCompletionActions.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -279,6 +288,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@testing-library/react": "^16.3.2",
     "@types/canvas-confetti": "^1.9.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -288,20 +299,20 @@
     "electron": "34.2.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
+    "eslint": "^9.39.1",
+    "jsdom": "^29.1.1",
     "png-to-ico": "^3.0.1",
     "postcss": "^8.5.3",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.46.2",
     "vite": "^6.2.0",
     "vite-plugin-electron": "^0.28.8",
     "vite-plugin-electron-renderer": "^0.14.6",
-    "wait-on": "^8.0.3",
-    "@eslint/js": "^9.39.1",
-    "eslint": "^9.39.1",
-    "typescript-eslint": "^8.46.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wait-on": "^8.0.3"
   },
   "build": {
     "appId": "com.dailytodo.app",
@@ -322,6 +333,10 @@
       "node_modules/@koromix/**"
     ],
     "extraResources": [
+      {
+        "from": "native/win32-hit-test/bin/win32-hit-test.dll",
+        "to": "native/win32-hit-test/win32-hit-test.dll"
+      },
       {
         "from": "build/tray.png",
         "to": "tray.png"

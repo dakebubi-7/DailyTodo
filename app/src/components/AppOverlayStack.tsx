@@ -26,6 +26,22 @@ export interface AppOverlayStackProps {
   companionPanelProps: ComponentProps<typeof ObsidianCompanionPanelComponent>;
   completionDialogProps: ComponentProps<typeof TaskCompletionDialogComponent>;
   reviewDialogProps: ComponentProps<typeof TaskReviewDialogComponent>;
+  isTaskDialogOpen: boolean;
+}
+
+export function getTaskDialogIsolation({
+  completionTask,
+  reviewTask,
+}: {
+  completionTask: ComponentProps<typeof TaskCompletionDialogComponent>['task'];
+  reviewTask: ComponentProps<typeof TaskReviewDialogComponent>['task'];
+}) {
+  const isTaskDialogOpen = Boolean(completionTask || reviewTask);
+
+  return {
+    inert: isTaskDialogOpen,
+    ariaHidden: isTaskDialogOpen,
+  };
 }
 
 function hasOpenOverlay({
@@ -36,6 +52,7 @@ function hasOpenOverlay({
   companionPanelProps,
   completionDialogProps,
   reviewDialogProps,
+  isTaskDialogOpen: _isTaskDialogOpen,
 }: AppOverlayStackProps) {
   return Boolean(
     settingsPanelProps.isOpen ||

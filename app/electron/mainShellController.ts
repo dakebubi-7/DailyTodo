@@ -1,10 +1,11 @@
-import { BrowserWindow, Tray } from 'electron';
+﻿import { BrowserWindow, Tray, screen } from 'electron';
 import type { RendererRoute } from '../shared/rendererRoute';
 import type { WindowMode } from '../shared/windowMode';
 import type { UserHiddenState } from './userHiddenState';
 import type { TaskMenuPayload } from './taskContextMenuIpc';
 import { createTaskMenuWindow } from './taskMenuWindow';
 import { createMainTray, refreshMainTrayMenu } from './trayMenu';
+import { ensureWindowBoundsVisible } from './windowState';
 
 export type CreateMainShellControllerOptions = {
   getMainWindow(): BrowserWindow | null;
@@ -12,6 +13,7 @@ export type CreateMainShellControllerOptions = {
   setTray(nextTray: Tray | null): void;
   getTaskMenuWindow(): BrowserWindow | null;
   setTaskMenuWindow(nextWindow: BrowserWindow | null): void;
+  getTaskMenuPayload(): TaskMenuPayload | null;
   setTaskMenuPayload(payload: TaskMenuPayload | null): void;
   userHidden: Pick<UserHiddenState, 'setHidden'>;
   getWindowMode(): WindowMode;
@@ -21,6 +23,7 @@ export type CreateMainShellControllerOptions = {
   loadRenderer(win: BrowserWindow, route: RendererRoute): void;
   quitApp(): void;
   zh(text: string): string;
+  edgeAutoHide?: Pick<import('./edgeAutoHideController').EdgeAutoHideController, 'noteForcedExpandAndClear'>;
 };
 
 export type MainShellController = {
@@ -38,6 +41,7 @@ export function createMainShellController({
   setTray,
   getTaskMenuWindow,
   setTaskMenuWindow,
+  getTaskMenuPayload,
   setTaskMenuPayload,
   userHidden,
   getWindowMode,
@@ -47,12 +51,20 @@ export function createMainShellController({
   loadRenderer,
   quitApp,
   zh,
+  edgeAutoHide,
 }: CreateMainShellControllerOptions): MainShellController {
   function showMainWindow() {
     const mainWindow = getMainWindow();
     if (!mainWindow || mainWindow.isDestroyed()) return;
     userHidden.setHidden(false);
+    edgeAutoHide?.noteForcedExpandAndClear();
     if (mainWindow.isMinimized()) mainWindow.restore();
+    const bounds = mainWindow.getBounds();
+    const workArea = screen.getDisplayMatching(bounds).workArea;
+    const visible = ensureWindowBoundsVisible(bounds, workArea);
+    if (visible.x !== bounds.x || visible.y !== bounds.y || visible.width !== bounds.width || visible.height !== bounds.height) {
+      mainWindow.setBounds(visible);
+    }
     if (getWindowMode() === 'desktop') {
       markDesktopInteractive();
     }
@@ -63,6 +75,7 @@ export function createMainShellController({
   function hideMainWindow() {
     const mainWindow = getMainWindow();
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    edgeAutoHide?.noteForcedExpandAndClear();
     userHidden.setHidden(true);
     mainWindow.hide();
   }
@@ -92,24 +105,36 @@ export function createMainShellController({
     refreshTrayMenu();
   }
 
-  function closeTaskMenuWindow() {
+  function closeTaskMenuWindow(options: { clearPayload?: boolean } = {}) {
+    const clearPayload = options.clearPayload !== false;
     const taskMenuWindow = getTaskMenuWindow();
     if (taskMenuWindow && !taskMenuWindow.isDestroyed()) {
       taskMenuWindow.close();
     }
     setTaskMenuWindow(null);
-    setTaskMenuPayload(null);
+    if (clearPayload) {
+      setTaskMenuPayload(null);
+    }
   }
 
   function openTaskMenuWindow(payload: TaskMenuPayload) {
-    closeTaskMenuWindow();
+    // Closing a previous popup must not wipe the payload for the menu we are
+    // about to open; the popup renderer reads it asynchronously via IPC.
+    closeTaskMenuWindow({ clearPayload: false });
+    setTaskMenuPayload(payload);
+    const mainWindow = getMainWindow();
     const menu = createTaskMenuWindow(payload, {
       loadRenderer,
-      onBlur: closeTaskMenuWindow,
+      parent: mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
+      onBlur: () => closeTaskMenuWindow(),
       onClosed: () => {
         if (getTaskMenuWindow() === menu) {
           setTaskMenuWindow(null);
-          setTaskMenuPayload(null);
+          // Only clear payload if this closed window is still the active menu owner.
+          // A newer open may have already replaced the payload.
+          if (getTaskMenuPayload() === payload) {
+            setTaskMenuPayload(null);
+          }
         }
       },
     });

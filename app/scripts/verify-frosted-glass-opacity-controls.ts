@@ -6,11 +6,14 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const settingsPanel = readFileSync(join(root, 'src/components/SettingsPanel.tsx'), 'utf8');
+const appearanceSection = readFileSync(join(root, 'src/components/settings/AppearanceSettingsSection.tsx'), 'utf8');
 const appearanceSettings = readFileSync(join(root, 'src/components/settings/appearanceSettings.ts'), 'utf8');
 const settingsControls = readFileSync(join(root, 'src/components/settings/SettingsControls.tsx'), 'utf8');
 const appViewportStyle = readFileSync(join(root, 'src/app/appViewportStyle.ts'), 'utf8');
 const globalsCss = readFileSync(join(root, 'src/styles/globals.css'), 'utf8');
 const electronMain = readFileSync(join(root, 'electron/main.ts'), 'utf8');
+const win32Native = readFileSync(join(root, 'electron/win32Native.ts'), 'utf8');
+const mainWindowFactory = readFileSync(join(root, 'electron/mainWindowFactory.ts'), 'utf8');
 
 function extractAround(source: string, anchor: string, beforeChars: number, afterChars: number) {
   const index = source.indexOf(anchor);
@@ -113,7 +116,7 @@ const rangeControl = extractFunction(settingsControls, 'export function RangeCon
 assertBlockIncludes(rangeControl, 'onDoubleClick={handleReset}', 'RangeControl should support double-click reset on the wrapping control.');
 assertBlockIncludes(rangeControl, 'defaultValue', 'RangeControl should accept a reset default value.');
 assertBlockIncludes(rangeControl, 'resetTitle', 'RangeControl should accept reset tooltip copy.');
-assertBlockIncludes(rangeControl, /if \(typeof defaultValue === 'number'\) onChange\(defaultValue\)/, 'RangeControl should reset to defaultValue through onChange.');
+assertBlockIncludes(rangeControl, /if \(typeof defaultValue !== 'number'\) return;[\s\S]*commit\(defaultValue\)/, 'RangeControl should reset to defaultValue through onChange.');
 
 assert.match(
   appearanceSettings,
@@ -131,43 +134,45 @@ assertBlockIncludes(
   'Unified opacity helper should write the slider value to every opacity key.'
 );
 assert.match(
-  settingsPanel,
-  /from '\.\/settings\/appearanceSettings'/,
-  'SettingsPanel should import appearance helpers from the appearanceSettings module.'
+  appearanceSection,
+  /from '\.\/appearanceSettings'/,
+  'AppearanceSettingsSection should import appearance helpers from the appearanceSettings module.'
 );
-assert.doesNotMatch(settingsPanel, /OPACITY_AREAS\.map/, 'SettingsPanel should not render per-area opacity controls.');
-assert.doesNotMatch(settingsPanel, /function OpacityAreaControl\(/, 'SettingsPanel should remove the per-area opacity control component.');
-assert.doesNotMatch(settingsPanel, /settings-opacity-range-input/, 'SettingsPanel should remove the recommended-range opacity slider UI.');
+assert.doesNotMatch(appearanceSection, /OPACITY_AREAS\.map/, 'AppearanceSettingsSection should not render per-area opacity controls.');
+assert.doesNotMatch(appearanceSection, /function OpacityAreaControl\(/, 'AppearanceSettingsSection should remove the per-area opacity control component.');
+assert.doesNotMatch(appearanceSection, /settings-opacity-range-input/, 'AppearanceSettingsSection should remove the recommended-range opacity slider UI.');
 
-const fontControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', 'value={settings.fontScale ?? 100}');
+const fontControl = extractSelfClosingJsx(appearanceSection, 'RangeControl', 'value={settings.fontScale ?? 100}');
 assertBlockIncludes(fontControl, "onChange={(value) => updatePersonalization('fontScale', value)}", 'Global font control should update the fontScale personalization setting.');
 assertBlockIncludes(fontControl, 'defaultValue={recommendation.fontScale ?? 100}', 'Global font reset should use the current theme font scale or 100.');
 assertBlockIncludes(fontControl, 'resetTitle={resetToThemeDefaultTitle}', 'Global font control should use the theme-default reset tooltip.');
 
-const glassOpacityControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', "value={glassOpacityValue(settings)}");
-assertBlockIncludes(glassOpacityControl, "label={appSettings.language === 'zh-CN' ? '玻璃透明度' : 'Glass opacity'}", 'Appearance should expose one user-facing glass opacity control.');
+const glassOpacityControl = extractSelfClosingJsx(appearanceSection, 'RangeControl', "value={glassOpacityValue(settings)}");
+assertBlockIncludes(glassOpacityControl, 'label={zh ?', 'Appearance should localize the glass opacity control label.');
+assertBlockIncludes(glassOpacityControl, "'Glass opacity'}", 'Appearance should expose one user-facing glass opacity control.');
 assertBlockIncludes(glassOpacityControl, 'min={OPACITY_SLIDER_MIN}', 'Glass opacity control should use the shared opacity minimum.');
 assertBlockIncludes(glassOpacityControl, 'max={OPACITY_SLIDER_MAX}', 'Glass opacity control should use the shared opacity maximum.');
 assertBlockIncludes(glassOpacityControl, 'defaultValue={opacityValue(recommendation, \'windowOpacity\')}', 'Glass opacity reset should use the current theme window opacity recommendation.');
 assertBlockIncludes(glassOpacityControl, 'resetTitle={resetToThemeDefaultTitle}', 'Glass opacity control should use the theme-default reset tooltip.');
 assertBlockIncludes(glassOpacityControl, 'onChange={(value) => onChange(withUnifiedGlassOpacity(settings, value))}', 'Glass opacity control should update all opacity fields together.');
 
-const blurStrengthControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', 'value={settings.blurStrength}');
-assertBlockIncludes(blurStrengthControl, "label={appSettings.language === 'zh-CN' ? '模糊强度' : 'Blur strength'}", 'Appearance should expose a blur strength control.');
+const blurStrengthControl = extractSelfClosingJsx(appearanceSection, 'RangeControl', 'value={settings.blurStrength}');
+assertBlockIncludes(blurStrengthControl, 'label={zh ?', 'Appearance should localize the blur strength control label.');
+assertBlockIncludes(blurStrengthControl, "'Blur strength'}", 'Appearance should expose a blur strength control.');
 assertBlockIncludes(blurStrengthControl, 'min={0}', 'Blur strength control should start at zero.');
 assertBlockIncludes(blurStrengthControl, 'max={80}', 'Blur strength control should cap at 80.');
 assertBlockIncludes(blurStrengthControl, 'defaultValue={recommendation.blurStrength}', 'Blur strength reset should use the current theme blur recommendation.');
 assertBlockIncludes(blurStrengthControl, 'resetTitle={resetToThemeDefaultTitle}', 'Blur strength control should use the theme-default reset tooltip.');
 assertBlockIncludes(blurStrengthControl, "onChange={(value) => updatePersonalization('blurStrength', value)}", 'Blur strength control should update blurStrength.');
 
-const radiusControl = extractSelfClosingJsx(settingsPanel, 'RangeControl', 'label={text.radius}');
+const radiusControl = extractSelfClosingJsx(appearanceSection, 'RangeControl', 'label={text.radius}');
 assertBlockIncludes(radiusControl, "onChange={(value) => updatePersonalization('radius', value)}", 'Radius control should update the radius personalization setting.');
 assertBlockIncludes(radiusControl, 'defaultValue={recommendation.radius}', 'Radius reset should use the current theme radius.');
 assertBlockIncludes(radiusControl, 'resetTitle={resetToThemeDefaultTitle}', 'Radius control should use the theme-default reset tooltip.');
 assert.doesNotMatch(
-  settingsPanel,
+  appearanceSection,
   /<h3>\{text\.opacityRecommendations\}<\/h3>/,
-  'The old separate opacity recommendation section should be removed from Appearance.'
+  'AppearanceSettingsSection should remove the old separate opacity recommendation section.'
 );
 
 const appCssVars = [
@@ -227,34 +232,34 @@ for (const [selector, expected, message] of meaningfulCssConsumers) {
 }
 
 assert.match(
-  electronMain,
-  /function applyNativeBackgroundMaterial\(win: BrowserWindow\)/,
-  'Electron main should define a native background material progressive enhancement helper.'
+  win32Native,
+  /function applyNativeBackgroundMaterial\(/,
+  'Win32 helper module should define a native background material progressive enhancement helper.'
 );
 assert.match(
-  electronMain,
+  win32Native,
   /setBackgroundMaterial/,
   'Native material helper should attempt Electron setBackgroundMaterial when available.'
 );
 assert.match(
-  electronMain,
+  win32Native,
   /setBackgroundMaterial\('none'\)/,
   'Native material helper should disable fixed OS material so CSS blur strength controls glass strength.'
 );
 assert.match(
-  electronMain,
+  win32Native,
   /try \{[\s\S]*setBackgroundMaterial[\s\S]*\} catch/s,
   'Native material helper should guard unsupported platforms and APIs with try/catch.'
 );
 assert.match(
-  electronMain,
+  mainWindowFactory,
   /applyNativeBackgroundMaterial\(win\);/,
   'Main window creation should call the native material helper after BrowserWindow creation.'
 );
 assert.match(
-  electronMain,
-  /transparent: true,[\s\S]*backgroundColor: '#00000000'/,
-  'Main window should preserve transparent fallback settings.'
+  mainWindowFactory,
+  /shouldPreferWin32AcrylicFallback[\s\S]*transparent: true,[\s\S]*backgroundColor: '#00000000'[\s\S]*transparent: false,[\s\S]*backgroundColor: '#F2F2F2'[\s\S]*transparent: true,[\s\S]*backgroundColor: '#00000000'/,
+  'Main window should branch Win10 transparent Win32 Acrylic and Win11 opaque Electron Acrylic hosts while preserving transparent fallback settings elsewhere.'
 );
 
 assertSelectorBlockUses(
@@ -275,12 +280,12 @@ assertSelectorBlockUses(
 assertSelectorBlockUses(
   ".app-shell[data-theme='invisible'] .task-toolbar",
   /background(?:-color)?:\s*transparent\s*!important[\s\S]*backdrop-filter:\s*none\s*!important/,
-  'Invisible task toolbar should match the surrounding transparent pane instead of drawing a separate black/white glass block.'
+  'Invisible task toolbar should stay transparent and avoid nested blur so the shell remains one glass plate.'
 );
 assertSelectorBlockUses(
-  ".app-shell[data-theme='invisible'] .task-search-input",
-  /background(?:-color)?:[\s\S]*!important[\s\S]*backdrop-filter:\s*none\s*!important/,
-  'Invisible task toolbar inputs should avoid their own blur layer.'
+  ".app-shell[data-theme='invisible'] :is(.task-search-input, .task-filter-button, .task-filter-select, .task-clear-filter, .task-tool-icon)",
+  /backdrop-filter:\s*none\s*!important/,
+  'Invisible task toolbar inputs should avoid nested backdrop-filter stacking over the shell plate.'
 );
 assertSelectorBlockUses(
   ".app-shell[data-theme='invisible'] .add-task-inner",
@@ -303,9 +308,15 @@ assertSelectorBlockUses(
   'Invisible shell should keep using --window-opacity so the existing slider still controls the pane.'
 );
 assertSelectorBlockUses(
-  '.theme-invisible.app-shell',
-  /var\(--blur-strength\)/,
-  'Invisible shell should keep using --blur-strength so blur controls still affect the main pane.'
+  ".app-shell[data-theme='invisible']",
+  /var\(--invisible-surface-alpha/,
+  'Invisible shell densify should keep continuous surface alpha instead of nested blur plates.'
 );
+assertSelectorBlockUses(
+  ".app-shell[data-theme='invisible']::before",
+  /content:\s*none/,
+  'Invisible frost veil overlay must stay disabled so opacity is one unified plate.'
+);
+
 
 console.log('verify-frosted-glass-opacity-controls passed');

@@ -1,8 +1,10 @@
-import { BrowserWindow } from 'electron';
+﻿import { BrowserWindow, screen } from 'electron';
 import { hardenRendererNavigation } from './windowNavigationSecurity';
 import { needsDesktopGuard, type WindowMode } from '../shared/windowMode';
 import type { SettingsModeState } from './settingsModeState';
 import type { UserHiddenState } from './userHiddenState';
+import type { EdgeAutoHideController } from './edgeAutoHideController';
+import { ensureWindowBoundsVisible } from './windowState';
 
 type AppSettingsLike = {
   minimizeToTrayOnClose?: boolean;
@@ -20,6 +22,8 @@ type RegisterMainWindowEventHandlersOptions = {
   markQuitting(): void;
   persistWindowState(win: BrowserWindow, options?: { persistSize?: boolean }): void;
   settingsMode: Pick<SettingsModeState, 'isOpen'>;
+  performanceFrost: Pick<import('./performanceFrostController').PerformanceFrostController, 'beginMove' | 'noteMove' | 'dispose'>;
+  edgeAutoHide: Pick<EdgeAutoHideController, 'noteMoveStarted' | 'noteMoveSettled' | 'noteResizeOrReset' | 'noteForcedExpandAndClear' | 'dispose'>;
 };
 
 export function registerMainWindowEventHandlers({
@@ -34,8 +38,27 @@ export function registerMainWindowEventHandlers({
   markQuitting,
   persistWindowState,
   settingsMode,
+  performanceFrost,
+  edgeAutoHide,
 }: RegisterMainWindowEventHandlersOptions): void {
   hardenRendererNavigation(win);
+
+  function rescueIfOffscreen(source: string): void {
+    if (win.isDestroyed()) return;
+    edgeAutoHide.noteForcedExpandAndClear();
+    const bounds = win.getBounds();
+    const workArea = screen.getDisplayMatching(bounds).workArea;
+    const visible = ensureWindowBoundsVisible(bounds, workArea);
+    if (
+      visible.x !== bounds.x
+      || visible.y !== bounds.y
+      || visible.width !== bounds.width
+      || visible.height !== bounds.height
+    ) {
+      win.setBounds(visible);
+      diag(`edge auto-hide: rescued offscreen window on ${source}`);
+    }
+  }
 
   win.once('ready-to-show', () => {
     diag('ready-to-show -> show()');
@@ -46,16 +69,23 @@ export function registerMainWindowEventHandlers({
   win.webContents.on('did-fail-load', (_event, code, desc) => diag(`did-fail-load ${code} ${desc}`));
   win.webContents.on('preload-error', (_event, preloadPath, error) => diag(`preload-error ${preloadPath}: ${String(error)}`));
 
-  win.on('show', () => diag('evt: show'));
+  win.on('show', () => {
+    rescueIfOffscreen('show');
+    diag('evt: show');
+  });
   win.on('closed', () => {
     diag('evt: closed');
+    performanceFrost.dispose();
+    edgeAutoHide.dispose();
     stopDesktopGuard();
   });
   win.on('hide', () => {
+    edgeAutoHide.noteForcedExpandAndClear();
     diag('evt: hide');
     diag(`  userHidden=${userHidden.isHidden()} windowMode=${getWindowMode()} isVisible=${win.isVisible()}`);
   });
   win.on('minimize', () => {
+    edgeAutoHide.noteForcedExpandAndClear();
     diag('evt: minimize');
     diag(`  userHidden=${userHidden.isHidden()} windowMode=${getWindowMode()} isVisible=${win.isVisible()}`);
     if (!needsDesktopGuard(getWindowMode()) || isQuitting() || win.isDestroyed() || userHidden.isHidden()) return;
@@ -66,7 +96,10 @@ export function registerMainWindowEventHandlers({
       diag(`desktop guard failed: ${String(error)}`);
     }
   });
-  win.on('restore', () => diag('evt: restore'));
+  win.on('restore', () => {
+    rescueIfOffscreen('restore');
+    diag('evt: restore');
+  });
   win.on('blur', () => diag('evt: blur'));
   win.on('focus', () => diag('evt: focus'));
 
@@ -75,8 +108,19 @@ export function registerMainWindowEventHandlers({
   });
   win.on('unresponsive', () => diag('window unresponsive'));
 
-  win.on('move', () => persistWindowState(win, { persistSize: !settingsMode.isOpen() }));
-  win.on('resize', () => persistWindowState(win, { persistSize: !settingsMode.isOpen() }));
+  win.on('will-move', () => {
+    performanceFrost.beginMove();
+    edgeAutoHide.noteMoveStarted();
+  });
+  win.on('move', () => {
+    performanceFrost.noteMove();
+    edgeAutoHide.noteMoveSettled();
+    persistWindowState(win, { persistSize: !settingsMode.isOpen() });
+  });
+  win.on('resize', () => {
+    edgeAutoHide.noteResizeOrReset();
+    persistWindowState(win, { persistSize: !settingsMode.isOpen() });
+  });
   win.on('close', (event) => {
     if (isQuitting()) return;
     if (getAppSettings().minimizeToTrayOnClose) {

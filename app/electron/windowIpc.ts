@@ -10,6 +10,11 @@ import {
 } from './windowState';
 import type { SettingsModeState } from './settingsModeState';
 import type { ElectronStoreLike } from './sharedTypes';
+import type { NativeWindowDragRegion } from './win32Native';
+import type { PerformanceFrostController } from './performanceFrostController';
+import { normalizeInvisibleGlassPayload } from '../shared/invisibleGlass';
+import { createRoundedWindowShape } from './nativeWindowShape';
+import type { EdgeAutoHideController } from './edgeAutoHideController';
 
 type RegisterWindowIpcHandlersOptions = {
   win: BrowserWindow;
@@ -25,7 +30,23 @@ type RegisterWindowIpcHandlersOptions = {
   setAppSettings(value: unknown): AppBehaviorSettings;
   getMainWindow(): BrowserWindow | null;
   reapplyWindowZOrder(win: BrowserWindow): void;
+  setInvisibleGlassBackgroundMaterial(win: BrowserWindow, payload: unknown): boolean;
+  setNativeWindowDragRegion(win: BrowserWindow, region: NativeWindowDragRegion): boolean;
+  performanceFrost: Pick<PerformanceFrostController, 'setConfiguredGlass'>;
+  edgeAutoHide: Pick<EdgeAutoHideController, 'noteResizeOrReset' | 'noteSettingsMode' | 'noteWindowModeChanged'>;
+  diag(message: string): void;
 };
+
+export function applyConfiguredGlassAndRoundedShape(
+  setConfiguredGlass: Pick<PerformanceFrostController, 'setConfiguredGlass'>['setConfiguredGlass'],
+  payload: unknown,
+  applyNativeWindowShape: () => void,
+): void {
+  setConfiguredGlass(normalizeInvisibleGlassPayload(payload));
+  // Win32 composition updates can restore a rectangular visual region. Reapply the
+  // native shape after every material change so all themes keep the same corners.
+  applyNativeWindowShape();
+}
 
 export function registerWindowIpcHandlers({
   win,
@@ -41,7 +62,24 @@ export function registerWindowIpcHandlers({
   setAppSettings,
   getMainWindow,
   reapplyWindowZOrder,
+  setInvisibleGlassBackgroundMaterial,
+  setNativeWindowDragRegion,
+  performanceFrost,
+  edgeAutoHide,
+  diag,
 }: RegisterWindowIpcHandlersOptions): void {
+  let nativeWindowRadius = 18;
+  const applyNativeWindowShape = (source: 'startup' | 'resize' | 'glass' | 'radius-ipc') => {
+    if (process.platform !== 'win32' || win.isDestroyed()) return;
+    const bounds = win.getBounds();
+    const shape = createRoundedWindowShape(bounds, nativeWindowRadius);
+    win.setShape(shape);
+    diag(`native shape source=${source} radius=${nativeWindowRadius} bounds=${bounds.width}x${bounds.height} rects=${shape.length}`);
+  };
+
+  applyNativeWindowShape('startup');
+  win.on('resize', () => applyNativeWindowShape('resize'));
+
   ipcMain.handle('window:minimize', hideMainWindow);
   ipcMain.handle('window:close', hideMainWindow);
 
@@ -51,16 +89,41 @@ export function registerWindowIpcHandlers({
       return getWindowMode();
     }
     setWindowMode(win, mode);
+    edgeAutoHide.noteWindowModeChanged();
     return getWindowMode();
   });
 
   ipcMain.handle('window:getAlwaysOnTop', () => getWindowMode() === 'onTop');
   ipcMain.handle('window:toggleAlwaysOnTop', () => {
     setWindowMode(win, togglePinnedMode(getWindowMode()));
+    edgeAutoHide.noteWindowModeChanged();
     return getWindowMode() === 'onTop';
   });
 
+  ipcMain.handle('window:setInvisibleGlass', (_event, payload: unknown) => {
+    applyConfiguredGlassAndRoundedShape(
+      performanceFrost.setConfiguredGlass.bind(performanceFrost),
+      payload,
+      () => applyNativeWindowShape('glass'),
+    );
+    return true;
+  });
+
+  ipcMain.handle('window:setNativeWindowRadius', (_event, radius: unknown) => {
+    if (typeof radius !== 'number' || !Number.isFinite(radius)) return nativeWindowRadius;
+    nativeWindowRadius = Math.max(0, Math.min(36, Math.round(radius)));
+    applyNativeWindowShape('radius-ipc');
+    return nativeWindowRadius;
+  });
+
+  ipcMain.on('window:setNativeDragRegion', (_event, region: NativeWindowDragRegion) => {
+    if (!region || typeof region !== 'object') return;
+    setNativeWindowDragRegion(win, region);
+  });
+
+
   ipcMain.handle('window:resetPosition', () => {
+    edgeAutoHide.noteResizeOrReset();
     const { workArea } = screen.getPrimaryDisplay();
     const bounds = {
       width: RESET_WINDOW_WIDTH,
@@ -80,6 +143,7 @@ export function registerWindowIpcHandlers({
     const bounds = win.getBounds();
     const { workArea } = screen.getDisplayMatching(bounds);
     const shouldOpenSettings = open === true;
+    edgeAutoHide.noteSettingsMode(shouldOpenSettings);
 
     if (shouldOpenSettings) {
       if (!settingsMode.isOpen()) {

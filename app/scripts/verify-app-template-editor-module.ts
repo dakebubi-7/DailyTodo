@@ -105,7 +105,8 @@ assert.match(app, /useAppShellComposition\(\{/, 'App should route template edito
 assert.match(shellCompositionHook, /return createAppShellComposition\(createAppShellCompositionInputs\(\{/, 'Runtime shell composition hook should route shell props through the pure input factory.');
 assert.match(shellInputs, /obsidianTemplates: appState\.obsidianTemplates,/, 'Pure shell-inputs helper should pass Obsidian templates into the shell composition helper.');
 assert.match(shellInputs, /editingTemplateKind: appState\.editingTemplateKind,/, 'Pure shell-inputs helper should pass editing template kind into the shell composition helper.');
-assert.match(shellHelper, /createAppShellOverlayComposition\(\{[\s\S]*editingTemplateKind,[\s\S]*\}\);/, 'Shell composition should delegate overlay template inputs.');
+assert.match(shellInputs, /overlay: \{[\s\S]*obsidianTemplates: appState\.obsidianTemplates,[\s\S]*editingTemplateKind: appState\.editingTemplateKind,[\s\S]*\},/, 'Shell input composition should place template editor state in the overlay group.');
+assert.match(shellHelper, /const overlayStackProps = createAppShellOverlayComposition\(overlay\);/, 'Shell composition should delegate grouped overlay template inputs unchanged.');
 assert.match(overlayHelper, /getInitialTemplateForKind\(editingTemplateKind, obsidianTemplates\)/, 'Overlay composition should delegate initial template selection.');
 assert.match(modalActions || app, /applyTemplateUpdate\(obsidianTemplates, editingTemplateKind, tpl\)/, 'App modal action boundary should delegate template update merging.');
 assert.doesNotMatch(app, /editingTemplateKind === 'daily'\s*\? \(\(obsidianTemplates as any\)\.dailyTemplate/, 'App should not inline initial template nested ternary.');

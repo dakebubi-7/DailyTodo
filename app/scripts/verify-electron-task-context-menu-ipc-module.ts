@@ -11,6 +11,7 @@ const bootstrapPath = join(root, 'electron/mainWindowBootstrap.ts');
 const ipcRegistrationPath = join(root, 'electron/mainWindowIpcRegistration.ts');
 const preloadPath = join(root, 'electron/preload.ts');
 const taskContextMenuIpcPath = join(root, 'electron/taskContextMenuIpc.ts');
+const taskMenuActionUpdatesPath = join(root, 'shared/taskMenuActionUpdates.ts');
 const viteEnvPath = join(root, 'src/vite-env.d.ts');
 
 const main = readFileSync(mainPath, 'utf8');
@@ -23,6 +24,7 @@ const viteEnv = readFileSync(viteEnvPath, 'utf8');
 assert.ok(existsSync(taskContextMenuIpcPath), 'Electron task context menu IPC module should exist.');
 
 const taskContextMenuIpc = readFileSync(taskContextMenuIpcPath, 'utf8');
+const taskMenuActionUpdates = readFileSync(taskMenuActionUpdatesPath, 'utf8');
 
 assert.match(taskContextMenuIpc, /export function registerTaskContextMenuIpcHandlers\b/, 'taskContextMenuIpc should export registerTaskContextMenuIpcHandlers.');
 assert.match(taskContextMenuIpc, /import \{ isObjectRecord \} from '\.\/unknownValueGuards';/, 'taskContextMenuIpc should reuse the Electron object-record predicate.');
@@ -71,24 +73,29 @@ assert.match(taskContextMenuIpc, /const currentBounds = taskMenuWindow\.getBound
 assert.match(taskContextMenuIpc, /setBounds\(\{ x: bounds\.x, y, width: bounds\.width, height: h \}\)/, 'taskContextMenuIpc should resize the popup without changing x or width.');
 assert.match(
   taskContextMenuIpc,
-  /function isTaskMenuActionPayload\(value: unknown\): value is TaskMenuActionPayload/,
-  'taskContextMenuIpc should define a runtime guard for forwarded menu action payloads.',
+  /import \{ normalizeTaskMenuActionPayload \} from '\.\.\/shared\/taskMenuActionUpdates';/,
+  'taskContextMenuIpc should reuse the shared action payload normalizer.',
 );
-assert.ok(
-  !/function isTaskMenuActionPayload[\s\S]*?const record = value as Record<string, unknown>;[\s\S]*?export function registerTaskContextMenuIpcHandlers/.test(taskContextMenuIpc),
-  'taskContextMenuIpc action payload guard should narrow with a record guard instead of casting value as Record<string, unknown>.',
+assert.match(
+  taskMenuActionUpdates,
+  /from '\.\/unknownValueGuards'/,
+  'shared task-menu action updates should reuse the object-record predicate.',
+);
+assert.match(
+  taskMenuActionUpdates,
+  /typeof value\.taskId !== 'string' \|\| !value\.taskId\.trim\(\)/,
+  'shared task-menu action updates should require a non-empty task ID.',
+);
+assert.match(
+  taskMenuActionUpdates,
+  /const updates = pickTaskMenuActionUpdates\(value\.updates\);/,
+  'shared task-menu action updates should normalize allowed update fields.',
 );
 assert.match(
   taskContextMenuIpc,
-  /typeof record\.taskId === 'string' && record\.taskId\.trim\(\)[\s\S]*isObjectRecord\(updates\)/,
-  'taskContextMenuIpc action payload guard should require a non-empty taskId and object-shaped updates.',
+  /taskContextMenu:action'[\s\S]*const normalized = normalizeTaskMenuActionPayload\(payload\);[\s\S]*if \(!normalized\) \{[\s\S]*closeTaskMenuWindow\(\);[\s\S]*return;[\s\S]*\}[\s\S]*webContents\.send\('taskContextMenu:action', normalized\)/,
+  'taskContextMenuIpc should normalize action payloads before forwarding them to the main window.',
 );
-assert.match(
-  taskContextMenuIpc,
-  /taskContextMenu:action'[\s\S]*if \(!isTaskMenuActionPayload\(payload\)\) \{[\s\S]*closeTaskMenuWindow\(\);[\s\S]*return;[\s\S]*\}[\s\S]*webContents\.send\('taskContextMenu:action', payload\)/,
-  'taskContextMenuIpc should reject malformed action payloads before forwarding them to the main window.',
-);
-assert.match(taskContextMenuIpc, /webContents\.send\('taskContextMenu:action', payload\)/, 'taskContextMenuIpc should forward valid menu actions to the main window.');
 assert.match(
   viteEnv,
   /openTaskContextMenu:\s*\(payload:\s*unknown\)\s*=>\s*Promise<void>/s,
