@@ -1,5 +1,6 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
+  EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX,
   EDGE_AUTO_HIDE_REVEAL_PX,
   EDGE_AUTO_HIDE_SIDE_PUSH_IN_PX,
   EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX,
@@ -10,6 +11,7 @@ import {
   getRetractedBounds,
   isPointInActivationStrip,
   isPointInRect,
+  isPointOnDesktopEdge,
 } from '../electron/edgeAutoHideGeometry';
 
 describe('edge auto-hide geometry', () => {
@@ -131,5 +133,21 @@ describe('edge auto-hide geometry', () => {
     expect(isPointInActivationStrip({ x: 4, y: 350 }, 'left', expanded, workArea)).toBe(true);
     expect(isPointInActivationStrip({ x: 9, y: 350 }, 'left', expanded, workArea)).toBe(false);
     expect(isPointInActivationStrip({ x: 4, y: 150 }, 'left', expanded, workArea)).toBe(false);
+  });
+
+  it('only treats the absolute desktop edge as hide intent', () => {
+    expect(EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX).toBe(4);
+    expect(isPointOnDesktopEdge({ x: 0, y: 400 }, 'left', workArea)).toBe(true);
+    expect(isPointOnDesktopEdge({ x: 3, y: 400 }, 'left', workArea)).toBe(true);
+    expect(isPointOnDesktopEdge({ x: 4, y: 400 }, 'left', workArea)).toBe(false);
+    expect(isPointOnDesktopEdge({ x: 120, y: 400 }, 'left', workArea)).toBe(false);
+
+    expect(isPointOnDesktopEdge({ x: 1919, y: 400 }, 'right', workArea)).toBe(true);
+    expect(isPointOnDesktopEdge({ x: 1916, y: 400 }, 'right', workArea)).toBe(true);
+    expect(isPointOnDesktopEdge({ x: 1915, y: 400 }, 'right', workArea)).toBe(false);
+
+    expect(isPointOnDesktopEdge({ x: 900, y: 0 }, 'top', workArea)).toBe(true);
+    expect(isPointOnDesktopEdge({ x: 900, y: 3 }, 'top', workArea)).toBe(true);
+    expect(isPointOnDesktopEdge({ x: 900, y: 4 }, 'top', workArea)).toBe(false);
   });
 });

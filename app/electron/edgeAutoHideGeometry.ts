@@ -91,11 +91,37 @@ export function getActivationStripBounds(edge: EdgeAutoHideEdge, expandedBounds:
   }
 }
 
+// How close the cursor must be to the absolute desktop edge to count as a hide intent.
+// Keep this tiny so normal in-window use never feels like "touching the edge".
+export const EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX = 4;
+
 export function isPointInRect(point: Point, bounds: Rect): boolean {
   return point.x >= bounds.x
     && point.x < getRight(bounds)
     && point.y >= bounds.y
     && point.y < getBottom(bounds);
+}
+
+// Hide only when the cursor actually touches the docked desktop edge.
+// Leaving the window body alone is not enough.
+export function isPointOnDesktopEdge(point: Point, edge: EdgeAutoHideEdge, workArea: Rect): boolean {
+  switch (edge) {
+    case 'left':
+      return point.x >= workArea.x
+        && point.x < workArea.x + EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX
+        && point.y >= workArea.y
+        && point.y < getBottom(workArea);
+    case 'right':
+      return point.x >= getRight(workArea) - EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX
+        && point.x <= getRight(workArea)
+        && point.y >= workArea.y
+        && point.y < getBottom(workArea);
+    case 'top':
+      return point.y >= workArea.y
+        && point.y < workArea.y + EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX
+        && point.x >= workArea.x
+        && point.x < getRight(workArea);
+  }
 }
 
 export function isPointInActivationStrip(

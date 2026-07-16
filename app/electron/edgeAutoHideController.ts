@@ -3,7 +3,7 @@
   getExpandedBounds,
   getRetractedBounds,
   isPointInActivationStrip,
-  isPointInRect,
+  isPointOnDesktopEdge,
   type EdgeAutoHideEdge,
   type Point,
   type Rect,
@@ -183,10 +183,10 @@ export function createEdgeAutoHideController({
     activationStrip.hide();
     animateBounds(from, target, RESTORE_ANIMATION_MS, easeOutCubic, () => {
       // Keep side/top attachment after restore so the docked window can hide
-      // again when the cursor leaves. Detach only when the user drags away.
+      // again when the cursor touches the desktop edge. Detach only when dragged away.
       activationStrip.hide();
       diag('edge auto-hide: restored');
-      // If the cursor is already outside, schedule the normal leave-hide path.
+      // If the cursor is already on the desktop edge, schedule hide immediately.
       poll();
     });
   }
@@ -218,7 +218,8 @@ export function createEdgeAutoHideController({
       if (!canOperate() || !edge || !expandedBounds || !workArea || retracted || dragging) return;
       const cursor = getCursorPosition();
       // Immediate side push-in may still have the cursor over the window; allow hide.
-      if (!immediate && (!cursor || isPointInRect(cursor, expandedBounds))) return;
+      // Normal hide only fires while the cursor is still touching the desktop edge.
+      if (!immediate && (!cursor || !isPointOnDesktopEdge(cursor, edge, workArea))) return;
       const retractedBounds = getRetractedBounds(edge, expandedBounds, workArea);
       const from = win.getBounds();
       retracted = true;
@@ -243,11 +244,13 @@ export function createEdgeAutoHideController({
       if (isPointInActivationStrip(cursor, edge, expandedBounds, workArea)) restore();
       return;
     }
-    if (isPointInRect(cursor, expandedBounds)) {
-      clearLeaveTimer();
+    // Only the absolute desktop edge counts as hide intent.
+    // Leaving the window body alone must keep the docked window expanded.
+    if (isPointOnDesktopEdge(cursor, edge, workArea)) {
+      scheduleRetraction();
       return;
     }
-    scheduleRetraction();
+    clearLeaveTimer();
   }
 
   function applySettle(): void {

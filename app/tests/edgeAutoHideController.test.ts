@@ -90,7 +90,7 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: -240, y: 120, width: 240, height: 480 });
   });
 
-  it('re-hides a restored side window after the cursor leaves again', () => {
+  it('re-hides a restored side window only when the cursor touches the desktop edge', () => {
     attachLeftByPushIn();
     expect(bounds.x).toBe(-240);
 
@@ -101,9 +101,16 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
     expect(hideActivationStrip).toHaveBeenCalled();
 
-    // Leave the restored side window; it should dock again without another push-in.
+    // Leaving the window body alone must keep the docked side window expanded.
     showActivationStrip.mockClear();
     cursor = { x: 500, y: 700 };
+    vi.advanceTimersByTime(64);
+    vi.advanceTimersByTime(1000);
+    expect(showActivationStrip).not.toHaveBeenCalled();
+    expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
+
+    // Touching the absolute left desktop edge hides it again.
+    cursor = { x: 2, y: 700 };
     vi.advanceTimersByTime(64);
     vi.advanceTimersByTime(450);
     vi.advanceTimersByTime(200);
@@ -145,17 +152,23 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: 600, y: 0, width: 240, height: 480 });
   });
 
-  it('retracts a settled top-attached window after 450ms outside its bounds', () => {
+  it('retracts a settled top-attached window only after the cursor touches the top desktop edge', () => {
     bounds = { x: 600, y: 0, width: 240, height: 480 };
     settle();
 
-    vi.advanceTimersByTime(449);
-    // No retract yet.
+    // Leaving the window body alone must not hide.
+    cursor = { x: 100, y: 700 };
+    vi.advanceTimersByTime(1000);
+    expect(bounds.y).toBe(0);
     expect(showActivationStrip).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1);
+    // Touch the absolute top desktop edge; hide after the leave delay.
+    cursor = { x: 900, y: 1 };
+    vi.advanceTimersByTime(64);
+    vi.advanceTimersByTime(450);
     vi.advanceTimersByTime(160);
-    expect(bounds).toEqual({ x: 600, y: -480, width: 240, height: 480 });
+    expect(showActivationStrip).toHaveBeenCalledWith('top', { x: 600, y: 0, width: 240, height: 480 }, workArea);
+    expect(bounds.y).toBe(-480);
   });
 
   it('restores more slowly than it retracts', () => {
@@ -172,13 +185,16 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
   });
 
-  it('cancels a pending top retraction when the pointer returns to the window', () => {
+  it('cancels a pending top retraction when the pointer leaves the desktop edge', () => {
     bounds = { x: 600, y: 0, width: 240, height: 480 };
     settle();
+    cursor = { x: 900, y: 1 };
+    vi.advanceTimersByTime(64);
     vi.advanceTimersByTime(200);
+    // Leave the desktop edge before the hide delay completes.
     cursor = { x: 700, y: 180 };
-
     vi.advanceTimersByTime(400);
+    expect(bounds.y).toBe(0);
     expect(showActivationStrip).not.toHaveBeenCalled();
   });
 
@@ -330,7 +346,7 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
   });
 
-  it('does nothing while the cursor position is unavailable for top leave-hide', () => {
+  it('does nothing while the cursor position is unavailable for edge hide', () => {
     cursor = null;
     bounds = { x: 600, y: 0, width: 240, height: 480 };
     settle();
