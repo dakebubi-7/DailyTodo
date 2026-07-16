@@ -2,11 +2,11 @@
 import {
   EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX,
   EDGE_AUTO_HIDE_REVEAL_PX,
-  EDGE_AUTO_HIDE_SIDE_PUSH_IN_PX,
   EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX,
   EDGE_AUTO_HIDE_TOP_SNAP_PX,
   getActivationStripBounds,
   getEdgeAttachment,
+  getDesktopEdgeAtPoint,
   getExpandedBounds,
   getRetractedBounds,
   isPointInActivationStrip,
@@ -17,22 +17,19 @@ import {
 describe('edge auto-hide geometry', () => {
   const workArea = { x: 0, y: 0, width: 1920, height: 1040 };
 
-  it('does not hide on a flush or nearby side placement', () => {
-    expect(EDGE_AUTO_HIDE_SIDE_PUSH_IN_PX).toBe(24);
-    // Flush left/right stays free.
-    expect(getEdgeAttachment({ x: 0, y: 400, width: 240, height: 480 }, workArea)).toBeNull();
-    expect(getEdgeAttachment({ x: 1680, y: 400, width: 240, height: 480 }, workArea)).toBeNull();
-    // Nearby but not past the edge stays free.
-    expect(getEdgeAttachment({ x: 12, y: 400, width: 240, height: 480 }, workArea)).toBeNull();
+  it('recognizes side snap positions without requiring the window to be pushed offscreen', () => {
+    expect(getEdgeAttachment({ x: 0, y: 400, width: 240, height: 480 }, workArea)).toBe('left');
+    expect(getEdgeAttachment({ x: 1680, y: 400, width: 240, height: 480 }, workArea)).toBe('right');
+    expect(getEdgeAttachment({ x: 12, y: 400, width: 240, height: 480 }, workArea)).toBe('left');
     expect(getEdgeAttachment({ x: 40, y: 400, width: 240, height: 480 }, workArea)).toBeNull();
     expect(getEdgeAttachment({ x: 1600, y: 400, width: 240, height: 480 }, workArea)).toBeNull();
   });
 
-  it('hides sides only after the window is dragged past the edge', () => {
-    expect(getEdgeAttachment({ x: -24, y: 400, width: 240, height: 480 }, workArea)).toBe('left');
-    expect(getEdgeAttachment({ x: -23, y: 400, width: 240, height: 480 }, workArea)).toBeNull();
-    expect(getEdgeAttachment({ x: 1704, y: 400, width: 240, height: 480 }, workArea)).toBe('right');
-    expect(getEdgeAttachment({ x: 1703, y: 400, width: 240, height: 480 }, workArea)).toBeNull();
+  it('identifies the desktop edge touched by the drag cursor', () => {
+    expect(getDesktopEdgeAtPoint({ x: 2, y: 400 }, workArea)).toBe('left');
+    expect(getDesktopEdgeAtPoint({ x: 1918, y: 400 }, workArea)).toBe('right');
+    expect(getDesktopEdgeAtPoint({ x: 900, y: 2 }, workArea)).toBe('top');
+    expect(getDesktopEdgeAtPoint({ x: 900, y: 400 }, workArea)).toBeNull();
   });
 
   it('only attaches the top when the window is placed at the top', () => {

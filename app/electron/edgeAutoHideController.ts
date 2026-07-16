@@ -1,5 +1,5 @@
 ﻿import {
-  getEdgeAttachment,
+  getDesktopEdgeAtPoint,
   getExpandedBounds,
   getRetractedBounds,
   isPointInActivationStrip,
@@ -98,6 +98,7 @@ export function createEdgeAutoHideController({
   let settleTimer: ReturnType<typeof setTimeout> | null = null;
   let animationTimer: ReturnType<typeof setInterval> | null = null;
   let ignoreProgrammaticBoundsEvents = false;
+  let dragCursorHitEdge: EdgeAutoHideEdge | null = null;
   // After hiding while the cursor is still on the edge/strip, require the
   // pointer to leave the strip before hover can expand again.
   let suppressStripRestore = false;
@@ -221,9 +222,6 @@ export function createEdgeAutoHideController({
     leaveTimer = setTimeout(() => {
       leaveTimer = null;
       if (!canOperate() || !edge || !expandedBounds || !workArea || retracted || dragging) return;
-      const cursor = getCursorPosition();
-      // Hide only while the cursor is still touching the absolute desktop edge.
-      if (!cursor || !isPointOnDesktopEdge(cursor, edge, workArea)) return;
       const retractedBounds = getRetractedBounds(edge, expandedBounds, workArea);
       const from = win.getBounds();
       retracted = true;
@@ -256,13 +254,8 @@ export function createEdgeAutoHideController({
       restore();
       return;
     }
-    // Only the absolute desktop edge counts as hide intent.
-    // Leaving the window body alone must keep the docked window expanded.
-    if (isPointOnDesktopEdge(cursor, edge, workArea)) {
-      scheduleRetraction();
-      return;
-    }
-    clearLeaveTimer();
+    // Retraction is armed by a completed edge attachment, not by ordinary
+    // cursor movement. A new drag always cancels the pending retraction.
   }
 
   function applySettle(): void {
@@ -271,7 +264,9 @@ export function createEdgeAutoHideController({
     if (!canOperate()) return;
     const bounds = win.getBounds();
     const matchingWorkArea = getWorkAreaForBounds(bounds);
-    const attachment = getEdgeAttachment(bounds, matchingWorkArea);
+    // The drag cursor reaching a desktop edge is the only trigger. Do not
+    // alter a window merely because it was placed near an edge.
+    const attachment = dragCursorHitEdge;
     if (!attachment) {
       diag('edge auto-hide: no snap');
       return;
@@ -287,10 +282,9 @@ export function createEdgeAutoHideController({
     } else {
       diag(`edge auto-hide: attached ${attachment}`);
     }
-    // Side attachment still requires a deliberate push past the edge.
-    // After that, hide uses the same rule as top: only when the cursor
-    // touches the absolute desktop edge. A flush side placement never attaches.
-    poll();
+    // Only hide when this same drag deliberately took the pointer to the
+    // matching desktop edge. Simply placing a window against an edge keeps it open.
+    if (dragCursorHitEdge === attachment) scheduleRetraction();
   }
 
   function scheduleSettle(): void {
@@ -306,6 +300,7 @@ export function createEdgeAutoHideController({
     noteMoveStarted(): void {
       if (ignoreProgrammaticBoundsEvents) return;
       dragging = true;
+      dragCursorHitEdge = null;
       clearSettleTimer();
       clearLeaveTimer();
       // A user drag cancels auto-hide state so the window can leave the edge freely.
@@ -322,6 +317,14 @@ export function createEdgeAutoHideController({
     noteMoveSettled(): void {
       // BrowserWindow.setBounds emits move as well. Ignore those.
       if (ignoreProgrammaticBoundsEvents || retracted) return;
+      if (dragging) {
+        const bounds = win.getBounds();
+        const matchingWorkArea = getWorkAreaForBounds(bounds);
+        const cursor = getCursorPosition();
+        if (cursor) {
+          dragCursorHitEdge = getDesktopEdgeAtPoint(cursor, matchingWorkArea);
+        }
+      }
       // Always wait for the drag/move stream to go quiet before snapping so a
       // near-edge placement attaches only after the user releases.
       scheduleSettle();

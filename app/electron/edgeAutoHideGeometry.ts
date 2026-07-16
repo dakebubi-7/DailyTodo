@@ -18,10 +18,6 @@ export const EDGE_AUTO_HIDE_REVEAL_PX = 8;
 export const EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX = 96;
 // Top only snaps when the window is truly placed at the top.
 export const EDGE_AUTO_HIDE_TOP_SNAP_PX = 12;
-// Sides hide only after the user pushes the window past the edge.
-// A flush side placement stays visible and never auto-hides.
-export const EDGE_AUTO_HIDE_SIDE_PUSH_IN_PX = 24;
-
 export function getEdgeAttachment(bounds: Rect, workArea: Rect): EdgeAutoHideEdge | null {
   // Signed gap: 0 = flush, positive = inset into the desktop, negative = already past the edge.
   const leftGap = bounds.x - workArea.x;
@@ -33,12 +29,12 @@ export function getEdgeAttachment(bounds: Rect, workArea: Rect): EdgeAutoHideEdg
     return 'top';
   }
 
-  // Sides: only attach/hide when the user has dragged past the edge.
-  // Flush or merely nearby side placement must remain free.
-  if (leftGap <= -EDGE_AUTO_HIDE_SIDE_PUSH_IN_PX) {
+  // Retain a small snap zone for programmatic reconciliation. User-driven
+  // retraction is decided by the cursor touching the desktop edge instead.
+  if (Math.abs(leftGap) <= EDGE_AUTO_HIDE_TOP_SNAP_PX) {
     return 'left';
   }
-  if (rightGap <= -EDGE_AUTO_HIDE_SIDE_PUSH_IN_PX) {
+  if (Math.abs(rightGap) <= EDGE_AUTO_HIDE_TOP_SNAP_PX) {
     return 'right';
   }
 
@@ -122,6 +118,13 @@ export function isPointOnDesktopEdge(point: Point, edge: EdgeAutoHideEdge, workA
         && point.x >= workArea.x
         && point.x < getRight(workArea);
   }
+}
+
+export function getDesktopEdgeAtPoint(point: Point, workArea: Rect): EdgeAutoHideEdge | null {
+  if (isPointOnDesktopEdge(point, 'left', workArea)) return 'left';
+  if (isPointOnDesktopEdge(point, 'right', workArea)) return 'right';
+  if (isPointOnDesktopEdge(point, 'top', workArea)) return 'top';
+  return null;
 }
 
 export function isPointInActivationStrip(
