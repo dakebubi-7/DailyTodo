@@ -53,7 +53,7 @@ describe('Win32 native operations', () => {
     expect(diag).not.toHaveBeenCalled();
   });
 
-  it('uses Acrylic when invisible glass is enabled and restores the normal window material when disabled', () => {
+  it('uses Acrylic when invisible glass is enabled and reports no native glass after restoring the normal window material', () => {
     const diag = vi.fn();
     const setBackgroundMaterial = vi.fn();
     const win = { setBackgroundMaterial };
@@ -61,7 +61,7 @@ describe('Win32 native operations', () => {
     expect(applyInvisibleGlassBackgroundMaterial(diag, win, true)).toBe(true);
     expect(setBackgroundMaterial).toHaveBeenLastCalledWith('acrylic');
 
-    expect(applyInvisibleGlassBackgroundMaterial(diag, win, false)).toBe(true);
+    expect(applyInvisibleGlassBackgroundMaterial(diag, win, false)).toBe(false);
     expect(setBackgroundMaterial).toHaveBeenLastCalledWith('none');
     expect(diag).toHaveBeenCalledWith(expect.stringContaining('native Acrylic enabled for invisible glass'));
     expect(diag).toHaveBeenCalledWith('native background material disabled: restored normal window material');
@@ -85,7 +85,7 @@ describe('Win32 native operations', () => {
     expect(rejectedDiag).toHaveBeenCalledWith('native Acrylic enable failed: Error: Acrylic unavailable; using Win32 Acrylic fallback');
   });
 
-  it('uses the Win32 path first when Electron material is not supported by the operating system', () => {
+  it('uses the Win32 Acrylic fallback when Windows 10 prefers it', () => {
     const diag = vi.fn();
     const setBackgroundMaterial = vi.fn();
     const fallback = vi.fn(() => true);
@@ -108,6 +108,17 @@ describe('Win32 native operations', () => {
     expect(shouldDisableWin32GlassForDesktopHost(true, false)).toBe(false);
     expect(shouldDisableWin32GlassForDesktopHost(true, true)).toBe(true);
     expect(shouldDisableWin32GlassForDesktopHost(false, true)).toBe(false);
+  });
+
+  it('reports no native glass when an invisible-theme blur strength is cleared', () => {
+    const diag = vi.fn();
+    const setBackgroundMaterial = vi.fn();
+    expect(applyInvisibleGlassBackgroundMaterial(diag, { setBackgroundMaterial }, {
+      enabled: true,
+      opacity: 58,
+      blurStrength: 0,
+    })).toBe(false);
+    expect(setBackgroundMaterial).toHaveBeenCalledWith('none');
   });
 
   it('keeps the documented DWM blur path available when the Acrylic composition call is rejected', () => {

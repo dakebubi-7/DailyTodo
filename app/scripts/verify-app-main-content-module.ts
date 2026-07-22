@@ -50,7 +50,7 @@ assert.match(mainContent, /initial=\{\{ opacity: 0, y: 8 \}\}/, 'main content sh
 assert.match(mainContent, /animate=\{\{ opacity: 1, y: 0 \}\}/, 'main content should preserve the existing entry motion animate state.');
 assert.match(mainContent, /transition=\{\{ duration: 0\.45, delay: 0\.12 \}\}/, 'main content should preserve the existing entry motion timing.');
 
-assert.match(mainContentComposition, /const reviewViewProps = \{[\s\S]*allTasks,[\s\S]*onEditReview: editTaskReview,[\s\S]*onDeleteReview: deleteTaskReview,[\s\S]*\};/, 'main-content composition helper should gather ReviewView props.');
+assert.match(mainContentComposition, /const reviewViewProps = \{[\s\S]*allTasks,[\s\S]*text: shellText\.app,[\s\S]*activeTab,[\s\S]*onTabChange: setActiveTab,[\s\S]*onEditReview: editTaskReview,[\s\S]*onDeleteReview: deleteTaskReview,[\s\S]*\};/, 'main-content composition helper should gather ReviewView props with its shared task-view selector state.');
 assert.match(mainContentComposition, /const taskListProps = \{[\s\S]*tasks: visibleTasks,[\s\S]*onToggle: completionActions\.toggleTask,[\s\S]*editRequest,[\s\S]*\};/, 'main-content composition helper should gather TaskList props.');
 assert.match(mainContentComposition, /const addTaskInputProps = \{\s*onAdd: addTask,\s*\};/, 'main-content composition helper should gather AddTaskInput props.');
 assert.match(mainContentComposition, /return \{[\s\S]*mainScrollRef,[\s\S]*topContent: <AppTopContent \{\.\.\.topContentProps\} \/>,[\s\S]*reviewViewProps,[\s\S]*taskListProps,[\s\S]*addTaskInputProps,[\s\S]*\};/, 'main-content composition helper should assemble AppMainContent props.');

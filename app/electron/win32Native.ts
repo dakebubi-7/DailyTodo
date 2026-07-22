@@ -359,23 +359,23 @@ export function applyInvisibleGlassBackgroundMaterial(
   preferWin32Fallback = false,
 ): boolean {
   const settings = normalizeInvisibleGlassPayload(payload);
+  const wantsBlur = settings.enabled && settings.blurStrength > 0;
 
   if (preferWin32Fallback) {
     const applied = applyWin32AcrylicFallback(settings);
     diag(settings.enabled
       ? `using Win32 Acrylic fallback for invisible glass (opacity=${settings.opacity}, blur=${settings.blurStrength})`
       : 'using Win32 Acrylic fallback to restore normal window material');
-    return applied;
+    return wantsBlur && applied;
   }
 
   if (!hasNativeBackgroundMaterial(win)) {
     const applied = applyWin32AcrylicFallback(settings);
     diag(`native background material unavailable${applied ? '; using Win32 Acrylic fallback' : ''}`);
-    return applied;
+    return wantsBlur && applied;
   }
 
   try {
-    const wantsBlur = settings.enabled && settings.blurStrength > 0;
     if (wantsBlur) {
       win.setBackgroundMaterial('acrylic');
       diag(`native Acrylic enabled for invisible glass (opacity=${settings.opacity}, blur=${settings.blurStrength})`);
@@ -385,12 +385,11 @@ export function applyInvisibleGlassBackgroundMaterial(
         ? 'native background material disabled: blur strength is zero (true clear / no blur)'
         : 'native background material disabled: restored normal window material');
     }
-    return true;
+    return wantsBlur;
   } catch (error) {
     const applied = applyWin32AcrylicFallback(settings);
-    const wantsBlur = settings.enabled && settings.blurStrength > 0;
     diag(`native ${wantsBlur ? 'Acrylic enable' : 'background material disable'} failed: ${String(error)}${applied ? '; using Win32 Acrylic fallback' : ''}`);
-    return applied;
+    return wantsBlur && applied;
   }
 }
 
@@ -402,16 +401,21 @@ export function applyWin32GlassFallback(
 ): boolean {
   if (!win32 || win.isDestroyed()) return false;
   const settings = normalizeInvisibleGlassPayload(payload);
+  const wantsBlur = settings.enabled && settings.blurStrength > 0;
   const handle = win.getNativeWindowHandle();
   const acrylicApplied = win32.setAcrylic(handle, settings);
-  const wantsBlur = settings.enabled && settings.blurStrength > 0;
-  const dwmBlurApplied = acrylicApplied ? false : win32.setDwmBlur(handle, wantsBlur);
-  const applied = acrylicApplied || dwmBlurApplied;
+  // When clearing, turn off both composition mechanisms so a stale DWM blur
+  // cannot survive after the Acrylic accent policy has been reset.
+  const dwmBlurApplied = wantsBlur
+    ? (acrylicApplied ? false : win32.setDwmBlur(handle, true))
+    : win32.setDwmBlur(handle, false);
+  const materialOperationApplied = acrylicApplied || dwmBlurApplied;
+  const nativeGlassApplied = wantsBlur && materialOperationApplied;
   diag(
-    `Win32 glass fallback ${applied ? (settings.enabled ? 'enabled' : 'disabled') : 'not applied'} `
+    `Win32 glass fallback ${nativeGlassApplied ? 'enabled' : (wantsBlur ? 'not applied' : 'cleared')} `
     + `(Acrylic: ${acrylicApplied ? 'enabled' : 'unavailable'}, DWM blur: ${dwmBlurApplied ? 'enabled' : 'unavailable'}, opacity=${settings.opacity}, blur=${settings.blurStrength})`,
   );
-  return applied;
+  return nativeGlassApplied;
 }
 
 function applyNativeBackgroundMaterial(
@@ -483,9 +487,12 @@ export function createWin32NativeHelpers({
         // Windows 10 receives ACCENT_ENABLE_BLURBEHIND. Keep the transparent host clear and
         // let the renderer's existing frost layers provide the visual treatment instead.
         if (hasNativeBackgroundMaterial(win)) {
-          win.setBackgroundMaterial('none');
-          diag('Windows 10 transparent window: native Acrylic disabled to preserve desktop composition');
-          return true;
+          try {
+            win.setBackgroundMaterial('none');
+            diag('Windows 10 transparent window: native Acrylic disabled to preserve desktop composition');
+          } catch (error) {
+            diag(`Windows 10 transparent window: native Acrylic cleanup failed: ${String(error)}`);
+          }
         }
         return false;
       }

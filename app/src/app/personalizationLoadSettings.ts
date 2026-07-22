@@ -24,11 +24,6 @@ function readBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
 }
 
-function normalizeInvisibleThemeBlur(themeId: string | undefined, blurStrength: number): number {
-  if (themeId !== 'invisible' || blurStrength !== 0) return blurStrength;
-  return THEME_PRESETS.find((preset) => preset.id === 'invisible')?.settings.blurStrength ?? 14;
-}
-
 function parseStoredThemeOpacityOverride(value: unknown): ThemeOpacityOverride | undefined {
   if (!isObjectRecord(value)) return undefined;
   const override: ThemeOpacityOverride = {};
@@ -76,6 +71,5 @@ export function normalizeLoadedPersonalization(value: unknown): PersonalizationS
   };
   if (!loaded.themeId) loaded.themeId = matchThemePreset(loaded) || undefined;
   if (loaded.themeId && !THEME_PRESETS.some((preset) => preset.id === loaded.themeId)) loaded.themeId = undefined;
-  loaded.blurStrength = normalizeInvisibleThemeBlur(loaded.themeId, loaded.blurStrength);
   return loaded;
 }

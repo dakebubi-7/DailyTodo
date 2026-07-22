@@ -10,13 +10,18 @@ import { useTasks } from './hooks/useTasks';
 import { TitleBar } from './components/TitleBar';
 import { AppOverlayStack } from './components/AppOverlayStack';
 import { AppMainContent } from './components/AppMainContent';
-import { getDesktopGlassShellAttributes, getPerformanceFrostShellAttributes } from './app/appShellEffects';
+import {
+  getDesktopGlassShellAttributes,
+  getInvisibleGlassFallbackShellAttributes,
+  getPerformanceFrostShellAttributes,
+} from './app/appShellEffects';
 
 export default function App() {
   const taskState = useTasks();
   const appState = useAppLocalState();
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const [performanceFrostActive, setPerformanceFrostActive] = useState(false);
+  const [nativeGlassApplied, setNativeGlassApplied] = useState(false);
   const [windowMode, setWindowMode] = useState<unknown>();
   const themeState = useMemo(() => createAppThemeState(appState.personalization), [appState.personalization]);
   const viewportStyle = useMemo(() => createAppViewportStyle(appState.personalization, themeState.isInvisibleTheme), [appState.personalization, themeState.isInvisibleTheme]);
@@ -36,6 +41,7 @@ export default function App() {
     },
     mainScrollRef,
     activeThemeId: themeState.activeThemeId,
+    setNativeGlassApplied,
   });
 
   const shellComposition = useAppShellComposition({
@@ -46,6 +52,7 @@ export default function App() {
   });
 
   useEffect(() => window.electronAPI?.onPerformanceFrostChanged(setPerformanceFrostActive), []);
+  useEffect(() => window.electronAPI?.onNativeGlassAppliedChanged(setNativeGlassApplied), []);
   useEffect(() => {
     const refreshWindowMode = () => {
       void window.electronAPI?.getWindowMode().then(setWindowMode);
@@ -71,6 +78,11 @@ export default function App() {
         data-theme={getAppShellThemeValue(themeState.activeThemeId)}
         data-low-opacity={getAppShellLowOpacityFlag(themeState.isInvisibleTheme, appState.personalization.windowOpacity)}
         {...getDesktopGlassShellAttributes(windowMode)}
+        {...getInvisibleGlassFallbackShellAttributes(
+          themeState.isInvisibleTheme,
+          appState.personalization.blurStrength,
+          nativeGlassApplied,
+        )}
         {...getPerformanceFrostShellAttributes(performanceFrostActive)}
       >
         <div

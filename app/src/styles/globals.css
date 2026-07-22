@@ -10583,6 +10583,22 @@ html:not(.dark) .app-shell[data-theme='custom'] :is(.date-stepper button, .date-
   box-shadow: none !important;
 }
 
+.app-shell[data-theme='invisible'] .compact-day-strip,
+.app-shell[data-theme='invisible'] .compact-day-summary,
+.app-shell[data-theme='invisible'] .compact-day-progress-track,
+.app-shell[data-theme='invisible'] .task-daily-panels,
+.app-shell[data-theme='invisible'] .task-daily-action,
+.app-shell[data-theme='invisible'] .task-filter-controls,
+.app-shell[data-theme='invisible'] .task-view-launcher,
+.app-shell[data-theme='invisible'] .task-view-menu-popover {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
 .app-shell[data-theme='invisible'] .task-toolbar {
   background: transparent !important;
   background-color: transparent !important;
@@ -10754,6 +10770,44 @@ html:not(.dark) .app-shell[data-theme='custom'] :is(.date-stepper button, .date-
 .dark .app-shell[data-theme='invisible'] :is(.task-filter-active, .task-tool-active) {
   background: rgba(255, 255, 255, 0.14) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Windows 10 can decline native Acrylic for transparent desktop-hosted windows. */
+.app-shell[data-theme='invisible'][data-glass-fallback='css'] {
+  backdrop-filter: blur(18px) saturate(var(--glass-saturation)) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(var(--glass-saturation)) !important;
+}
+
+/* Final semantic foreground colors keep both task states readable over the glass plate. */
+html:not(.dark) .app-shell[data-theme='invisible'] :is(.app-brand h1, .task-text, .task-subtask-text, .date-current) {
+  color: #1f2937 !important;
+}
+
+html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .task-text, .task-subtask-row-completed .task-subtask-text, .task-subtask-completed) {
+  color: #4b5563 !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.app-brand h1, .task-text, .task-subtask-text, .date-current) {
+  color: #f8fafc !important;
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.task-card-completed .task-text, .task-subtask-row-completed .task-subtask-text, .task-subtask-completed) {
+  color: #cbd5e1 !important;
+}
+
+.app-shell[data-theme='invisible'] .task-card-completed .task-text {
+  text-decoration: line-through !important;
+  opacity: 1 !important;
+}
+
+.app-shell[data-theme='invisible'] .task-subtask-row-completed .task-subtask-text {
+  text-decoration: line-through !important;
+  opacity: 1 !important;
+}
+
+.app-shell[data-theme='invisible'] .task-subtask-completed {
+  text-decoration: line-through !important;
+  opacity: 1 !important;
 }
 
 /* End invisible theme glass convergence. */
@@ -11412,4 +11466,732 @@ html:not(.dark) .app-shell[data-theme='custom'] :is(.date-stepper button, .date-
 
 .dark .app-shell {
   box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.1) !important;
+}
+
+/* Daily editor entries: keep both controls below the date summary and above the task tabs. */
+.daily-panel-switch {
+  display: grid !important;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.daily-panel-tab {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  min-height: 2.55rem !important;
+  height: 2.55rem !important;
+  gap: 0.48rem;
+  padding: 0 0.65rem !important;
+  border: 1px solid rgba(63, 63, 70, 0.12) !important;
+  border-radius: 0.48rem !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #3f3f46 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
+  text-align: left;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.daily-panel-tab:hover,
+.daily-panel-tab-active,
+.daily-panel-has-content {
+  border-color: color-mix(in srgb, var(--personal-accent) 28%, rgba(63, 63, 70, 0.12)) !important;
+  background: color-mix(in srgb, var(--personal-accent) 7%, rgba(255, 255, 255, 0.8)) !important;
+  color: var(--personal-accent) !important;
+  box-shadow: 0 2px 7px rgba(39, 39, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.daily-panel-entry-icon {
+  display: inline-grid;
+  width: 1.42rem;
+  height: 1.42rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--personal-accent) 12%, transparent);
+  color: var(--personal-accent);
+}
+
+.daily-panel-entry-icon svg,
+.daily-panel-entry-chevron svg {
+  width: 0.92rem;
+  height: 0.92rem;
+}
+
+.daily-panel-entry-copy {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.daily-panel-entry-title {
+  flex: 0 0 auto;
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.daily-panel-entry-title::after {
+  content: ' · ';
+  color: currentColor;
+  opacity: 0.44;
+}
+
+.daily-panel-entry-summary {
+  min-width: 0;
+  overflow: hidden;
+  color: currentColor;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.68;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-panel-entry-chevron {
+  display: inline-grid;
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+  place-items: center;
+  color: currentColor;
+  opacity: 0.46;
+}
+
+.daily-panel-dot {
+  position: absolute !important;
+  top: 0.38rem;
+  right: 0.4rem;
+  width: 0.32rem !important;
+  height: 0.32rem !important;
+  margin: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+}
+
+.dark .daily-panel-tab {
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  background: rgba(39, 39, 42, 0.68) !important;
+  color: #e4e4e7 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+}
+
+.dark .daily-panel-tab:hover,
+.dark .daily-panel-tab-active,
+.dark .daily-panel-has-content {
+  border-color: color-mix(in srgb, var(--personal-secondary) 34%, rgba(255, 255, 255, 0.14)) !important;
+  background: color-mix(in srgb, var(--personal-secondary) 12%, rgba(39, 39, 42, 0.76)) !important;
+  color: var(--personal-secondary) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.065) !important;
+}
+
+.dark .daily-panel-entry-icon {
+  background: color-mix(in srgb, var(--personal-secondary) 16%, transparent);
+  color: var(--personal-secondary);
+}
+
+.dark .daily-panel-dot {
+  border-color: rgba(39, 39, 42, 0.95);
+}
+
+/* Preserve the paired edit entry layout in the compact desktop window. */
+@media (max-width: 300px) {
+  .daily-panel-switch {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.32rem !important;
+  }
+
+  .daily-panel-tab {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.32rem;
+    padding: 0 0.42rem !important;
+  }
+
+  .daily-panel-entry-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .daily-panel-entry-icon svg {
+    width: 0.82rem;
+    height: 0.82rem;
+  }
+
+  .daily-panel-entry-title {
+    font-size: 0.74rem;
+  }
+
+  .daily-panel-entry-title::after {
+    display: none !important;
+  }
+
+  .daily-panel-entry-summary {
+    display: none !important;
+  }
+
+  .daily-panel-entry-chevron {
+    width: 0.78rem;
+    height: 0.78rem;
+  }
+
+  .daily-panel-entry-chevron svg {
+    width: 0.78rem;
+    height: 0.78rem;
+  }
+}
+
+/* Compact day strip and task workspace: final scoped presentation overrides. */
+.date-navigator {
+  position: relative;
+  z-index: 70;
+  padding: 0 0.75rem 0.45rem;
+}
+
+.date-card {
+  position: relative;
+  z-index: 70;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0.4rem !important;
+  border: 1px solid rgba(39, 39, 42, 0.08) !important;
+  border-radius: 0.72rem !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  padding: 0.42rem !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+.dark .date-card {
+  border-color: rgba(255, 255, 255, 0.11) !important;
+  background: rgba(26, 28, 32, 0.72) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.compact-day-strip {
+  --compact-day-count: 5;
+  --compact-day-empty-text: #70757d;
+  --compact-day-empty-dot: #989da5;
+  --compact-day-past-text: #5f6670;
+  --compact-day-past-dot: #7f8790;
+  --compact-day-done-text: #317253;
+  --compact-day-done-dot: #3d9067;
+  --compact-day-open-text: #806631;
+  --compact-day-open-dot: #ae8739;
+  --compact-day-overdue-text: #ab4545;
+  --compact-day-overdue-dot: #ca5959;
+  --compact-day-selected-frame: #7895b8;
+  --compact-day-selected-surface: rgba(96, 135, 177, 0.12);
+  --compact-day-selected-label: #2f679f;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.compact-day-strip-has-today-action {
+  grid-template-columns: minmax(2.85rem, 3.35rem) minmax(0, 1fr);
+}
+
+.compact-day-strip-today {
+  display: grid;
+  min-width: 0;
+  min-height: 3rem;
+  align-content: center;
+  justify-items: center;
+  gap: 0.15rem;
+  border: 1px solid rgba(76, 91, 112, 0.16);
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.7);
+  color: #3f3f46;
+  padding: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.compact-day-strip-today svg {
+  flex: 0 0 auto;
+}
+
+.compact-day-strip-today span {
+  min-width: 0;
+}
+
+.compact-day-strip-today:hover {
+  border-color: color-mix(in srgb, var(--personal-accent) 40%, rgba(76, 91, 112, 0.16));
+  color: var(--personal-accent);
+}
+
+.dark .compact-day-strip-today {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.065);
+  color: #e4e4e7;
+}
+
+.compact-day-strip[data-day-count='5'] {
+  --compact-day-count: 5;
+}
+
+.compact-day-strip[data-day-count='7'] {
+  --compact-day-count: 7;
+}
+
+.dark .app-shell {
+  --compact-day-empty-text: #777c83;
+  --compact-day-empty-dot: #575c61;
+  --compact-day-past-text: #c4c7cc;
+  --compact-day-past-dot: #8f949b;
+  --compact-day-done-text: #73c69a;
+  --compact-day-done-dot: #65bd90;
+  --compact-day-open-text: #d2b07a;
+  --compact-day-open-dot: #c9a56d;
+  --compact-day-overdue-text: #dd7777;
+  --compact-day-overdue-dot: #d26868;
+  --compact-day-selected-frame: #5c6066;
+  --compact-day-selected-surface: #2a2d31;
+  --compact-day-selected-label: #8fb8ff;
+}
+
+.compact-day-strip-days {
+  display: grid;
+  grid-template-columns: repeat(var(--compact-day-count), minmax(0, 1fr));
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+@media (max-width: 320px) {
+  .compact-day-strip-has-today-action {
+    grid-template-columns: minmax(2.45rem, 2.75rem) minmax(0, 1fr);
+    gap: 0.18rem;
+  }
+
+  .compact-day-strip-days {
+    gap: 0.18rem;
+  }
+
+  .compact-day-strip-today {
+    padding: 0.2rem 0.12rem;
+    font-size: 0.56rem;
+  }
+}
+
+.compact-day-strip-day {
+  display: grid;
+  min-width: 0;
+  min-height: 3rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.1rem;
+  border: 1px solid transparent;
+  border-radius: 0.48rem;
+  background: transparent;
+  color: var(--compact-day-empty-text);
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.compact-day-strip-day:hover {
+  border-color: color-mix(in srgb, var(--compact-day-selected-frame) 52%, transparent);
+  background: color-mix(in srgb, var(--compact-day-selected-surface) 72%, transparent);
+}
+
+.compact-day-strip-day[aria-current='date'] {
+  border-color: var(--compact-day-selected-frame);
+  background: var(--compact-day-selected-surface);
+  color: var(--compact-day-selected-label);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--compact-day-selected-frame) 22%, transparent);
+}
+
+.compact-day-strip-weekday,
+.compact-day-strip-number {
+  min-width: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+.compact-day-strip-weekday {
+  overflow: hidden;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-day-strip-number {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.compact-day-strip-dot {
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 999px;
+  background: var(--compact-day-empty-dot);
+}
+
+.compact-day-strip-day[data-status='future-empty'] {
+  color: var(--compact-day-empty-text);
+}
+
+.compact-day-strip-day[data-status='future-empty'] .compact-day-strip-dot {
+  background: var(--compact-day-empty-dot);
+}
+
+.compact-day-strip-day[data-status='incomplete-past'] {
+  color: var(--compact-day-past-text);
+}
+
+.compact-day-strip-day[data-status='incomplete-past'] .compact-day-strip-dot {
+  background: var(--compact-day-past-dot);
+}
+
+.compact-day-strip-day[data-status='done'] {
+  color: var(--compact-day-done-text);
+}
+
+.compact-day-strip-day[data-status='done'] .compact-day-strip-dot {
+  background: var(--compact-day-done-dot);
+}
+
+.compact-day-strip-day[data-status='active-open'] {
+  color: var(--compact-day-open-text);
+}
+
+.compact-day-strip-day[data-status='active-open'] .compact-day-strip-dot {
+  background: var(--compact-day-open-dot);
+}
+
+.compact-day-strip-day[data-status='overdue'] {
+  color: var(--compact-day-overdue-text);
+}
+
+.compact-day-strip-day[data-status='overdue'] .compact-day-strip-dot {
+  background: var(--compact-day-overdue-dot);
+}
+
+.compact-day-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 42%);
+  align-items: center;
+  height: 34px;
+  min-width: 0;
+  gap: 0.5rem;
+  border: 1px solid rgba(39, 39, 42, 0.08);
+  border-radius: 0.5rem;
+  background: rgba(250, 250, 252, 0.74);
+  padding: 0.25rem 0.3rem 0.25rem 0.55rem;
+}
+
+.dark .compact-day-summary {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.compact-day-summary-counts {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.32rem;
+  overflow: hidden;
+  color: #3f3f46;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-day-summary-counts > span + span::before {
+  content: ' / ';
+  color: currentColor;
+  opacity: 0.38;
+}
+
+.compact-day-summary-overdue {
+  color: var(--compact-day-overdue-text);
+}
+
+.dark .compact-day-summary-counts {
+  color: #eef0f3;
+}
+
+.compact-day-progress-track {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: 24px;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+  border-radius: 0.38rem;
+  background: #111214;
+  color: #f3f4f5;
+  font-size: 0.67rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.compact-day-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  background: #f3f4f5;
+  color: #16181b;
+  white-space: nowrap;
+}
+
+.compact-day-progress-fill span {
+  padding-left: 0.42rem;
+}
+
+.compact-day-progress-ratio {
+  position: relative;
+  z-index: 1;
+  padding: 0 0.46rem;
+  color: inherit;
+}
+
+.task-toolbar {
+  position: relative;
+  z-index: 2;
+  gap: 0.38rem;
+}
+
+.task-toolbar-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.32rem;
+}
+
+.task-toolbar-tools,
+.task-daily-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.28rem;
+}
+
+.task-daily-actions {
+  margin-left: auto;
+}
+
+.task-view-menu {
+  position: relative;
+  flex: 0 1 auto;
+}
+
+.review-toolbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  min-height: 1.85rem;
+  margin-bottom: 0.46rem;
+}
+
+.task-view-launcher {
+  display: inline-flex;
+  min-width: 0;
+  height: 1.85rem;
+  align-items: center;
+  gap: 0.16rem;
+  border: 1px solid rgba(76, 91, 112, 0.12);
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.7);
+  color: #3f3f46;
+  padding: 0 0.36rem 0 0.42rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.task-view-menu-popover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 0.28rem);
+  left: 0;
+  display: grid;
+  min-width: 4.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(76, 91, 112, 0.16);
+  border-radius: 0.42rem;
+  background: rgba(250, 250, 252, 0.97);
+  box-shadow: 0 0.4rem 1.1rem rgba(24, 24, 27, 0.14);
+  padding: 0.16rem;
+}
+
+.task-view-menu-item {
+  border-radius: 0.28rem;
+  padding: 0.36rem 0.48rem;
+  color: #3f3f46;
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.task-view-menu-item:hover,
+.task-view-menu-item-active {
+  background: color-mix(in srgb, var(--personal-accent) 12%, rgba(255, 255, 255, 0.76));
+  color: var(--personal-accent);
+}
+
+.dark .task-view-launcher {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.065);
+  color: #e4e4e7;
+}
+
+.dark .task-view-menu-popover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(28, 29, 33, 0.98);
+  box-shadow: 0 0.4rem 1.1rem rgba(0, 0, 0, 0.3);
+}
+
+.dark .task-view-menu-item {
+  color: #e4e4e7;
+}
+
+.task-daily-action {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  height: 2.2rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(76, 91, 112, 0.12);
+  border-radius: 0.48rem;
+  background: rgba(255, 255, 255, 0.7);
+  color: #3f3f46;
+  padding: 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.task-daily-action:hover,
+.task-daily-action[aria-pressed='true'],
+.task-daily-action.daily-panel-has-content {
+  border-color: color-mix(in srgb, var(--personal-accent) 38%, rgba(76, 91, 112, 0.12));
+  background: color-mix(in srgb, var(--personal-accent) 10%, rgba(255, 255, 255, 0.76));
+  color: var(--personal-accent);
+}
+
+.dark .task-daily-action {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.065);
+  color: #e4e4e7;
+}
+
+.dark .task-daily-action:hover,
+.dark .task-daily-action[aria-pressed='true'],
+.dark .task-daily-action.daily-panel-has-content {
+  border-color: color-mix(in srgb, var(--personal-secondary) 45%, rgba(255, 255, 255, 0.12));
+  background: color-mix(in srgb, var(--personal-secondary) 16%, rgba(255, 255, 255, 0.08));
+  color: var(--personal-secondary);
+}
+
+.task-daily-action .daily-panel-dot {
+  top: 0.25rem;
+  right: 0.28rem;
+}
+
+.task-filter-controls {
+  display: flex;
+  grid-column: 1 / -1;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.1rem;
+}
+
+.task-search-input {
+  grid-column: 1 / -1;
+}
+
+.compact-day-strip-day:focus-visible,
+.compact-day-strip-today:focus-visible,
+.task-daily-action:focus-visible,
+.task-filter-launcher:focus-visible,
+.task-view-launcher:focus-visible,
+.task-view-menu-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--personal-accent) 62%, transparent);
+  outline-offset: 2px;
+}
+
+.dark .compact-day-strip-day:focus-visible,
+.dark .compact-day-strip-today:focus-visible,
+.dark .task-daily-action:focus-visible,
+.dark .task-filter-launcher:focus-visible,
+.dark .task-view-launcher:focus-visible,
+.dark .task-view-menu-item:focus-visible {
+  outline-color: color-mix(in srgb, var(--personal-secondary) 70%, transparent);
+}
+
+.task-daily-panels {
+  display: grid;
+  gap: 0.42rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 320px) {
+  .task-toolbar-row {
+    gap: 0.22rem;
+  }
+
+  .task-daily-actions {
+    gap: 0.18rem;
+  }
+
+  .task-daily-action {
+    height: 2rem;
+    padding: 0 0.34rem;
+    font-size: 0.64rem;
+  }
+
+  .task-view-launcher {
+    height: 1.72rem;
+    padding: 0 0.26rem 0 0.32rem;
+    font-size: 0.62rem;
+  }
+}
+
+/* Compact workspace controls sit above the invisible-theme convergence block. Keep them on the shell's single Acrylic plate. */
+.app-shell[data-theme='invisible'] .compact-day-strip,
+.app-shell[data-theme='invisible'] .compact-day-summary,
+.app-shell[data-theme='invisible'] .compact-day-progress-track,
+.app-shell[data-theme='invisible'] .task-daily-panels,
+.app-shell[data-theme='invisible'] .task-daily-action,
+.app-shell[data-theme='invisible'] .task-filter-controls {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
 }

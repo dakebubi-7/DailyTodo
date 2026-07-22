@@ -4,8 +4,9 @@ import {
 } from '../shared/invisibleGlass';
 
 export type PerformanceFrostControllerOptions = {
-  applyGlass(settings: InvisibleGlassSettings): void;
+  applyGlass(settings: InvisibleGlassSettings): boolean;
   notifyRenderer(active: boolean): void;
+  notifyNativeGlassApplied(applied: boolean): void;
 };
 
 export type PerformanceFrostController = ReturnType<typeof createPerformanceFrostController>;
@@ -13,17 +14,24 @@ export type PerformanceFrostController = ReturnType<typeof createPerformanceFros
 export function createPerformanceFrostController({
   applyGlass,
   notifyRenderer: _notifyRenderer,
+  notifyNativeGlassApplied,
 }: PerformanceFrostControllerOptions) {
   let configuredGlass = createInvisibleGlassSettings({ enabled: false });
 
+  function applyConfiguredGlass(): boolean {
+    const nativeGlassApplied = applyGlass(configuredGlass);
+    notifyNativeGlassApplied(nativeGlassApplied);
+    return nativeGlassApplied;
+  }
+
   return {
-    setConfiguredGlass(next: InvisibleGlassSettings): void {
+    setConfiguredGlass(next: InvisibleGlassSettings): boolean {
       configuredGlass = createInvisibleGlassSettings(next);
-      applyGlass(configuredGlass);
+      return applyConfiguredGlass();
     },
 
-    reapplyConfiguredGlass(): void {
-      applyGlass(configuredGlass);
+    reapplyConfiguredGlass(): boolean {
+      return applyConfiguredGlass();
     },
 
     // Keep system Acrylic enabled while Windows moves the HWND. Switching the

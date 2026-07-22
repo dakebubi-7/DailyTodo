@@ -31,8 +31,8 @@ assert.equal(normalized?.texture, false, 'Load normalization should reject malfo
 assert.equal(normalizeLoadedPersonalization(null), null, 'Load normalization should reject non-object values.');
 assert.equal(
   normalizeLoadedPersonalization({ themeId: 'invisible', blurStrength: 0 })?.blurStrength,
-  14,
-  'The invisible theme should migrate its legacy zero-blur setting to the frosted-glass minimum.',
+  0,
+  'The invisible theme should preserve an explicit zero-blur setting as a clear surface.',
 );
 assert.deepEqual(
   parseStoredThemeOpacityOverrides({ minimal: { windowOpacity: 42, panelOpacity: 'bad' }, invalid: [] }),

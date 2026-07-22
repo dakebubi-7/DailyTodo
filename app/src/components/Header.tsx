@@ -1,5 +1,7 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { motion } from 'framer-motion';
+import type { CompactDayStripText } from './compactDayStrip/compactDayStripUtils';
+import type { DateNavigatorCalendarController } from './dateNavigator/useDateNavigatorCalendar';
 import { useCompletionCelebration } from './header/useCompletionCelebration';
 
 interface HeaderProps {
@@ -12,25 +14,11 @@ interface HeaderProps {
   syncStatus: 'idle' | 'synced' | 'needs-path' | 'error';
   onChooseObsidian: () => void;
   onOpenTodayNote: () => void;
-}
-
-function formatDateLabel(date: string) {
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  }).format(new Date(`${date}T00:00:00`));
-}
-
-function getLocalDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  calendar: DateNavigatorCalendarController;
+  text: CompactDayStripText;
 }
 
 export const Header = memo(function Header({
-  selectedDate,
   completedCount,
   totalCount,
   isDark,
@@ -39,17 +27,14 @@ export const Header = memo(function Header({
   syncStatus,
   onChooseObsidian,
   onOpenTodayNote,
+  calendar,
+  text,
 }: HeaderProps) {
   useCompletionCelebration({ completedCount, totalCount });
-  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-  const openCount = Math.max(0, totalCount - completedCount);
-  const today = getLocalDateKey();
-  const dateContextLabel = selectedDate === today ? '今天' : selectedDate > today ? '计划' : '历史';
-  const formattedDateLabel = useMemo(() => formatDateLabel(selectedDate), [selectedDate]);
 
   const syncLabel = {
-    idle: obsidianPath ? '更改库' : '选择库',
-    synced: '更改库',
+    idle: obsidianPath ? '更新库' : '选择库',
+    synced: '更新库',
     'needs-path': '选择库',
     error: '重选库',
   }[syncStatus];
@@ -63,9 +48,7 @@ export const Header = memo(function Header({
           transition={{ duration: 0.32 }}
           className="app-brand"
         >
-          <div className="app-brand-eyebrow">Daily Todo</div>
-          <h1>{dateContextLabel} · {formattedDateLabel}</h1>
-          <p>{openCount} 项待推进 · {completedCount}/{totalCount} 完成</p>
+          <h1>Daily Todo</h1>
         </motion.div>
 
         <div className="header-actions">
@@ -90,6 +73,7 @@ export const Header = memo(function Header({
           </motion.button>
 
           <motion.button
+            type="button"
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.95 }}
             onClick={onOpenTodayNote}
@@ -105,6 +89,22 @@ export const Header = memo(function Header({
           </motion.button>
 
           <motion.button
+            type="button"
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={calendar.toggleCalendar}
+            className="header-icon-button"
+            aria-label={calendar.isCalendarOpen ? text.closeCalendar : text.openCalendar}
+            title={calendar.isCalendarOpen ? text.closeCalendar : text.openCalendar}
+            aria-expanded={calendar.isCalendarOpen}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M7 2v4M17 2v4M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+            </svg>
+          </motion.button>
+
+          <motion.button
+            type="button"
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.95 }}
             onClick={onToggleDark}
@@ -123,17 +123,6 @@ export const Header = memo(function Header({
               </svg>
             )}
           </motion.button>
-        </div>
-      </div>
-
-      <div className="header-progress-row">
-        <div className="header-progress-track">
-          <motion.div
-            className="progress-fill h-full rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-          />
         </div>
       </div>
     </div>

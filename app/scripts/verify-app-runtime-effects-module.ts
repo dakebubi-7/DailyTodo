@@ -44,6 +44,13 @@ assert.match(runtimeEffects, /syncDocumentThemeClasses\(taskEffects\.isDark, app
 assert.match(runtimeEffects, /syncDocumentFontScale\(appState\.personalization\.fontScale\)/, 'runtime effects hook should preserve document font-scale sync.');
 assert.match(runtimeEffects, /syncAlwaysOnTopPreference\(appState\.personalization\.alwaysOnTop\)/, 'runtime effects hook should preserve always-on-top sync.');
 assert.match(runtimeEffects, /\[appState\.personalization\.alwaysOnTop\]/, 'runtime effects hook should rerun always-on-top sync when the preference changes.');
+assert.match(runtimeEffects, /setNativeGlassApplied: \(value: boolean\) => void/, 'runtime effects hook should accept the native-material application-state setter.');
+assert.match(
+  runtimeEffects,
+  /syncInvisibleGlassTheme\([\s\S]*?\.then\(\(nativeGlassApplied\) => \{[\s\S]*?if \(current\) setNativeGlassApplied\(nativeGlassApplied\)/,
+  'runtime effects hook should retain the actual native-material result for the shell fallback decision.',
+);
+assert.match(runtimeEffects, /return \(\) => \{[\s\S]*?current = false/, 'runtime effects hook should invalidate stale native-material responses on dependency changes.');
 assert.match(runtimeEffects, /loadAppStartupState\(\{/, 'runtime effects hook should preserve startup loading orchestration.');
 assert.match(runtimeEffects, /const allTasksRef = useRef\(taskEffects\.allTasks\)/, 'runtime effects hook should preserve lazy allTasks ref ownership.');
 assert.match(runtimeEffects, /registerAiReviewLifecycle\(\{/, 'runtime effects hook should preserve AI review lifecycle registration.');

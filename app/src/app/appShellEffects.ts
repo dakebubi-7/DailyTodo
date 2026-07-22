@@ -22,6 +22,7 @@ export function syncDocumentFontScale(fontScale: number | undefined): void {
 }
 
 export function syncAlwaysOnTopPreference(alwaysOnTop: boolean | undefined): void {
+  if (alwaysOnTop === undefined) return;
   void window.electronAPI?.setWindowMode?.(alwaysOnTop ? 'onTop' : 'normal');
 }
 
@@ -42,10 +43,13 @@ export function syncInvisibleGlassTheme(
   isInvisibleTheme: boolean,
   windowOpacity?: number,
   blurStrength?: number,
-): void {
-  void window.electronAPI?.setInvisibleGlass?.(
+): Promise<boolean> {
+  return window.electronAPI?.setInvisibleGlass?.(
     buildInvisibleGlassSettings(isInvisibleTheme, windowOpacity, blurStrength),
-  );
+  ).then((result) => {
+    if (typeof result !== 'object' || result === null) return false;
+    return Reflect.get(result, 'nativeGlassApplied') === true;
+  }).catch(() => false) ?? Promise.resolve(false);
 }
 
 export function syncNativeWindowRadius(radius: number | undefined): void {
@@ -58,6 +62,16 @@ export function getPerformanceFrostShellAttributes(active: boolean): Record<stri
 
 export function getDesktopGlassShellAttributes(mode: unknown): Record<string, string> {
   return mode === 'desktop' ? { 'data-window-mode': 'desktop' } : {};
+}
+
+export function getInvisibleGlassFallbackShellAttributes(
+  isInvisibleTheme: boolean,
+  blurStrength: number | undefined,
+  nativeGlassApplied: boolean,
+): Record<string, string> {
+  return isInvisibleTheme && (blurStrength ?? 0) > 0 && !nativeGlassApplied
+    ? { 'data-glass-fallback': 'css' }
+    : {};
 }
 
 /**

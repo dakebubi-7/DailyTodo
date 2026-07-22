@@ -1,10 +1,9 @@
-﻿import { useRef, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import type { AppBehaviorSettings } from '../../../shared/appSettings';
 import type { getShellText } from '../../i18n';
 import type { PersonalizationSettings } from '../../types/personalization';
 import { THEME_PRESETS, type ThemePreset } from '../../types/themePresets';
 import { applyInvisibleGlassCssPreview } from '../../app/invisibleGlassPreview';
-import { buildInvisibleGlassSettings } from '../../app/appShellEffects';
 import { RangeControl } from './SettingsControls';
 import {
   OPACITY_SLIDER_MAX,
@@ -52,25 +51,17 @@ export function AppearanceSettingsSection({
   const recommendation = getThemeRecommendation(settings);
   const resetToThemeDefaultTitle = text.resetToThemeDefault;
   const isInvisibleTheme = settings.themeId === 'invisible';
-  const hostBlurOnRef = useRef(settings.blurStrength > 0);
-  hostBlurOnRef.current = settings.blurStrength > 0;
 
   const updatePersonalization = <K extends keyof PersonalizationSettings>(key: K, value: PersonalizationSettings[K]) => {
     onChange({ ...settings, [key]: value });
   };
 
   const previewInvisibleBlur = (value: number) => {
-    // Continuous frost densify is CSS; native acrylic only flips at the true clear end (0).
+    // Continuous frost densify is CSS; the committed setting synchronizes native glass.
     applyInvisibleGlassCssPreview({
       blurStrength: value,
       baseOpacity: settings.windowOpacity,
     });
-    const blurOn = value > 0;
-    if (blurOn === hostBlurOnRef.current) return;
-    hostBlurOnRef.current = blurOn;
-    void window.electronAPI?.setInvisibleGlass?.(
-      buildInvisibleGlassSettings(true, settings.windowOpacity, value),
-    );
   };
 
   const previewInvisibleOpacity = (value: number) => {

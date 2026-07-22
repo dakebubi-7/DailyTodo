@@ -1,12 +1,18 @@
-import { lazy, memo, Suspense, useCallback, useMemo, useRef, useState } from 'react';
+import { lazy, memo, Suspense, type ComponentProps, useCallback, useMemo, useRef, useState } from 'react';
+import type { getShellText } from '../i18n';
 import { useFloatingScrollbar } from '../hooks/useFloatingScrollbar';
 import type { Task, TaskSource } from '../types/task';
+import type { TabType } from '../types/task';
+import type { DailyWorkPanel as DailyWorkPanelComponent } from './DailyWorkPanel';
 import { TaskListStaticContent } from './taskList/TaskListStaticContent';
 import { TaskListToolbar, type PriorityFilter } from './taskList/TaskListToolbar';
 import { getTaskListDerivations } from './taskList/taskListDerivations';
 
 const TaskListDndSurface = lazy(() => import('./taskList/TaskListDndSurface').then((module) => ({
   default: module.TaskListDndSurface,
+})));
+const DailyWorkPanel = lazy(() => import('./DailyWorkPanel').then((module) => ({
+  default: module.DailyWorkPanel,
 })));
 
 interface TaskListProps {
@@ -24,6 +30,23 @@ interface TaskListProps {
   onToggleOpenOnly: () => void;
   priorityFilter: PriorityFilter;
   onPriorityFilterChange: (value: PriorityFilter) => void;
+  text: ReturnType<typeof getShellText>['app'];
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+  hasDailyWorkContent: boolean;
+  hasDailyInspirationContent: boolean;
+  isDailyWorkOpen: boolean;
+  isInspirationOpen: boolean;
+  onToggleDailyWorkPanel: () => void;
+  onToggleInspirationPanel: () => void;
+  selectedDateTasksForCommands: Task[];
+  language: ComponentProps<typeof DailyWorkPanelComponent>['language'];
+  dailyWork: string;
+  dailyInspiration: string;
+  onChangeDailyWork: ComponentProps<typeof DailyWorkPanelComponent>['onChange'];
+  onChangeDailyInspiration: ComponentProps<typeof DailyWorkPanelComponent>['onChange'];
+  onCloseDailyWorkPanel: () => void;
+  onCloseInspirationPanel: () => void;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, text: string) => void;
@@ -53,6 +76,23 @@ export const TaskList = memo(function TaskList({
   onToggleOpenOnly,
   priorityFilter,
   onPriorityFilterChange,
+  text,
+  activeTab,
+  onTabChange,
+  hasDailyWorkContent,
+  hasDailyInspirationContent,
+  isDailyWorkOpen,
+  isInspirationOpen,
+  onToggleDailyWorkPanel,
+  onToggleInspirationPanel,
+  selectedDateTasksForCommands,
+  language,
+  dailyWork,
+  dailyInspiration,
+  onChangeDailyWork,
+  onChangeDailyInspiration,
+  onCloseDailyWorkPanel,
+  onCloseInspirationPanel,
   onToggle,
   onDelete,
   onEdit,
@@ -114,7 +154,49 @@ export const TaskList = memo(function TaskList({
         onPriorityFilterChange={onPriorityFilterChange}
         filtersActive={filtersActive}
         onClearFilters={clearFilters}
+        text={text}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        hasDailyWorkContent={hasDailyWorkContent}
+        hasDailyInspirationContent={hasDailyInspirationContent}
+        isDailyWorkOpen={isDailyWorkOpen}
+        isInspirationOpen={isInspirationOpen}
+        onToggleDailyWorkPanel={onToggleDailyWorkPanel}
+        onToggleInspirationPanel={onToggleInspirationPanel}
       />
+
+      <div className="task-daily-panels">
+        {isDailyWorkOpen && (
+          <Suspense fallback={null}>
+            <DailyWorkPanel
+              title={text.dailyWork}
+              description={text.dailyWorkDescription}
+              placeholder={text.dailyWorkPlaceholder}
+              value={dailyWork}
+              taskCommands={selectedDateTasksForCommands}
+              language={language}
+              onChange={onChangeDailyWork}
+              isOpen={isDailyWorkOpen}
+              onClose={onCloseDailyWorkPanel}
+            />
+          </Suspense>
+        )}
+        {isInspirationOpen && (
+          <Suspense fallback={null}>
+            <DailyWorkPanel
+              title={text.inspiration}
+              description={text.inspirationDescription}
+              placeholder={text.inspirationPlaceholder}
+              value={dailyInspiration}
+              taskCommands={selectedDateTasksForCommands}
+              language={language}
+              onChange={onChangeDailyInspiration}
+              isOpen={isInspirationOpen}
+              onClose={onCloseInspirationPanel}
+            />
+          </Suspense>
+        )}
+      </div>
 
       <div
         ref={scrollRef}

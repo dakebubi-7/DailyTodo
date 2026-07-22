@@ -113,6 +113,7 @@
     "verify:app-task-tree-module": "tsx scripts/verify-app-task-tree-module.ts",
     "verify:date-key-reuse": "tsx scripts/verify-date-key-reuse.ts",
     "verify:date-navigator-module": "tsx scripts/verify-date-navigator-module.ts",
+    "verify:compact-day-strip": "tsx scripts/verify-compact-day-strip.ts",
     "verify:electron-window-state-module": "tsx scripts/verify-electron-window-state-module.ts",
     "verify:task-list-interactions": "tsx scripts/verify-task-list-interactions.ts",
     "verify:task-ordering-state": "tsx scripts/verify-task-ordering-state.ts",

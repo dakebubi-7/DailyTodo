@@ -65,6 +65,11 @@ assert.match(
   /shouldPreferWin32AcrylicFallback\(\)[\s\S]*?win\.setBackgroundMaterial\('none'\)/,
   'Windows 10 transparent windows should clear native material rather than enable Acrylic.',
 );
+assert.match(
+  helper,
+  /shouldDisableWin32GlassForDesktopHost\([\s\S]*?win\.setBackgroundMaterial\('none'\)[\s\S]*?return false;/,
+  'Windows 10 desktop-hosted transparent windows should report that no native material was applied after cleanup.',
+);
 assert.match(helper, /createWin32AccentPolicyFromGlass/, 'win32Native Acrylic policy should come from shared glass opacity/blur settings.');
 assert.match(helper, /native background material unavailable/, 'win32Native should preserve missing-material diagnostics.');
 
@@ -83,8 +88,13 @@ const runtimeEffects = readFileSync(join(root, 'src', 'app', 'useAppRuntimeEffec
 
 assert.match(preload, /setInvisibleGlass:\s*\(payload:\s*unknown\)\s*=>\s*ipcRenderer\.invoke\('window:setInvisibleGlass', payload\)/, 'preload should expose the invisible-glass payload control.');
 assert.match(windowIpc, /ipcMain\.handle\('window:setInvisibleGlass',[\s\S]*performanceFrost\.setConfiguredGlass\.bind\(performanceFrost\)/, 'window IPC should forward the invisible-glass payload through the performance-frost controller.');
+assert.match(windowIpc, /return \{ nativeGlassApplied \};/, 'window IPC should return whether the native glass material was actually applied.');
 assert.match(appEffects, /setInvisibleGlass\?\.\([\s\S]*buildInvisibleGlassSettings|setInvisibleGlass\?\.\(/, 'renderer should synchronize invisible glass through the restricted preload API.');
+assert.match(appEffects, /Reflect\.get\(result, 'nativeGlassApplied'\) === true/, 'renderer should consume the native-material result rather than assume IPC success.');
+assert.match(appEffects, /export function getInvisibleGlassFallbackShellAttributes\b/, 'renderer should expose a shell-only CSS fallback helper.');
+assert.match(appEffects, /isInvisibleTheme && \(blurStrength \?\? 0\) > 0 && !nativeGlassApplied/, 'renderer fallback should stay disabled for blur zero and successful native material.');
 assert.match(runtimeEffects, /syncInvisibleGlassTheme\([\s\S]*activeThemeId === 'invisible'[\s\S]*windowOpacity[\s\S]*blurStrength/, 'renderer should synchronize native material whenever the active theme, opacity, or blur changes.');
+assert.match(runtimeEffects, /if \(current\) setNativeGlassApplied\(nativeGlassApplied\)/, 'renderer should prevent stale native-material responses from changing the fallback state.');
 
 assert.doesNotMatch(main, /type Win32Api\b/, 'main should not keep the Win32 bridge type inline after extraction.');
 assert.doesNotMatch(main, /function createHwndBuffer\b/, 'main should not keep HWND buffer creation inline after extraction.');

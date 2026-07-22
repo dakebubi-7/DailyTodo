@@ -34,14 +34,15 @@ export function createMainWindowBootstrap(options: CreateMainWindowBootstrapOpti
   } = options;
 
   const performanceFrost = createPerformanceFrostController({
-    applyGlass: (settings) => {
-      options.setInvisibleGlassBackgroundMaterial(win, settings);
-    },
+    applyGlass: (settings) => options.setInvisibleGlassBackgroundMaterial(win, settings),
     notifyRenderer: (active) => {
       if (!win.isDestroyed()) win.webContents.send('window:performanceFrostChanged', active);
     },
+    notifyNativeGlassApplied: (applied) => {
+      if (!win.isDestroyed()) win.webContents.send('window:nativeGlassAppliedChanged', applied);
+    },
   });
-  let edgeAutoHide: ReturnType<typeof createEdgeAutoHideController>;
+  let edgeAutoHide: ReturnType<typeof createEdgeAutoHideController> | undefined = undefined;
   const activationStrip = createEdgeAutoHideActivationStrip({
     activate: () => edgeAutoHide?.noteActivationStripActivated(),
     diag,

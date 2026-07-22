@@ -25,6 +25,14 @@ for (const selector of [
   ".app-shell[data-theme='invisible'] .app-top",
   ".app-shell[data-theme='invisible'] .task-card",
   ".app-shell[data-theme='invisible'] .task-toolbar",
+  ".app-shell[data-theme='invisible'] .compact-day-strip",
+  ".app-shell[data-theme='invisible'] .compact-day-summary",
+  ".app-shell[data-theme='invisible'] .compact-day-progress-track",
+  ".app-shell[data-theme='invisible'] .task-daily-panels",
+  ".app-shell[data-theme='invisible'] .task-daily-action",
+  ".app-shell[data-theme='invisible'] .task-filter-controls",
+  ".app-shell[data-theme='invisible'] .task-view-launcher",
+  ".app-shell[data-theme='invisible'] .task-view-menu-popover",
   ".app-shell[data-theme='invisible'] .settings-panel",
   ".settings-v2-sidebar",
   ".settings-v2-content",
@@ -54,8 +62,18 @@ assert.match(
 );
 assert.match(
   convergence,
+  /\.app-shell\[data-theme='invisible'\]\[data-glass-fallback='css'\] \{[\s\S]*?backdrop-filter:\s*blur\(18px\) saturate\(var\(--glass-saturation\)\)\s*!important[\s\S]*?-webkit-backdrop-filter:\s*blur\(18px\) saturate\(var\(--glass-saturation\)\)\s*!important/,
+  'Invisible shell should restore one CSS blur plate only when native material is unavailable.',
+);
+assert.match(
+  convergence,
   /\.app-shell\[data-theme='invisible'\] \.task-card \{[\s\S]*?backdrop-filter:\s*none\s*!important/,
   'Invisible nested transparent surfaces should avoid stacked blur so shell blur stays continuous.',
+);
+assert.match(
+  convergence,
+  /\.app-shell\[data-theme='invisible'\] \.compact-day-strip,[\s\S]*?\.app-shell\[data-theme='invisible'\] \.task-view-menu-popover \{[\s\S]*?background:\s*transparent\s*!important[\s\S]*?backdrop-filter:\s*none\s*!important/,
+  'Invisible compact day and task-workspace surfaces should inherit the one shell plate.',
 );
 assert.match(
   convergence,
@@ -183,6 +201,44 @@ for (const selector of lightInvisibleTextSelectors) {
     declaration,
     /text-shadow:\s*none\s*!important/,
     `Light invisible text must not add a white readability halo: ${selector}.`,
+  );
+}
+
+for (const [selector, color] of [
+  ["html:not(.dark) .app-shell[data-theme='invisible'] :is(.app-brand h1, .task-text, .task-subtask-text, .date-current)", '#1f2937'],
+  ["html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .task-text, .task-subtask-row-completed .task-subtask-text, .task-subtask-completed)", '#4b5563'],
+  [".dark .app-shell[data-theme='invisible'] :is(.app-brand h1, .task-text, .task-subtask-text, .date-current)", '#f8fafc'],
+  [".dark .app-shell[data-theme='invisible'] :is(.task-card-completed .task-text, .task-subtask-row-completed .task-subtask-text, .task-subtask-completed)", '#cbd5e1'],
+] as const) {
+  const selectorIndex = convergence.lastIndexOf(`\n${selector}`);
+  assert.notEqual(selectorIndex, -1, `Invisible semantic text selector should exist: ${selector}.`);
+  const declarationEnd = convergence.indexOf('}', selectorIndex);
+  const declaration = convergence.slice(selectorIndex, declarationEnd + 1);
+  assert.match(
+    declaration,
+    new RegExp(`color:\\s*${color}\\s*!important`),
+    `Invisible semantic text selector should use readable ${color}: ${selector}.`,
+  );
+}
+
+for (const selector of [
+  ".app-shell[data-theme='invisible'] .task-card-completed .task-text",
+  ".app-shell[data-theme='invisible'] .task-subtask-row-completed .task-subtask-text",
+  ".app-shell[data-theme='invisible'] .task-subtask-completed",
+]) {
+  const selectorIndex = convergence.lastIndexOf(`\n${selector}`);
+  assert.notEqual(selectorIndex, -1, `Invisible completed text selector should exist: ${selector}.`);
+  const declarationEnd = convergence.indexOf('}', selectorIndex);
+  const declaration = convergence.slice(selectorIndex, declarationEnd + 1);
+  assert.match(
+    declaration,
+    /text-decoration:\s*line-through\s*!important/,
+    `Invisible completed text must keep its strikethrough: ${selector}.`,
+  );
+  assert.match(
+    declaration,
+    /opacity:\s*1\s*!important/,
+    `Invisible completed text must not be faded by a generic completion opacity: ${selector}.`,
   );
 }
 

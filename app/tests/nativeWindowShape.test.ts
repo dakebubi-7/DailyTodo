@@ -14,14 +14,30 @@ describe('native window shape', () => {
   it('reapplies the rounded native shape after a Win32 glass material update', () => {
     const calls: string[] = [];
 
-    applyConfiguredGlassAndRoundedShape(
+    expect(applyConfiguredGlassAndRoundedShape(
       (settings) => {
         expect(settings).toMatchObject({ enabled: true, opacity: 48, blurStrength: 14 });
         calls.push('material');
+        return true;
       },
       { enabled: true, opacity: 48, blurStrength: 14 },
       () => calls.push('shape'),
-    );
+    )).toEqual({ nativeGlassApplied: true });
+
+    expect(calls).toEqual(['material', 'shape']);
+  });
+
+  it('reports when composition falls back to the renderer after reapplying shape', () => {
+    const calls: string[] = [];
+
+    expect(applyConfiguredGlassAndRoundedShape(
+      () => {
+        calls.push('material');
+        return false;
+      },
+      { enabled: true, opacity: 48, blurStrength: 14 },
+      () => calls.push('shape'),
+    )).toEqual({ nativeGlassApplied: false });
 
     expect(calls).toEqual(['material', 'shape']);
   });

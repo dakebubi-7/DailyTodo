@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
+
+export interface DateNavigatorCalendarController {
+  calendarRef: RefObject<HTMLDivElement>;
+  closeCalendar: () => void;
+  isCalendarOpen: boolean;
+  toggleCalendar: () => void;
+  visibleMonth: string;
+  setVisibleMonth: Dispatch<SetStateAction<string>>;
+}
 
 function getMonthStart(date: string) {
   return date.slice(0, 7) + '-01';
 }
 
-export function useDateNavigatorCalendar(selectedDate: string) {
+export function useDateNavigatorCalendar(selectedDate: string): DateNavigatorCalendarController {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(getMonthStart(selectedDate));
   const calendarRef = useRef<HTMLDivElement>(null);

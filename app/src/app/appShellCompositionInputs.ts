@@ -64,7 +64,6 @@ export function createAppShellCompositionInputs({
       mainScrollRef,
       isDark: taskState.isDark,
       selectedDate: taskState.selectedDate,
-      allDates: taskState.allDates,
       setSelectedDate: taskState.setSelectedDate,
       calendarTasks: taskState.allTasks,
       allTasks: taskState.allTasks,

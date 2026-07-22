@@ -62,8 +62,9 @@ assert.doesNotMatch(helper, /const companionPanelProps = \{/, 'shell composition
 assert.doesNotMatch(helper, /const completionDialogProps = \{/, 'shell composition should not keep completion dialog prop assembly inline after overlay extraction.');
 assert.doesNotMatch(helper, /const reviewDialogProps = \{/, 'shell composition should not keep review dialog prop assembly inline after overlay extraction.');
 assert.match(mainContentComposition, /export function createAppShellMainContentComposition\b/, 'main-content helper should export its composition factory.');
-assert.match(mainContentComposition, /const topContentProps = \{[\s\S]*shellText:\s*shellText\.app,[\s\S]*selectedDateTasksForCommands,[\s\S]*\};/, 'main-content helper should assemble AppTopContent props.');
-assert.match(mainContentComposition, /const taskListProps = \{[\s\S]*tasks: visibleTasks,[\s\S]*onToggle: completionActions\.toggleTask,[\s\S]*editRequest,[\s\S]*\};/, 'main-content helper should assemble TaskList props.');
+assert.match(mainContentComposition, /const topContentProps = \{[\s\S]*shellText:\s*shellText\.app,[\s\S]*\};/, 'main-content helper should assemble AppTopContent props.');
+assert.doesNotMatch(mainContentComposition, /tabBarProps/, 'main-content helper should not retain the removed top-level tab-bar prop bag.');
+assert.match(mainContentComposition, /const taskListProps = \{[\s\S]*tasks: visibleTasks,[\s\S]*activeTab,[\s\S]*onTabChange: setActiveTab,[\s\S]*selectedDateTasksForCommands,[\s\S]*onToggle: completionActions\.toggleTask,[\s\S]*editRequest,[\s\S]*\};/, 'main-content helper should assemble TaskList props including toolbar view selection and daily editor inputs.');
 assert.match(mainContentComposition, /return \{[\s\S]*mainScrollRef,[\s\S]*topContent: <AppTopContent \{\.\.\.topContentProps\} \/>,[\s\S]*taskListProps,[\s\S]*\};/, 'main-content helper should assemble AppMainContent props.');
 assert.match(helper, /const mainContentProps = createAppShellMainContentComposition\(mainContent\);/, 'shell composition should delegate the grouped main-content input unchanged.');
 assert.doesNotMatch(helper, /const topContentProps = \{/, 'shell composition should not retain top-content prop assembly after extraction.');
@@ -72,7 +73,7 @@ assert.match(overlay, /const overlayStackProps = \{[\s\S]*settingsPanelProps,[\s
 assert.match(mainContentComposition, /const shellText = getShellText\(appSettings\.language\);/, 'main-content helper should own shell text lookup.');
 assert.doesNotMatch(helper, /const editingTemplateInitialTemplate = /, 'shell composition should not inline template initial-content derivation after overlay extraction.');
 assert.match(compositionTypes, /AppShellMainContentCompositionInputs = AppShellMainContentCompositionOptions/, 'shell composition input contract should retain the grouped main-content calendar-task input.');
-assert.match(mainContentComposition, /tasks: calendarTasks,/, 'main-content helper should pass prefiltered calendar tasks directly to DateNavigator.');
+assert.match(mainContentComposition, /tasks: calendarTasks,[\s\S]*language: appSettings\.language,[\s\S]*text: shellText\.app,/, 'main-content helper should pass calendar tasks and localized top-area props to DateNavigator.');
 assert.doesNotMatch(mainContentComposition, /tasks: allTasks\.filter\(\(task\) => !task\.cleared\)/, 'main-content helper should not refilter calendar tasks on every app render.');
 
 assert.match(runtimeComposition, /from '\.\/appShellComposition'/, 'runtime composition hook should import the shell composition helper.');

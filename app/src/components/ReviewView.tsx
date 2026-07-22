@@ -1,12 +1,18 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import type { getShellText } from '../i18n';
 import type { Task, TaskCompletionReview } from '../types/task';
+import type { TabType } from '../types/task';
+import { TaskViewSelector } from './taskList/TaskViewSelector';
 import { ReviewRecordBlock } from './reviewView/ReviewRecordBlock';
 import { buildReviewDateGroups, groupLabel, localDateKey } from './reviewView/reviewGrouping';
 
 interface ReviewViewProps {
   /** 全部任务（含已 cleared）：复盘价值不应因清理列表而消失。 */
   allTasks: Task[];
+  text: ReturnType<typeof getShellText>['app'];
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
   /** 编辑已有复盘记录（保留原时间戳和 id，只改文字字段/状态/完成度）。 */
   onEditReview?: (taskId: string, reviewId: string, updates: Partial<Pick<TaskCompletionReview, 'status' | 'percent' | 'summary' | 'unknowns' | 'nextStep'>>) => void;
   /** 删除已有复盘记录。 */
@@ -19,7 +25,7 @@ const statusLabel: Record<TaskCompletionReview['status'], string> = {
   blocked: '有卡点',
 };
 
-export function ReviewView({ allTasks, onEditReview, onDeleteReview }: ReviewViewProps) {
+export function ReviewView({ allTasks, text, activeTab, onTabChange, onEditReview, onDeleteReview }: ReviewViewProps) {
   const today = localDateKey();
   const yesterday = useMemo(() => {
     const d = new Date(`${today}T00:00:00`);
@@ -35,6 +41,9 @@ export function ReviewView({ allTasks, onEditReview, onDeleteReview }: ReviewVie
   if (!dateGroups.length) {
     return (
       <div className="review-view flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">
+        <div className="review-toolbar">
+          <TaskViewSelector text={text} activeTab={activeTab} onTabChange={onTabChange} />
+        </div>
         <div className="empty-state">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.1" className="mb-3 opacity-45">
             <path d="M3 12h4l3 8 4-16 3 8h4" />
@@ -48,6 +57,9 @@ export function ReviewView({ allTasks, onEditReview, onDeleteReview }: ReviewVie
 
   return (
     <div className="review-view min-h-0 flex-1 overflow-y-auto px-3 py-2 task-scroll">
+      <div className="review-toolbar">
+        <TaskViewSelector text={text} activeTab={activeTab} onTabChange={onTabChange} />
+      </div>
       <div className="space-y-4">
         {dateGroups.map(({ date, taskGroups }) => (
           <section key={date} className="review-group">

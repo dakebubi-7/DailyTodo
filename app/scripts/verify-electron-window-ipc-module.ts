@@ -37,6 +37,43 @@ assert.ok(existsSync(windowIpcPath), 'Electron window IPC module should exist.')
 const windowIpc = readFileSync(windowIpcPath, 'utf8');
 
 assert.match(windowIpc, /export function registerWindowIpcHandlers\b/, 'windowIpc should export registerWindowIpcHandlers.');
+assert.match(windowIpc, /export function applyConfiguredGlassAndRoundedShape\b/, 'windowIpc should expose the invisible-glass application result helper.');
+assert.match(
+  windowIpc,
+  /const nativeGlassApplied = setConfiguredGlass\(normalizeInvisibleGlassPayload\(payload\)\) === true;/,
+  'windowIpc should derive native-glass status from the actual performance-frost application result.',
+);
+assert.match(windowIpc, /return \{ nativeGlassApplied \};/, 'windowIpc should return the native-glass status to the renderer.');
+assert.match(
+  windowIpc,
+  /ipcMain\.handle\('window:setInvisibleGlass',[\s\S]*?return applyConfiguredGlassAndRoundedShape\(/,
+  'window:setInvisibleGlass should return the applied native-glass result instead of assuming success.',
+);
+assert.match(
+  bootstrap,
+  /notifyNativeGlassApplied: \(applied\) => \{[\s\S]*?window:nativeGlassAppliedChanged[\s\S]*?applied/,
+  'main-window bootstrap should publish native-material outcome changes through a dedicated channel.',
+);
+assert.doesNotMatch(
+  bootstrap,
+  /notifyRenderer: \(active\) => \{[^}]*window:nativeGlassAppliedChanged/,
+  'native material state must not be conflated with the performance-frost channel.',
+);
+assert.doesNotMatch(
+  bootstrap,
+  /notifyNativeGlassApplied: \(applied\) => \{[^}]*window:performanceFrostChanged/,
+  'native material outcome notifications must not reuse the performance-frost channel.',
+);
+assert.match(
+  preload,
+  /onNativeGlassAppliedChanged: \(callback: \(applied: boolean\) => void\) => \{[\s\S]*?ipcRenderer\.on\('window:nativeGlassAppliedChanged', listener\)/,
+  'preload should expose the dedicated native-material outcome listener.',
+);
+assert.match(
+  viteEnv,
+  /onNativeGlassAppliedChanged: \(callback: \(applied: boolean\) => void\) => \(\) => void/,
+  'ambient renderer typings should expose the native-material outcome listener.',
+);
 assert.match(windowIpc, /type RegisterWindowIpcHandlersOptions\b/, 'windowIpc should define explicit registration dependencies.');
 assert.match(windowIpc, /BrowserWindow/, 'windowIpc should type the target BrowserWindow dependency.');
 assert.match(windowIpc, /ElectronStoreLike/, 'windowIpc should use a small store interface instead of owning store creation.');

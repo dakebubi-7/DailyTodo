@@ -16,6 +16,7 @@ interface Window {
     setInvisibleGlass: (payload: unknown) => Promise<unknown>;
     setNativeWindowRadius: (radius: unknown) => Promise<unknown>;
     onPerformanceFrostChanged: (callback: (active: boolean) => void) => () => void;
+    onNativeGlassAppliedChanged: (callback: (applied: boolean) => void) => () => void;
     setNativeWindowDragRegion: (region: unknown) => void;
     getWindowMode: () => Promise<unknown>;
     setWindowMode: (mode: unknown) => Promise<unknown>;

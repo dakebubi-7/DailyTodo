@@ -41,11 +41,12 @@ export function applyConfiguredGlassAndRoundedShape(
   setConfiguredGlass: Pick<PerformanceFrostController, 'setConfiguredGlass'>['setConfiguredGlass'],
   payload: unknown,
   applyNativeWindowShape: () => void,
-): void {
-  setConfiguredGlass(normalizeInvisibleGlassPayload(payload));
+): { nativeGlassApplied: boolean } {
+  const nativeGlassApplied = setConfiguredGlass(normalizeInvisibleGlassPayload(payload)) === true;
   // Win32 composition updates can restore a rectangular visual region. Reapply the
   // native shape after every material change so all themes keep the same corners.
   applyNativeWindowShape();
+  return { nativeGlassApplied };
 }
 
 export function registerWindowIpcHandlers({
@@ -101,12 +102,11 @@ export function registerWindowIpcHandlers({
   });
 
   ipcMain.handle('window:setInvisibleGlass', (_event, payload: unknown) => {
-    applyConfiguredGlassAndRoundedShape(
+    return applyConfiguredGlassAndRoundedShape(
       performanceFrost.setConfiguredGlass.bind(performanceFrost),
       payload,
       () => applyNativeWindowShape('glass'),
     );
-    return true;
   });
 
   ipcMain.handle('window:setNativeWindowRadius', (_event, radius: unknown) => {

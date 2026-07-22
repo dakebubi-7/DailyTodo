@@ -70,6 +70,46 @@ assert.equal(zh.daily.headings.today, '今日任务');
 assert.equal(en.daily.headings.today, "Today's Tasks");
 assert.equal(zh.app.inspiration, '灵感随笔');
 assert.equal(en.app.inspiration, 'Inspiration');
+assert.equal(en.app.searchTasks, 'Search tasks');
+assert.equal(en.app.filterTasks, 'Filter tasks');
+assert.equal(en.app.clearFilters, 'Clear filters');
+
+for (const key of [
+  'openCalendar',
+  'closeCalendar',
+  'selectDate',
+  'previousMonth',
+  'nextMonth',
+  'searchTasks',
+  'filterTasks',
+  'clearFilters',
+  'backToToday',
+  'taskView',
+  'todayTasks',
+  'allTasks',
+  'reviewTasks',
+  'openCount',
+  'overdueCount',
+  'completionPercent',
+  'completionRatio',
+  'futureEmpty',
+  'incompletePast',
+  'done',
+  'activeOpen',
+  'overdue',
+] as const) {
+  assert.ok(zh.app[key].length > 0, `Chinese compact workspace text should be present: ${key}.`);
+  assert.ok(en.app[key].length > 0, `English compact workspace text should be present: ${key}.`);
+}
+
+assert.equal(en.app.openCalendar, 'Open calendar');
+assert.equal(en.app.backToToday, 'Back to today');
+assert.equal(en.app.taskView, 'Task view');
+assert.equal(en.app.todayTasks, 'Today');
+assert.equal(en.app.allTasks, 'All');
+assert.equal(en.app.reviewTasks, 'Review');
+assert.equal(en.app.openCount, '{count} in progress');
+assert.equal(en.app.completionRatio, '{completed}/{total}');
 
 assert.equal(
   scripts['verify:i18n-shell-text-module'],

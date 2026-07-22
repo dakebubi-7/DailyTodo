@@ -74,6 +74,7 @@ export const cleanupCoreCommands = [
   "verify:task-item-editing-helper",
   "verify:date-key-reuse",
   "verify:date-navigator-module",
+  "verify:compact-day-strip",
   "verify:electron-main-modules",
   "verify:electron-main-store-keys-module",
   "verify:electron-window-state-module",

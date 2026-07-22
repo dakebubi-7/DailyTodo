@@ -6,7 +6,6 @@ import { AppTopContent } from '../components/AppTopContent';
 import { DateNavigator } from '../components/DateNavigator';
 import { Header } from '../components/Header';
 import { ReviewView } from '../components/ReviewView';
-import { TabBar } from '../components/TabBar';
 import { TaskList } from '../components/TaskList';
 import type { AppBehaviorSettings } from '../../shared/appSettings';
 import type { createAppCompletionActions } from './appCompletionActions';
@@ -19,7 +18,6 @@ export interface AppShellMainContentCompositionOptions {
   mainScrollRef: ComponentProps<typeof AppMainContent>['mainScrollRef'];
   isDark: ComponentProps<typeof Header>['isDark'];
   selectedDate: ComponentProps<typeof Header>['selectedDate'];
-  allDates: ComponentProps<typeof DateNavigator>['allDates'];
   setSelectedDate: ComponentProps<typeof DateNavigator>['onDateChange'];
   calendarTasks: ComponentProps<typeof DateNavigator>['tasks'];
   allTasks: ComponentProps<typeof ReviewView>['allTasks'];
@@ -31,17 +29,17 @@ export interface AppShellMainContentCompositionOptions {
   syncStatus: ComponentProps<typeof Header>['syncStatus'];
   chooseObsidianFolder: ComponentProps<typeof Header>['onChooseObsidian'];
   openSelectedDailyNote: ComponentProps<typeof Header>['onOpenTodayNote'];
-  selectedDateTasksForCommands: ComponentProps<typeof AppTopContent>['selectedDateTasksForCommands'];
-  dailyWork: ComponentProps<typeof AppTopContent>['dailyWork'];
-  dailyInspiration: ComponentProps<typeof AppTopContent>['dailyInspiration'];
-  hasDailyWorkContent: ComponentProps<typeof AppTopContent>['hasDailyWorkContent'];
-  hasDailyInspirationContent: ComponentProps<typeof AppTopContent>['hasDailyInspirationContent'];
-  isDailyWorkOpen: ComponentProps<typeof AppTopContent>['isDailyWorkOpen'];
-  isInspirationOpen: ComponentProps<typeof AppTopContent>['isInspirationOpen'];
-  updateDailyWork: ComponentProps<typeof AppTopContent>['onChangeDailyWork'];
-  updateDailyInspiration: ComponentProps<typeof AppTopContent>['onChangeDailyInspiration'];
-  activeTab: ComponentProps<typeof TabBar>['activeTab'];
-  setActiveTab: ComponentProps<typeof TabBar>['onTabChange'];
+  selectedDateTasksForCommands: ComponentProps<typeof TaskList>['selectedDateTasksForCommands'];
+  dailyWork: ComponentProps<typeof TaskList>['dailyWork'];
+  dailyInspiration: ComponentProps<typeof TaskList>['dailyInspiration'];
+  hasDailyWorkContent: ComponentProps<typeof TaskList>['hasDailyWorkContent'];
+  hasDailyInspirationContent: ComponentProps<typeof TaskList>['hasDailyInspirationContent'];
+  isDailyWorkOpen: ComponentProps<typeof TaskList>['isDailyWorkOpen'];
+  isInspirationOpen: ComponentProps<typeof TaskList>['isInspirationOpen'];
+  updateDailyWork: ComponentProps<typeof TaskList>['onChangeDailyWork'];
+  updateDailyInspiration: ComponentProps<typeof TaskList>['onChangeDailyInspiration'];
+  activeTab: ComponentProps<typeof TaskList>['activeTab'];
+  setActiveTab: ComponentProps<typeof TaskList>['onTabChange'];
   visibleTasks: ComponentProps<typeof TaskList>['tasks'];
   sourceOrderForSelectedDate: ComponentProps<typeof TaskList>['sourceOrder'];
   dragDisabled: ComponentProps<typeof TaskList>['dragDisabled'];
@@ -70,7 +68,6 @@ export function createAppShellMainContentComposition({
   mainScrollRef,
   isDark,
   selectedDate,
-  allDates,
   setSelectedDate,
   calendarTasks,
   allTasks,
@@ -127,33 +124,21 @@ export function createAppShellMainContentComposition({
   };
   const dateNavigatorProps = {
     selectedDate,
-    allDates,
     tasks: calendarTasks,
+    language: appSettings.language,
+    text: shellText.app,
     onDateChange: setSelectedDate,
   };
-  const tabBarProps = { activeTab, onTabChange: setActiveTab };
   const topContentProps = {
     headerProps,
     dateNavigatorProps,
-    tabBarProps,
     shellText: shellText.app,
-    selectedDateTasksForCommands,
-    language: appSettings.language,
-    dailyWork,
-    dailyInspiration,
-    hasDailyWorkContent,
-    hasDailyInspirationContent,
-    isDailyWorkOpen,
-    isInspirationOpen,
-    onChangeDailyWork: updateDailyWork,
-    onChangeDailyInspiration: updateDailyInspiration,
-    onToggleDailyWorkPanel: appUiActions.toggleDailyWorkPanel,
-    onToggleInspirationPanel: appUiActions.toggleInspirationPanel,
-    onCloseDailyWorkPanel: appUiActions.closeDailyWorkPanel,
-    onCloseInspirationPanel: appUiActions.closeInspirationPanel,
   };
   const reviewViewProps = {
     allTasks,
+    text: shellText.app,
+    activeTab,
+    onTabChange: setActiveTab,
     onEditReview: editTaskReview,
     onDeleteReview: deleteTaskReview,
   };
@@ -172,6 +157,23 @@ export function createAppShellMainContentComposition({
     onToggleOpenOnly: appUiActions.toggleShowOpenOnly,
     priorityFilter,
     onPriorityFilterChange: setPriorityFilter,
+    text: shellText.app,
+    activeTab,
+    onTabChange: setActiveTab,
+    hasDailyWorkContent,
+    hasDailyInspirationContent,
+    isDailyWorkOpen,
+    isInspirationOpen,
+    onToggleDailyWorkPanel: appUiActions.toggleDailyWorkPanel,
+    onToggleInspirationPanel: appUiActions.toggleInspirationPanel,
+    selectedDateTasksForCommands,
+    language: appSettings.language,
+    dailyWork,
+    dailyInspiration,
+    onChangeDailyWork: updateDailyWork,
+    onChangeDailyInspiration: updateDailyInspiration,
+    onCloseDailyWorkPanel: appUiActions.closeDailyWorkPanel,
+    onCloseInspirationPanel: appUiActions.closeInspirationPanel,
     onToggle: completionActions.toggleTask,
     onDelete: deleteTask,
     onEdit: editTask,

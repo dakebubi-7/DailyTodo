@@ -12,6 +12,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('window:performanceFrostChanged', listener);
     return () => ipcRenderer.removeListener('window:performanceFrostChanged', listener);
   },
+  onNativeGlassAppliedChanged: (callback: (applied: boolean) => void) => {
+    const listener = (_event: unknown, applied: unknown) => callback(applied === true);
+    ipcRenderer.on('window:nativeGlassAppliedChanged', listener);
+    return () => ipcRenderer.removeListener('window:nativeGlassAppliedChanged', listener);
+  },
   setNativeWindowDragRegion: (region: unknown) => ipcRenderer.send('window:setNativeDragRegion', region),
   getWindowMode: () => ipcRenderer.invoke('window:getWindowMode'),
   setWindowMode: (mode: unknown) => ipcRenderer.invoke('window:setWindowMode', mode),

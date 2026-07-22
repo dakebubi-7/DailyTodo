@@ -62,6 +62,7 @@ assert.match(
 const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
 const keyboardShortcuts = readFileSync(join(root, 'src/app/appKeyboardShortcuts.ts'), 'utf8');
 const dateNavigator = readFileSync(join(root, 'src/components/DateNavigator.tsx'), 'utf8');
+const compactDayStripUtils = readFileSync(join(root, 'src/components/compactDayStrip/compactDayStripUtils.ts'), 'utf8');
 const stats = readFileSync(join(root, 'shared/aiReview/stats.ts'), 'utf8');
 
 assert.ok(
@@ -73,8 +74,12 @@ assert.doesNotMatch(keyboardShortcuts, /function shiftDate\(/, 'Keyboard shortcu
 assert.ok(keyboardShortcuts.includes('shiftDateKey(prev, action.days)'), 'Keyboard shortcut helper should use shared shiftDateKey.');
 
 assert.ok(
-  dateNavigator.includes("import { formatLocalDateKey, shiftDateKey } from '../../shared/taskRollover';"),
-  'DateNavigator should reuse shared date key helpers.'
+  dateNavigator.includes("import { formatLocalDateKey } from '../../shared/taskRollover';"),
+  'DateNavigator should reuse the shared local date-key formatter.'
+);
+assert.ok(
+  compactDayStripUtils.includes("import { formatLocalDateKey, shiftDateKey } from '../../../shared/taskRollover';"),
+  'Compact day-strip helpers should reuse shared date key helpers.'
 );
 assert.doesNotMatch(
   dateNavigator,
@@ -83,16 +88,8 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(
   dateNavigator,
-  /function shiftDate\(/,
-  'DateNavigator should not define a local date shifting helper.'
-);
-assert.ok(
-  dateNavigator.includes('onDateChange(shiftDateKey(selectedDate, -1))'),
-  'DateNavigator previous-day control should use shared shiftDateKey.'
-);
-assert.ok(
-  dateNavigator.includes('onDateChange(shiftDateKey(selectedDate, 1))'),
-  'DateNavigator next-day control should use shared shiftDateKey.'
+  /shiftDateKey|onDateChange\(shiftDateKey\(/,
+  'DateNavigator should not retain legacy previous/next date-stepper controls.'
 );
 
 assert.ok(

@@ -37,6 +37,7 @@ export interface AppRuntimeEffectsOptions {
   taskEffects: AppRuntimeTaskEffects;
   mainScrollRef: RefObject<HTMLDivElement>;
   activeThemeId: string | null;
+  setNativeGlassApplied: (value: boolean) => void;
 }
 
 export function useAppRuntimeEffects({
@@ -44,6 +45,7 @@ export function useAppRuntimeEffects({
   taskEffects,
   mainScrollRef,
   activeThemeId,
+  setNativeGlassApplied,
 }: AppRuntimeEffectsOptions): void {
   useFloatingScrollbar(mainScrollRef, { headerSelector: '.app-top' });
 
@@ -79,15 +81,22 @@ export function useAppRuntimeEffects({
       return;
     }
     previousInvisibleGlassRef.current = nextInvisibleGlass;
-    syncInvisibleGlassTheme(
+    let current = true;
+    void syncInvisibleGlassTheme(
       activeThemeId === 'invisible',
       appState.personalization.windowOpacity,
       appState.personalization.blurStrength,
-    );
+    ).then((nativeGlassApplied) => {
+      if (current) setNativeGlassApplied(nativeGlassApplied);
+    });
+    return () => {
+      current = false;
+    };
   }, [
     activeThemeId,
     appState.personalization.blurStrength,
     appState.personalization.windowOpacity,
+    setNativeGlassApplied,
   ]);
 
   useEffect(() => {
