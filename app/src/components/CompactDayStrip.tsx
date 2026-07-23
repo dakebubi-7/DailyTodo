@@ -52,6 +52,7 @@ export const CompactDayStrip = memo(function CompactDayStrip({
       ref={containerRef}
       className={`compact-day-strip${selectedDate !== today ? ' compact-day-strip-has-today-action' : ''}`}
       data-day-count={count}
+      data-compact={count === 3 ? 'true' : undefined}
     >
       {selectedDate !== today && (
         <button
@@ -61,12 +62,13 @@ export const CompactDayStrip = memo(function CompactDayStrip({
           title={text.backToToday}
           aria-label={text.backToToday}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M12 8v4l2.5 1.5" />
-            <path d="M4.9 5.1A9 9 0 1 0 6 18.6" />
-            <path d="M4 5v5h5" />
+          <svg className="compact-day-strip-today-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+            <rect x="4.5" y="5.5" width="15" height="14" rx="2" />
+            <path d="M8 3.5v4M16 3.5v4M4.5 10h15" />
+            <circle cx="12" cy="14.5" r="2.1" />
+            <path d="m12 17.8 1.35-1.45" />
           </svg>
-          <span>{text.backToToday}</span>
+          <span className="compact-day-strip-today-label">{text.backToToday}</span>
         </button>
       )}
       <div className="compact-day-strip-days">

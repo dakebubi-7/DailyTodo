@@ -33,8 +33,8 @@ afterEach(() => {
 });
 
 describe('CompactDayStrip', () => {
-  it('keeps the exact 7/5/5 responsive day matrix and centers selection', () => {
-    render(
+  it('keeps the exact 7/5/3 responsive day matrix and centers selection', () => {
+    const { container } = render(
       <CompactDayStrip
         selectedDate="2026-07-17"
         today="2026-07-17"
@@ -51,11 +51,16 @@ describe('CompactDayStrip', () => {
     act(() => ResizeObserverDouble.emit(360));
     expect(screen.getAllByRole('button', { name: /July .*2026/i })).toHaveLength(5);
 
-    act(() => ResizeObserverDouble.emit(180));
+    act(() => ResizeObserverDouble.emit(319));
     const dayButtons = screen.getAllByRole('button', { name: /July .*2026/i });
-    expect(dayButtons).toHaveLength(5);
-    expect(screen.getByRole('button', { current: 'date' })).toBe(dayButtons[2]);
+    expect(dayButtons).toHaveLength(3);
+    expect(container.querySelector('.compact-day-strip')?.getAttribute('data-compact')).toBe('true');
+    expect(screen.getByRole('button', { current: 'date' })).toBe(dayButtons[1]);
     expect(screen.queryByRole('button', { name: /back to today/i })).toBeNull();
+
+    act(() => ResizeObserverDouble.emit(320));
+    expect(screen.getAllByRole('button', { name: /July .*2026/i })).toHaveLength(5);
+    expect(container.querySelector('.compact-day-strip')?.hasAttribute('data-compact')).toBe(false);
   });
 
   it('shows a return-to-today action only away from today and uses the existing date callback', () => {
@@ -74,6 +79,11 @@ describe('CompactDayStrip', () => {
     const strip = container.querySelector('.compact-day-strip');
     const todayAction = screen.getByRole('button', { name: /back to today/i });
     expect(strip?.firstElementChild).toBe(todayAction);
+    expect(todayAction.querySelector('.compact-day-strip-today-icon')).not.toBeNull();
+    expect(todayAction.querySelector('.compact-day-strip-today-label')?.textContent).toBe('Back to today');
+    expect(todayAction.getAttribute('title')).toBe('Back to today');
+    expect(todayAction.getAttribute('aria-label')).toBe('Back to today');
+    expect(todayAction.querySelector('.compact-day-strip-today-icon')?.getAttribute('aria-hidden')).toBe('true');
 
     todayAction.click();
     expect(onDateChange).toHaveBeenCalledWith('2026-07-17');

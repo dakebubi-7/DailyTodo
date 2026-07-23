@@ -19,10 +19,12 @@ const aiReviewManualGenerationSection = readFileSync(
 const taskItem = readFileSync(join(root, 'src/components/TaskItem.tsx'), 'utf8');
 const addTaskInput = readFileSync(join(root, 'src/components/AddTaskInput.tsx'), 'utf8');
 const appTsx = readFileSync(join(root, 'src/App.tsx'), 'utf8');
-const useAppShellComposition = readFileSync(join(root, 'src/app/useAppShellComposition.ts'), 'utf8');
+const appShellCompositionInputs = readFileSync(join(root, 'src/app/appShellCompositionInputs.ts'), 'utf8');
 const appShellMainContentComposition = readFileSync(join(root, 'src/app/appShellMainContentComposition.tsx'), 'utf8');
 const appMainContent = readFileSync(join(root, 'src/components/AppMainContent.tsx'), 'utf8');
 const titleBar = readFileSync(join(root, 'src/components/TitleBar.tsx'), 'utf8');
+const titleBarPrimaryActions = readFileSync(join(root, 'src/components/titleBar/TitleBarPrimaryActions.tsx'), 'utf8');
+const compactDayStrip = readFileSync(join(root, 'src/components/CompactDayStrip.tsx'), 'utf8');
 const dailyWorkPanel = readFileSync(join(root, 'src/components/DailyWorkPanel.tsx'), 'utf8');
 const taskCompletionDialog = readFileSync(join(root, 'src/components/TaskCompletionDialog.tsx'), 'utf8');
 const quickCapture = readFileSync(join(root, 'shared/quickCapture.ts'), 'utf8');
@@ -60,8 +62,8 @@ expectIncludes(quickCapture, 'extractNaturalTaskTitle', 'Quick capture should ex
 expectIncludes(addTaskInput, 'resolveDateIntent(parsed.dateIntent)', 'AddTaskInput should route parsed date intents to taskDate.');
 expectIncludes(addTaskInput, 'onAdd(nextText, effectivePriority, effectiveSource, taskDate)', 'AddTaskInput should pass the resolved date into addTask.');
 expectIncludes(appTsx, 'useAppShellComposition({', 'App should delegate shell prop composition before rendering main content.');
-expectIncludes(useAppShellComposition, 'deleteTaskReview: taskState.deleteTaskReview', 'Shell-composition hook should pass delete-review wiring into composition.');
-expectIncludes(useAppShellComposition, 'addTask: taskState.addTask', 'Shell-composition hook should pass quick-capture addTask wiring into composition.');
+expectIncludes(appShellCompositionInputs, 'deleteTaskReview: taskState.deleteTaskReview', 'Shell-composition inputs should pass delete-review wiring into composition.');
+expectIncludes(appShellCompositionInputs, 'addTask: taskState.addTask', 'Shell-composition inputs should pass quick-capture addTask wiring into composition.');
 expectIncludes(appTsx, '<AppMainContent {...shellComposition.mainContentProps} />', 'App should render main content through composed shell props.');
 expectIncludes(appShellMainContentComposition, 'const reviewViewProps = {', 'Main-content composition should gather review-view props before delegating main content.');
 expectIncludes(appShellMainContentComposition, 'onDeleteReview: deleteTaskReview', 'Main-content composition should keep delete-review wiring.');
@@ -137,9 +139,9 @@ expectIncludes(globals, ".theme-dark-mode.dark :is(.settings-field input, .setti
 expectIncludes(globals, ".theme-dark-mode.dark .theme-preset-card {\n  background: rgba(39, 39, 42, 0.92) !important;", 'Theme-dark-mode appearance theme cards should use the same neutral dark-gray surfaces.');
 
 expectIncludes(globals, 'invisible dark settings neutralization', 'Invisible dark settings should have a final neutralization override block.');
-expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-panel {\n  background: rgba(24, 24, 27, 0.96) !important;", 'Invisible dark settings panel should use the same neutral black-gray surface as minimal dark settings.');
-expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-v2-sidebar {\n  border-right-color: rgba(255, 255, 255, 0.1) !important;\n  background: rgba(24, 24, 27, 0.96) !important;", 'Invisible dark settings sidebar should use the same neutral black-gray surface as minimal dark settings.');
-expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-v2-content {\n  background: rgba(24, 24, 27, 0.96) !important;", 'Invisible dark settings content column should use the same neutral black-gray base surface.');
+expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-panel {\n  background: rgba(24, 24, 27, 0.98) !important;", 'Invisible dark settings panel should use the neutral black-gray surface defined by its final override.');
+expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-v2-sidebar {\n  border-right-color: rgba(255, 255, 255, 0.1) !important;\n  background: rgba(24, 24, 27, 0.98) !important;", 'Invisible dark settings sidebar should use the same final neutral black-gray surface.');
+expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-v2-content {\n  background: rgba(24, 24, 27, 0.98) !important;", 'Invisible dark settings content column should use the same final neutral black-gray base surface.');
 expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-v2-page {\n  background: transparent !important;", 'Invisible dark settings page body should stay transparent so the content column surface is the only base layer.');
 expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .settings-v2-page .settings-section {\n  background: rgba(39, 39, 42, 0.92) !important;", 'Invisible dark settings sections should use neutral dark-gray cards instead of blue-gray.');
 expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] :is(.settings-nav-item, .settings-switch-row, .settings-reset-button) {\n  background: rgba(63, 63, 70, 0.96) !important;", 'Invisible dark settings controls should use the same black-gray surfaces as minimal dark settings.');
@@ -206,21 +208,15 @@ expectIncludes(globals, ".dark .app-shell[data-theme='watercolor'] .review-edit-
 expectIncludes(globals, ".app-shell[data-theme='invisible'] .task-complete-action:not(.task-complete-action-complete)", 'Invisible incomplete completion action should be deliberately de-emphasized.');
 expectIncludes(globals, 'background: rgba(255, 255, 255, 0.025) !important;', 'Invisible mark-complete action should use a very subtle fill.');
 
-expectIncludes(titleBar, 'const titlebarPrimaryActiveStyle = {', 'TitleBar should define a component-level selected-state style for the primary buttons.');
-expectIncludes(titleBar, "backgroundColor: '#ffffff'", 'TitleBar runtime active style should render selected primary buttons with a white background.');
-expectIncludes(titleBar, "color: '#000000'", 'TitleBar runtime active style should render black icons on selected primary buttons.');
 expectIncludes(titleBar, 'const togglePrimarySelected = (event: React.MouseEvent<HTMLButtonElement>) => {', 'TitleBar should have a DOM-level selected-state toggle for primary buttons.');
 expectIncludes(titleBar, "button.dataset.selected = button.dataset.selected === 'true' ? 'false' : 'true';", 'Primary titlebar buttons should toggle their selected dataset directly on click.');
-expectIncludes(titleBar, 'data-titlebar-primary="true"', 'Primary titlebar buttons should be marked for direct selected-state styling.');
-expectIncludes(titleBar, "data-selected={pinned ? 'true' : 'false'}", 'Pin button should expose its selected dataset state.');
-expectIncludes(titleBar, "data-selected={visualLockActive ? 'true' : 'false'}", 'Lock button should expose its selected dataset state.');
-expectIncludes(titleBar, "data-selected={visualSettingsActive ? 'true' : 'false'}", 'Settings button should expose its selected dataset state.');
-expectIncludes(titleBar, 'style={pinned ? titlebarPrimaryActiveStyle : undefined}', 'Pin button should apply the selected background only when active.');
-expectIncludes(titleBar, 'style={visualLockActive ? titlebarPrimaryActiveStyle : undefined}', 'Lock button should apply the selected background from local visual state.');
-expectIncludes(titleBar, 'style={visualSettingsActive ? titlebarPrimaryActiveStyle : undefined}', 'Settings button should apply the selected background from local visual state.');
-expectIncludes(titleBar, 'className={`titlebar-icon-button ${pinned ? \'titlebar-icon-active\' : \'\'}`}', 'Pin button should still expose active class semantics.');
-expectIncludes(titleBar, 'className={`titlebar-icon-button ${visualLockActive ? \'titlebar-icon-active\' : \'\'}`}', 'Lock button should expose active class semantics from local visual state.');
-expectIncludes(titleBar, 'className={`titlebar-icon-button ${visualSettingsActive ? \'titlebar-icon-active\' : \'\'}`}', 'Settings button should expose active class semantics from local visual state.');
+expectIncludes(titleBarPrimaryActions, 'data-titlebar-primary="true"', 'Primary titlebar buttons should be marked for direct selected-state styling.');
+expectIncludes(titleBarPrimaryActions, "data-selected={pinned ? 'true' : 'false'}", 'Pin button should expose its selected dataset state.');
+expectIncludes(titleBarPrimaryActions, "data-selected={visualLockActive ? 'true' : 'false'}", 'Lock button should expose its selected dataset state.');
+expectIncludes(titleBarPrimaryActions, "data-selected={visualSettingsActive ? 'true' : 'false'}", 'Settings button should expose its selected dataset state.');
+expectIncludes(titleBarPrimaryActions, 'className={`titlebar-icon-button ${pinned ? \'titlebar-icon-active\' : \'\'}`}', 'Pin button should still expose active class semantics.');
+expectIncludes(titleBarPrimaryActions, 'className={`titlebar-icon-button ${visualLockActive ? \'titlebar-icon-active\' : \'\'}`}', 'Lock button should expose active class semantics from local visual state.');
+expectIncludes(titleBarPrimaryActions, 'className={`titlebar-icon-button ${visualSettingsActive ? \'titlebar-icon-active\' : \'\'}`}', 'Settings button should expose active class semantics from local visual state.');
 
 expectIncludes(globals, ".titlebar-actions-primary .titlebar-icon-button[data-selected='true'] {", 'Titlebar primary selected buttons should use a direct data-selected CSS override.');
 expectIncludes(globals, 'border-color: #ffffff !important;', 'Primary selected titlebar buttons should use an unmistakably white border.');
@@ -276,5 +272,29 @@ expectNotIncludes(globals, ".app-shell[data-theme='invisible'] .tabbar-active-in
 expectNotIncludes(globals, ".app-shell[data-theme='invisible'] .tabbar button.font-semibold::after", 'Invisible theme should not replace the animated TabBar indicator with a static pseudo-element.');
 expectNotIncludes(globals, ".dark .app-shell[data-theme='invisible'] :is(.daily-panel-tab-active, .tabbar button.font-semibold, .tabbar button[class*=\"font-semibold\"]) {\n  border-color: var(--neutral-border) !important;", 'Invisible dark active tabs should not use the generic active pill background.');
 expectNotIncludes(globals, ".dark .app-shell[data-theme='watercolor'] .date-today-button {\n  background: rgba(255, 255, 255, 0.94) !important;", 'Watercolor dark today button should not keep the old white-background exception.');
+
+expectNotIncludes(titleBarPrimaryActions, 'titlebarPrimaryActiveStyle', 'Primary titlebar action selection should be styled by CSS rather than an inline style object.');
+expectNotIncludes(titleBarPrimaryActions, 'style={', 'Primary titlebar actions should not carry inline selected-theme styles.');
+expectNotIncludes(titleBarPrimaryActions, 'CSSProperties', 'Primary titlebar actions should not import CSSProperties for selected-theme styling.');
+
+expectIncludes(compactDayStrip, 'data-day-count={count}', 'CompactDayStrip should expose its rendered day count for CSS sizing.');
+expectIncludes(compactDayStrip, "data-compact={count === 3 ? 'true' : undefined}", 'CompactDayStrip should expose the actual three-day compact state.');
+expectIncludes(globals, ".compact-day-strip[data-compact='true'] {", 'Compact day styling should follow the rendered compact state, not viewport width.');
+expectIncludes(globals, "--compact-progress-track: #e8eaed;\n  --compact-progress-fill: #25282d;\n  --compact-progress-ratio: #17191d;\n  --compact-progress-fill-text: #ffffff;", 'Light compact progress tokens should define the neutral progress palette.');
+expectIncludes(globals, ".dark .app-shell {\n  --compact-progress-track: #17191d;\n  --compact-progress-fill: #eceef1;\n  --compact-progress-ratio: #f4f5f6;\n  --compact-progress-fill-text: #17191d;", 'Dark app shell should override compact progress tokens for contrast.');
+expectIncludes(globals, ".compact-day-summary {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr) minmax(6.4rem, 42%);\n  align-items: center;\n  height: 28px;", 'Compact summary should use the final fixed 28px progress-row layout.');
+expectIncludes(globals, ".compact-day-progress-track {\n  position: relative;\n  display: flex;\n  min-width: 0;\n  height: 20px;", 'Compact progress track should fit the tightened summary row.');
+expectIncludes(globals, 'background: var(--compact-progress-track);', 'Compact progress track should use its theme token.');
+expectIncludes(globals, 'color: var(--compact-progress-ratio);', 'Compact progress ratio should use its contrast token.');
+expectIncludes(globals, 'background: var(--compact-progress-fill);', 'Compact progress fill should use its theme token.');
+expectIncludes(globals, 'color: var(--compact-progress-fill-text);', 'Compact progress fill text should use its contrast token.');
+expectIncludes(globals, ".compact-day-strip-weekday {\n  display: block;\n  min-height: 0.78rem;\n  line-height: 0.78rem;", 'Weekday labels should reserve their line box so their tops cannot clip.');
+expectIncludes(globals, ".compact-day-strip[data-compact='true'] .compact-day-strip-day {\n  min-height: 2.72rem;\n  gap: 0.06rem;", 'Actual compact day cells should use the three-day tight spacing.');
+expectIncludes(globals, ".compact-day-strip[data-compact='true'].compact-day-strip-has-today-action {\n  grid-template-columns: 2rem minmax(0, 1fr);\n  gap: 0.18rem;", 'Actual compact state should shrink the back-to-today column.');
+expectIncludes(globals, ".compact-day-strip[data-compact='true'] .compact-day-strip-today-label {\n  position: absolute;", 'Actual compact state should visually hide the today label while retaining its accessible name.');
+expectIncludes(globals, ".task-toolbar {\n  position: relative;\n  z-index: 2;\n  container-type: inline-size;", 'Toolbar controls should respond to their own available width.');
+expectIncludes(globals, "@container (max-width: 280px) {\n  .task-toolbar-row {", 'Toolbar controls should share a container-width compact breakpoint.');
+expectIncludes(globals, ".task-toolbar .task-toolbar-tools :is(.task-tool-icon, .task-view-launcher),\n  .task-toolbar .task-daily-action {\n    height: 1.72rem;\n    min-height: 1.72rem;\n    font-size: 0.62rem;", 'Small-window toolbar controls should share the compact sizing contract.');
+expectIncludes(globals, ".task-toolbar :is(.task-filter-button, .task-filter-select, .task-clear-filter, .task-search-input) {\n    height: 1.72rem;\n    min-height: 1.72rem;", 'Expanded toolbar search and filter controls should match the compact control height.');
 
 console.log('verify-ui-feedback-regressions passed');

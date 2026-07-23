@@ -4858,6 +4858,23 @@ html {
 }
 
 .date-card {
+  --compact-day-empty-text: #70757d;
+  --compact-day-empty-dot: #989da5;
+  --compact-day-past-text: #5f6670;
+  --compact-day-past-dot: #7f8790;
+  --compact-day-done-text: #317253;
+  --compact-day-done-dot: #3d9067;
+  --compact-day-open-text: #806631;
+  --compact-day-open-dot: #ae8739;
+  --compact-day-overdue-text: #ab4545;
+  --compact-day-overdue-dot: #ca5959;
+  --compact-day-selected-frame: #7895b8;
+  --compact-day-selected-surface: rgba(96, 135, 177, 0.12);
+  --compact-day-selected-label: #2f679f;
+  --compact-progress-track: #e8eaed;
+  --compact-progress-fill: #25282d;
+  --compact-progress-ratio: #17191d;
+  --compact-progress-fill-text: #ffffff;
   position: relative;
   z-index: 70;
   display: grid !important;
@@ -11672,6 +11689,23 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
 }
 
 .dark .date-card {
+  --compact-day-empty-text: #777c83;
+  --compact-day-empty-dot: #575c61;
+  --compact-day-past-text: #c4c7cc;
+  --compact-day-past-dot: #8f949b;
+  --compact-day-done-text: #73c69a;
+  --compact-day-done-dot: #65bd90;
+  --compact-day-open-text: #d2b07a;
+  --compact-day-open-dot: #c9a56d;
+  --compact-day-overdue-text: #dd7777;
+  --compact-day-overdue-dot: #d26868;
+  --compact-day-selected-frame: #5c6066;
+  --compact-day-selected-surface: #2a2d31;
+  --compact-day-selected-label: #8fb8ff;
+  --compact-progress-track: #17191d;
+  --compact-progress-fill: #eceef1;
+  --compact-progress-ratio: #f4f5f6;
+  --compact-progress-fill-text: #17191d;
   border-color: rgba(255, 255, 255, 0.11) !important;
   background: rgba(26, 28, 32, 0.72) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
@@ -11679,19 +11713,6 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
 
 .compact-day-strip {
   --compact-day-count: 5;
-  --compact-day-empty-text: #70757d;
-  --compact-day-empty-dot: #989da5;
-  --compact-day-past-text: #5f6670;
-  --compact-day-past-dot: #7f8790;
-  --compact-day-done-text: #317253;
-  --compact-day-done-dot: #3d9067;
-  --compact-day-open-text: #806631;
-  --compact-day-open-dot: #ae8739;
-  --compact-day-overdue-text: #ab4545;
-  --compact-day-overdue-dot: #ca5959;
-  --compact-day-selected-frame: #7895b8;
-  --compact-day-selected-surface: rgba(96, 135, 177, 0.12);
-  --compact-day-selected-label: #2f679f;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
@@ -11705,6 +11726,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
 
 .compact-day-strip-today {
   display: grid;
+  position: relative;
   min-width: 0;
   min-height: 3rem;
   align-content: center;
@@ -11745,11 +11767,19 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   --compact-day-count: 5;
 }
 
+.compact-day-strip[data-day-count='3'] {
+  --compact-day-count: 3;
+}
+
 .compact-day-strip[data-day-count='7'] {
   --compact-day-count: 7;
 }
 
 .dark .app-shell {
+  --compact-progress-track: #17191d;
+  --compact-progress-fill: #eceef1;
+  --compact-progress-ratio: #f4f5f6;
+  --compact-progress-fill-text: #17191d;
   --compact-day-empty-text: #777c83;
   --compact-day-empty-dot: #575c61;
   --compact-day-past-text: #c4c7cc;
@@ -11772,20 +11802,40 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   min-width: 0;
 }
 
-@media (max-width: 320px) {
-  .compact-day-strip-has-today-action {
-    grid-template-columns: minmax(2.45rem, 2.75rem) minmax(0, 1fr);
-    gap: 0.18rem;
-  }
+.compact-day-strip[data-compact='true'] {
+  gap: 0.18rem;
+}
 
-  .compact-day-strip-days {
-    gap: 0.18rem;
-  }
+.compact-day-strip[data-compact='true'].compact-day-strip-has-today-action {
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.18rem;
+}
 
-  .compact-day-strip-today {
-    padding: 0.2rem 0.12rem;
-    font-size: 0.56rem;
-  }
+.compact-day-strip[data-compact='true'] .compact-day-strip-days {
+  gap: 0.18rem;
+}
+
+.compact-day-strip[data-compact='true'] .compact-day-strip-today {
+  min-height: 2.72rem;
+  padding: 0;
+}
+
+.compact-day-strip[data-compact='true'] .compact-day-strip-today-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.compact-day-strip[data-compact='true'] .compact-day-strip-today-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .compact-day-strip-day {
@@ -11823,6 +11873,9 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
 }
 
 .compact-day-strip-weekday {
+  display: block;
+  min-height: 0.78rem;
+  line-height: 0.78rem;
   overflow: hidden;
   font-size: 0.66rem;
   font-weight: 700;
@@ -11840,6 +11893,24 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   height: 0.34rem;
   border-radius: 999px;
   background: var(--compact-day-empty-dot);
+}
+
+.compact-day-strip[data-compact='true'] .compact-day-strip-day {
+  min-height: 2.72rem;
+  gap: 0.06rem;
+}
+
+.compact-day-strip[data-compact='true'] .compact-day-strip-weekday {
+  font-size: 0.58rem;
+}
+
+.compact-day-strip[data-compact='true'] .compact-day-strip-number {
+  font-size: 0.82rem;
+}
+
+.compact-day-strip[data-compact='true'] .compact-day-strip-dot {
+  width: 0.28rem;
+  height: 0.28rem;
 }
 
 .compact-day-strip-day[data-status='future-empty'] {
@@ -11884,20 +11955,20 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
 
 .compact-day-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 42%);
+  grid-template-columns: minmax(0, 1fr) minmax(6.4rem, 42%);
   align-items: center;
-  height: 34px;
+  height: 28px;
   min-width: 0;
   gap: 0.5rem;
-  border: 1px solid rgba(39, 39, 42, 0.08);
+  border: 1px solid color-mix(in srgb, var(--compact-progress-track) 72%, transparent);
   border-radius: 0.5rem;
-  background: rgba(250, 250, 252, 0.74);
+  background: var(--compact-progress-track);
   padding: 0.25rem 0.3rem 0.25rem 0.55rem;
 }
 
 .dark .compact-day-summary {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.045);
+  border-color: color-mix(in srgb, var(--compact-progress-track) 72%, transparent);
+  background: var(--compact-progress-track);
 }
 
 .compact-day-summary-counts {
@@ -11931,13 +12002,14 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   position: relative;
   display: flex;
   min-width: 0;
-  height: 24px;
+  height: 20px;
   align-items: center;
   justify-content: flex-end;
   overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--compact-progress-track) 72%, transparent);
   border-radius: 0.38rem;
-  background: #111214;
-  color: #f3f4f5;
+  background: var(--compact-progress-track);
+  color: var(--compact-progress-ratio);
   font-size: 0.67rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -11951,8 +12023,8 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   align-items: center;
   justify-content: flex-start;
   overflow: hidden;
-  background: #f3f4f5;
-  color: #16181b;
+  background: var(--compact-progress-fill);
+  color: var(--compact-progress-fill-text);
   white-space: nowrap;
 }
 
@@ -11970,6 +12042,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
 .task-toolbar {
   position: relative;
   z-index: 2;
+  container-type: inline-size;
   gap: 0.38rem;
 }
 
@@ -12159,7 +12232,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   margin-bottom: 0.5rem;
 }
 
-@media (max-width: 320px) {
+@container (max-width: 280px) {
   .task-toolbar-row {
     gap: 0.22rem;
   }
@@ -12168,23 +12241,49 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
     gap: 0.18rem;
   }
 
-  .task-daily-action {
-    height: 2rem;
-    padding: 0 0.34rem;
-    font-size: 0.64rem;
+  .task-toolbar .task-toolbar-tools :is(.task-tool-icon, .task-view-launcher),
+  .task-toolbar .task-daily-action {
+    height: 1.72rem;
+    min-height: 1.72rem;
+    font-size: 0.62rem;
   }
 
-  .task-view-launcher {
+  .task-toolbar .task-toolbar-tools .task-tool-icon {
+    width: 1.72rem;
+    padding: 0;
+  }
+
+  .task-toolbar .task-toolbar-tools .task-tool-icon svg,
+  .task-toolbar .task-view-launcher svg {
+    width: 0.78rem;
+    height: 0.78rem;
+  }
+
+  .task-toolbar .task-daily-action {
+    padding: 0 0.3rem;
+  }
+
+  .task-toolbar .daily-panel-tab {
+    height: 1.72rem !important;
+    min-height: 1.72rem !important;
+    padding: 0 0.3rem !important;
+  }
+
+  .task-toolbar :is(.task-filter-button, .task-filter-select, .task-clear-filter, .task-search-input) {
     height: 1.72rem;
-    padding: 0 0.26rem 0 0.32rem;
+    min-height: 1.72rem;
+  }
+
+  .task-toolbar .task-filter-button,
+  .task-toolbar .task-clear-filter,
+  .task-toolbar .task-search-input,
+  .task-toolbar .task-filter-select {
     font-size: 0.62rem;
   }
 }
 
 /* Compact workspace controls sit above the invisible-theme convergence block. Keep them on the shell's single Acrylic plate. */
 .app-shell[data-theme='invisible'] .compact-day-strip,
-.app-shell[data-theme='invisible'] .compact-day-summary,
-.app-shell[data-theme='invisible'] .compact-day-progress-track,
 .app-shell[data-theme='invisible'] .task-daily-panels,
 .app-shell[data-theme='invisible'] .task-daily-action,
 .app-shell[data-theme='invisible'] .task-filter-controls {
@@ -12194,4 +12293,14 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
+}
+
+.app-shell[data-theme='invisible'] .compact-day-summary {
+  background: var(--compact-progress-track) !important;
+  background-color: var(--compact-progress-track) !important;
+}
+
+.app-shell[data-theme='invisible'] .compact-day-progress-track {
+  background: var(--compact-progress-track) !important;
+  background-color: var(--compact-progress-track) !important;
 }

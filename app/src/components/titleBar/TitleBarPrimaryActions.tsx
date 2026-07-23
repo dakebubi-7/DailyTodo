@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import type { CSSProperties, MouseEvent } from 'react';
+import type { MouseEvent } from 'react';
 import { AppLanguage } from '../../../shared/appSettings';
 import { getShellText } from '../../i18n';
 
@@ -13,13 +13,6 @@ interface TitleBarPrimaryActionsProps {
   onToggleLock: (event: MouseEvent<HTMLButtonElement>) => void;
   onToggleSettings: (event: MouseEvent<HTMLButtonElement>) => void;
 }
-
-const titlebarPrimaryActiveStyle = {
-  borderColor: '#ffffff',
-  backgroundColor: '#ffffff',
-  color: '#000000',
-  boxShadow: '0 0 0 2px rgba(255, 255, 255, 0.35), 0 6px 14px rgba(0, 0, 0, 0.22)',
-} satisfies CSSProperties;
 
 export function TitleBarPrimaryActions({
   pinned,
@@ -44,7 +37,6 @@ export function TitleBarPrimaryActions({
         data-selected={pinned ? 'true' : 'false'}
         title={pinned ? text.unpin : text.pin}
         aria-label={pinned ? text.unpin : text.pin}
-        style={pinned ? titlebarPrimaryActiveStyle : undefined}
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
           <path d="M14 4l6 6-4 1-5 8-2-2 8-5 1-4-6-6z" />
@@ -61,7 +53,6 @@ export function TitleBarPrimaryActions({
         data-selected={visualLockActive ? 'true' : 'false'}
         title={lockWindowPosition ? text.unlock : text.lock}
         aria-label={lockWindowPosition ? text.unlock : text.lock}
-        style={visualLockActive ? titlebarPrimaryActiveStyle : undefined}
       >
         {lockWindowPosition ? (
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -85,7 +76,6 @@ export function TitleBarPrimaryActions({
         data-selected={visualSettingsActive ? 'true' : 'false'}
         title={text.settings}
         aria-label={text.settings}
-        style={visualSettingsActive ? titlebarPrimaryActiveStyle : undefined}
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
           <path d="M12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4Z" />

@@ -20,11 +20,12 @@ const openTask: Task = {
 };
 
 describe('compact day strip helpers', () => {
-  it('uses seven days only at wide width and five days everywhere else', () => {
+  it('uses seven, five, or three days at the responsive width thresholds', () => {
     expect(getCompactDayStripCount(440)).toBe(7);
     expect(getCompactDayStripCount(439)).toBe(5);
     expect(getCompactDayStripCount(320)).toBe(5);
-    expect(getCompactDayStripCount(1)).toBe(5);
+    expect(getCompactDayStripCount(319)).toBe(3);
+    expect(getCompactDayStripCount(1)).toBe(3);
   });
 
   it('centers both permitted windows on the selected date', () => {
