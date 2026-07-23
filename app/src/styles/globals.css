@@ -4872,8 +4872,8 @@ html {
   --compact-day-selected-surface: rgba(96, 135, 177, 0.12);
   --compact-day-selected-label: #2f679f;
   --compact-progress-track: #e8eaed;
-  --compact-progress-fill: #25282d;
-  --compact-progress-ratio: #17191d;
+  --compact-progress-fill: #6f879f;
+  --compact-progress-ratio: #3f3f46;
   --compact-progress-fill-text: #ffffff;
   position: relative;
   z-index: 70;
@@ -11702,10 +11702,10 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   --compact-day-selected-frame: #5c6066;
   --compact-day-selected-surface: #2a2d31;
   --compact-day-selected-label: #8fb8ff;
-  --compact-progress-track: #17191d;
-  --compact-progress-fill: #eceef1;
-  --compact-progress-ratio: #f4f5f6;
-  --compact-progress-fill-text: #17191d;
+  --compact-progress-track: #2a2d31;
+  --compact-progress-fill: #8aa0b8;
+  --compact-progress-ratio: #e4e4e7;
+  --compact-progress-fill-text: #121418;
   border-color: rgba(255, 255, 255, 0.11) !important;
   background: rgba(26, 28, 32, 0.72) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
@@ -11767,19 +11767,15 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   --compact-day-count: 5;
 }
 
-.compact-day-strip[data-day-count='3'] {
-  --compact-day-count: 3;
-}
-
 .compact-day-strip[data-day-count='7'] {
   --compact-day-count: 7;
 }
 
 .dark .app-shell {
-  --compact-progress-track: #17191d;
-  --compact-progress-fill: #eceef1;
-  --compact-progress-ratio: #f4f5f6;
-  --compact-progress-fill-text: #17191d;
+  --compact-progress-track: #2a2d31;
+  --compact-progress-fill: #8aa0b8;
+  --compact-progress-ratio: #e4e4e7;
+  --compact-progress-fill-text: #121418;
   --compact-day-empty-text: #777c83;
   --compact-day-empty-dot: #575c61;
   --compact-day-past-text: #c4c7cc;
@@ -11802,40 +11798,42 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   min-width: 0;
 }
 
-.compact-day-strip[data-compact='true'] {
-  gap: 0.18rem;
-}
+@media (max-width: 320px) {
+  .compact-day-strip {
+    gap: 0.18rem;
+  }
 
-.compact-day-strip[data-compact='true'].compact-day-strip-has-today-action {
-  grid-template-columns: 2rem minmax(0, 1fr);
-  gap: 0.18rem;
-}
+  .compact-day-strip.compact-day-strip-has-today-action {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.18rem;
+  }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-days {
-  gap: 0.18rem;
-}
+  .compact-day-strip .compact-day-strip-days {
+    gap: 0.18rem;
+  }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-today {
-  min-height: 2.72rem;
-  padding: 0;
-}
+  .compact-day-strip .compact-day-strip-today {
+    min-height: 2.72rem;
+    padding: 0;
+  }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-today-icon {
-  width: 0.9rem;
-  height: 0.9rem;
-}
+  .compact-day-strip .compact-day-strip-today-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-today-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+  .compact-day-strip .compact-day-strip-today-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 .compact-day-strip-day {
@@ -11895,22 +11893,24 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   background: var(--compact-day-empty-dot);
 }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-day {
-  min-height: 2.72rem;
-  gap: 0.06rem;
-}
+@media (max-width: 320px) {
+  .compact-day-strip-day {
+    min-height: 2.72rem;
+    gap: 0.06rem;
+  }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-weekday {
-  font-size: 0.58rem;
-}
+  .compact-day-strip-weekday {
+    font-size: 0.58rem;
+  }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-number {
-  font-size: 0.82rem;
-}
+  .compact-day-strip-number {
+    font-size: 0.82rem;
+  }
 
-.compact-day-strip[data-compact='true'] .compact-day-strip-dot {
-  width: 0.28rem;
-  height: 0.28rem;
+  .compact-day-strip-dot {
+    width: 0.28rem;
+    height: 0.28rem;
+  }
 }
 
 .compact-day-strip-day[data-status='future-empty'] {
@@ -11957,13 +11957,13 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(6.4rem, 42%);
   align-items: center;
-  height: 28px;
+  height: 24px;
   min-width: 0;
-  gap: 0.5rem;
+  gap: 0.42rem;
   border: 1px solid color-mix(in srgb, var(--compact-progress-track) 72%, transparent);
-  border-radius: 0.5rem;
+  border-radius: 0.46rem;
   background: var(--compact-progress-track);
-  padding: 0.25rem 0.3rem 0.25rem 0.55rem;
+  padding: 0.16rem 0.24rem 0.16rem 0.45rem;
 }
 
 .dark .compact-day-summary {
@@ -11975,10 +11975,10 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.32rem;
+  gap: 0.28rem;
   overflow: hidden;
   color: #3f3f46;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -12002,15 +12002,15 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   position: relative;
   display: flex;
   min-width: 0;
-  height: 20px;
+  height: 16px;
   align-items: center;
   justify-content: flex-end;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--compact-progress-track) 72%, transparent);
-  border-radius: 0.38rem;
+  border-radius: 0.34rem;
   background: var(--compact-progress-track);
   color: var(--compact-progress-ratio);
-  font-size: 0.67rem;
+  font-size: 0.6rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
@@ -12029,7 +12029,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
 }
 
 .compact-day-progress-fill span {
-  padding-left: 0.42rem;
+  padding-left: 0.34rem;
 }
 
 .compact-day-progress-ratio {
@@ -12295,12 +12295,100 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   box-shadow: none !important;
 }
 
+/* Invisible compact progress: softer glass shell + clearer fill contrast.
+   Tokens must be re-declared on .date-card because .dark .date-card
+   locally redefines solid compact progress variables for its descendants. */
+.app-shell[data-theme='invisible'] .date-card,
+.app-shell[data-theme='invisible'] {
+  --compact-progress-track: rgba(0, 0, 0, 0.06);
+  --compact-progress-fill: rgba(28, 30, 34, 0.42);
+  --compact-progress-ratio: rgba(28, 30, 34, 0.78);
+  --compact-progress-fill-text: rgba(255, 255, 255, 0.96);
+  --compact-day-selected-frame: rgba(0, 0, 0, 0.16);
+  --compact-day-selected-surface: rgba(0, 0, 0, 0.06);
+  --compact-day-selected-label: rgba(24, 26, 30, 0.88);
+}
+
+.dark .app-shell[data-theme='invisible'] .date-card,
+.dark .app-shell[data-theme='invisible'] {
+  --compact-progress-track: rgba(255, 255, 255, 0.10);
+  --compact-progress-fill: rgba(255, 255, 255, 0.58);
+  --compact-progress-ratio: rgba(255, 255, 255, 0.86);
+  --compact-progress-fill-text: rgba(16, 18, 22, 0.92);
+  --compact-day-selected-frame: rgba(255, 255, 255, 0.28);
+  --compact-day-selected-surface: rgba(255, 255, 255, 0.12);
+  --compact-day-selected-label: rgba(255, 255, 255, 0.92);
+}
+
 .app-shell[data-theme='invisible'] .compact-day-summary {
-  background: var(--compact-progress-track) !important;
-  background-color: var(--compact-progress-track) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  background: rgba(0, 0, 0, 0.045) !important;
+  background-color: rgba(0, 0, 0, 0.045) !important;
+  box-shadow: none !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .compact-day-summary {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
+}
+
+.app-shell[data-theme='invisible'] .compact-day-summary-counts {
+  color: rgba(30, 32, 36, 0.78) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .compact-day-summary-counts {
+  color: rgba(244, 245, 246, 0.86) !important;
 }
 
 .app-shell[data-theme='invisible'] .compact-day-progress-track {
-  background: var(--compact-progress-track) !important;
-  background-color: var(--compact-progress-track) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  background: rgba(0, 0, 0, 0.06) !important;
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(28, 30, 34, 0.78) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .compact-day-progress-track {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.app-shell[data-theme='invisible'] .compact-day-progress-fill {
+  background: rgba(28, 30, 34, 0.42) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .compact-day-progress-fill {
+  background: rgba(255, 255, 255, 0.58) !important;
+  color: rgba(16, 18, 22, 0.92) !important;
+}
+
+
+.app-shell[data-theme='invisible'] .compact-day-strip-day[aria-current='date'] {
+  border-color: rgba(0, 0, 0, 0.16) !important;
+  background: rgba(0, 0, 0, 0.06) !important;
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(24, 26, 30, 0.88) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .compact-day-strip-day[aria-current='date'] {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-shell[data-theme='invisible'] .compact-day-strip-day:hover {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .compact-day-strip-day:hover {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }

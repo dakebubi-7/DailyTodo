@@ -7,10 +7,10 @@ export type WindowState = {
   height?: number;
 };
 
-export const MIN_WINDOW_WIDTH = 240;
-export const DEFAULT_WINDOW_WIDTH = 240;
+export const MIN_WINDOW_WIDTH = 280;
+export const DEFAULT_WINDOW_WIDTH = 280;
 export const DEFAULT_WINDOW_HEIGHT = 480;
-export const RESET_WINDOW_WIDTH = 240;
+export const RESET_WINDOW_WIDTH = 280;
 export const RESET_WINDOW_HEIGHT = 480;
 
 const SETTINGS_WINDOW_WIDTH = 800;

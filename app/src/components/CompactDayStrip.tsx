@@ -52,7 +52,6 @@ export const CompactDayStrip = memo(function CompactDayStrip({
       ref={containerRef}
       className={`compact-day-strip${selectedDate !== today ? ' compact-day-strip-has-today-action' : ''}`}
       data-day-count={count}
-      data-compact={count === 3 ? 'true' : undefined}
     >
       {selectedDate !== today && (
         <button

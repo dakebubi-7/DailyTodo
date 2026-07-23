@@ -4,7 +4,7 @@ import { getTaskDate, taskAppliesToDate } from '../../hooks/taskTransforms';
 import type { getShellText } from '../../i18n';
 import type { Task } from '../../types/task';
 
-export type CompactDayStripCount = 3 | 5 | 7;
+export type CompactDayStripCount = 5 | 7;
 
 export type CompactDayStatus =
   | 'future-empty'
@@ -28,7 +28,6 @@ export interface CompactDaySummary {
 export type CompactDayStripText = ReturnType<typeof getShellText>['app'];
 
 export function getCompactDayStripCount(containerWidth: number): CompactDayStripCount {
-  if (containerWidth < 320) return 3;
   return containerWidth >= 440 ? 7 : 5;
 }
 

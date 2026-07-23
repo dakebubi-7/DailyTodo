@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 describe('CompactDayStrip', () => {
-  it('keeps the exact 7/5/3 responsive day matrix and centers selection', () => {
+  it('keeps the exact 7/5 responsive day matrix and centers selection', () => {
     const { container } = render(
       <CompactDayStrip
         selectedDate="2026-07-17"
@@ -53,9 +53,9 @@ describe('CompactDayStrip', () => {
 
     act(() => ResizeObserverDouble.emit(319));
     const dayButtons = screen.getAllByRole('button', { name: /July .*2026/i });
-    expect(dayButtons).toHaveLength(3);
-    expect(container.querySelector('.compact-day-strip')?.getAttribute('data-compact')).toBe('true');
-    expect(screen.getByRole('button', { current: 'date' })).toBe(dayButtons[1]);
+    expect(dayButtons).toHaveLength(5);
+    expect(container.querySelector('.compact-day-strip')?.hasAttribute('data-compact')).toBe(false);
+    expect(screen.getByRole('button', { current: 'date' })).toBe(dayButtons[2]);
     expect(screen.queryByRole('button', { name: /back to today/i })).toBeNull();
 
     act(() => ResizeObserverDouble.emit(320));
