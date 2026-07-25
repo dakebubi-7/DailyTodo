@@ -4,6 +4,7 @@ import { isTaskLike } from '../hooks/taskTransforms';
 import { MenuPane, SubtaskPane } from './taskMenuPopup/TaskMenuPopupPanes';
 import { DatePane } from './taskMenuPopup/TaskMenuPopupDatePane';
 import { TagPane } from './taskMenuPopup/TaskMenuPopupTagPane';
+import { TaskMenuPopupSourcePane } from './taskMenuPopup/TaskMenuPopupSourcePane';
 import { useTaskMenuPopupLifecycle } from './taskMenuPopup/useTaskMenuPopupLifecycle';
 import { isObjectRecord } from '../../shared/unknownValueGuards';
 
@@ -117,6 +118,7 @@ export function TaskMenuPopup() {
           {pane === 'date' && <DatePane task={task} onBack={() => setPane('menu')} onDispatch={dispatch} onClose={close} />}
           {pane === 'tag' && <TagPane task={task} allTags={allTags} onBack={() => setPane('menu')} onDispatch={dispatch} onClose={close} />}
           {pane === 'subtask' && <SubtaskPane task={task} onBack={() => setPane('menu')} onDispatch={dispatch} />}
+          {pane === 'source' && <TaskMenuPopupSourcePane task={task} onBack={() => setPane('menu')} onDispatch={dispatch} onClose={close} />}
         </div>
       </div>
     </div>
