@@ -3323,6 +3323,92 @@ button, .select-none {
   box-shadow: none;
 }
 
+.input-keybinding-list {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.input-keybinding-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  min-height: 2.4rem;
+  border: 1px solid rgba(39, 39, 42, 0.08);
+  border-radius: 0.62rem;
+  background: rgba(244, 244, 245, 0.48);
+  padding: 0.38rem 0.45rem 0.38rem 0.6rem;
+}
+
+.input-keybinding-command {
+  color: #3f3f46;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.input-keybinding-actions,
+.input-keybinding-conflict-actions,
+.input-keybinding-restore-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.36rem;
+}
+
+.input-keybinding-recorder,
+.input-keybinding-clear,
+.input-keybinding-conflict-actions button {
+  min-height: 1.85rem;
+  border: 1px solid rgba(39, 39, 42, 0.12);
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.76);
+  padding: 0.28rem 0.48rem;
+  color: #3f3f46;
+  font-size: 0.67rem;
+  font-weight: 800;
+}
+
+.input-keybinding-recorder {
+  min-width: 5.4rem;
+}
+
+.input-keybinding-recorder.is-recording {
+  border-color: color-mix(in srgb, var(--personal-accent) 55%, transparent);
+  color: var(--personal-accent);
+}
+
+.input-keybinding-message {
+  display: grid;
+  gap: 0.42rem;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--personal-accent) 24%, rgba(39, 39, 42, 0.08));
+  border-radius: 0.62rem;
+  background: color-mix(in srgb, var(--personal-accent) 7%, transparent);
+  padding: 0.48rem 0.56rem;
+  color: #52525b;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.dark .input-keybinding-row {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .input-keybinding-command,
+.dark .input-keybinding-recorder,
+.dark .input-keybinding-clear,
+.dark .input-keybinding-conflict-actions button {
+  color: #e4e4e7;
+}
+
+.dark .input-keybinding-recorder,
+.dark .input-keybinding-clear,
+.dark .input-keybinding-conflict-actions button {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .dark .settings-v2-page .settings-section,
 .dark .settings-v2-page .settings-zone {
   border-color: rgba(255, 255, 255, 0.1);

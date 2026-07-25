@@ -1,6 +1,7 @@
 import { isAppLanguage, type AppBehaviorSettings } from '../../../shared/appSettings';
 import type { getShellText } from '../../i18n';
 import type { PersonalizationSettings } from '../../types/personalization';
+import { InputKeybindingsSettingsSection } from './InputKeybindingsSettingsSection';
 import { AutoStartToggle, ToggleRow } from './SettingsControls';
 
 type SettingsText = ReturnType<typeof getShellText>['settings'];
@@ -63,6 +64,11 @@ export function GeneralSettingsSection({
         />
       </section>
 
+      <InputKeybindingsSettingsSection
+        text={text}
+        settings={appSettings.inputKeybindings}
+        onChange={(inputKeybindings) => updateApp('inputKeybindings', inputKeybindings)}
+      />
       <section className="settings-section">
         <h3>{zh ? '窗口行为' : 'Window Behavior'}</h3>
         <AutoStartToggle />

@@ -1,4 +1,8 @@
 import { motion } from 'framer-motion';
+import {
+  createDefaultInputKeybindingSettings,
+  type InputKeybindingSettings,
+} from '../../shared/inputKeybindings';
 import { Task, TaskCompletionReview } from '../types/task';
 import { isTaskCompletionReviewStatus } from '../../shared/completionReviews';
 import { TaskCompletionMarkdownField } from './taskCompletionDialog/TaskCompletionMarkdownField';
@@ -10,6 +14,7 @@ interface TaskCompletionDialogProps {
   onCancel: () => void;
   onSave: (taskId: string, review: Omit<TaskCompletionReview, 'reviewedAt' | 'id'>) => void;
   onCompleteWithoutReview: (taskId: string) => void;
+  inputKeybindings?: InputKeybindingSettings;
 }
 
 const statusOptions: { value: TaskCompletionReview['status']; label: string }[] = [
@@ -23,6 +28,7 @@ export function TaskCompletionDialog({
   onCancel,
   onSave,
   onCompleteWithoutReview,
+  inputKeybindings = createDefaultInputKeybindingSettings(),
 }: TaskCompletionDialogProps) {
   const {
     nextStep,
@@ -111,6 +117,8 @@ export function TaskCompletionDialog({
           placeholder="比如：核心步骤已经跑通了，但还需要明天再整理一下文档。"
           onChange={setSummary}
           resetKey={task.id}
+          inputKeybindings={inputKeybindings}
+          onSubmit={save}
         />
         <TaskCompletionMarkdownField
           label="还有什么不懂 / 卡住"
@@ -118,6 +126,8 @@ export function TaskCompletionDialog({
           placeholder="比如：API 权限、Electron 打包、某个概念还不清楚。"
           onChange={setUnknowns}
           resetKey={task.id}
+          inputKeybindings={inputKeybindings}
+          onSubmit={save}
         />
         <TaskCompletionMarkdownField
           label="下一步"
@@ -125,6 +135,8 @@ export function TaskCompletionDialog({
           placeholder="比如：明天先复盘这个问题，再继续做下一步。"
           onChange={setNextStep}
           resetKey={task.id}
+          inputKeybindings={inputKeybindings}
+          onSubmit={save}
         />
 
         <div className="mt-4 flex flex-wrap justify-end gap-2">

@@ -130,6 +130,7 @@ export function createAppShellOverlayComposition({
     onCancel: appModalActions.cancelCompletion,
     onSave: completionActions.completeWithReview,
     onCompleteWithoutReview: completionActions.completeWithoutReview,
+    inputKeybindings: appSettings.inputKeybindings,
   };
   const reviewDialogProps = {
     task: reviewDialogState.currentReviewTask,

@@ -2,6 +2,12 @@ import {
   createDefaultObsidianTemplateSettings,
   type ObsidianTemplateSettings,
 } from './obsidianTemplateSettings';
+import {
+  createDefaultInputKeybindingSettings,
+  isInputKeybindingPreset,
+  normalizeInputKeybindingSettings,
+  type InputKeybindingSettings,
+} from './inputKeybindings';
 import { isScheduleTime } from './aiReview/scheduleTimeParsing';
 import { isObjectRecord } from './unknownValueGuards';
 
@@ -25,6 +31,7 @@ export interface AppBehaviorSettings {
   lockWindowPosition: boolean;
   minimizeToTrayOnClose: boolean;
   edgeAutoHide: boolean;
+  inputKeybindings: InputKeybindingSettings;
 }
 
 export interface DailyTodoSettings {
@@ -47,6 +54,7 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
     lockWindowPosition: false,
     minimizeToTrayOnClose: true,
     edgeAutoHide: true,
+    inputKeybindings: createDefaultInputKeybindingSettings(),
   };
 }
 
@@ -83,6 +91,11 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
     minimizeToTrayOnClose:
       typeof value.minimizeToTrayOnClose === 'boolean' ? value.minimizeToTrayOnClose : defaults.minimizeToTrayOnClose,
     edgeAutoHide: typeof value.edgeAutoHide === 'boolean' ? value.edgeAutoHide : defaults.edgeAutoHide,
+    inputKeybindings: value.inputKeybindings !== undefined
+      ? normalizeInputKeybindingSettings(value.inputKeybindings)
+      : isInputKeybindingPreset(value.inputKeyboardMode)
+        ? { preset: value.inputKeyboardMode, overrides: {} }
+        : defaults.inputKeybindings,
   };
 }
 

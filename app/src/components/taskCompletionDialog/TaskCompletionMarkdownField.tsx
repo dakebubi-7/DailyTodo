@@ -1,4 +1,8 @@
 import { useEffect, useRef } from 'react';
+import {
+  createDefaultInputKeybindingSettings,
+  type InputKeybindingSettings,
+} from '../../../shared/inputKeybindings';
 import { useMarkdownEditor } from '../../hooks/useMarkdownEditor';
 
 export function TaskCompletionMarkdownField({
@@ -7,15 +11,26 @@ export function TaskCompletionMarkdownField({
   placeholder,
   onChange,
   resetKey,
+  inputKeybindings = createDefaultInputKeybindingSettings(),
+  onSubmit,
 }: {
   label: string;
   value: string;
   placeholder: string;
   onChange: (value: string) => void;
   resetKey: string;
+  inputKeybindings?: InputKeybindingSettings;
+  onSubmit?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const editor = useMarkdownEditor({ value, onChange, textareaRef });
+  const editor = useMarkdownEditor({
+    value,
+    onChange,
+    textareaRef,
+    inputKeybindings,
+    scope: 'completion-note',
+    onSubmit,
+  });
 
   useEffect(() => {
     editor.resetHistory(value, value.length);

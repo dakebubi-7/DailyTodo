@@ -12,7 +12,7 @@ import type { createAppCompletionActions } from './appCompletionActions';
 import type { createAppUiActions } from './appUiActions';
 
 export interface AppShellMainContentCompositionOptions {
-  appSettings: Pick<AppBehaviorSettings, 'language'>;
+  appSettings: Pick<AppBehaviorSettings, 'language' | 'inputKeybindings'>;
   appUiActions: ReturnType<typeof createAppUiActions>;
   completionActions: ReturnType<typeof createAppCompletionActions>;
   mainScrollRef: ComponentProps<typeof AppMainContent>['mainScrollRef'];
@@ -186,6 +186,7 @@ export function createAppShellMainContentComposition({
     onEditSubtask: editTask,
     onChangeSubtaskPriority: completionActions.changeSubtaskPriority,
     editRequest,
+    inputKeybindings: appSettings.inputKeybindings,
   };
   const addTaskInputProps = {
     onAdd: addTask,

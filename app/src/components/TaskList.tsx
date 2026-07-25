@@ -3,6 +3,7 @@ import type { getShellText } from '../i18n';
 import { useFloatingScrollbar } from '../hooks/useFloatingScrollbar';
 import type { Task, TaskSource } from '../types/task';
 import type { TabType } from '../types/task';
+import type { InputKeybindingSettings } from '../../shared/inputKeybindings';
 import type { DailyWorkPanel as DailyWorkPanelComponent } from './DailyWorkPanel';
 import { TaskListStaticContent } from './taskList/TaskListStaticContent';
 import { TaskListToolbar, type PriorityFilter } from './taskList/TaskListToolbar';
@@ -59,6 +60,7 @@ interface TaskListProps {
   onEditSubtask: (id: string, text: string) => void;
   onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   editRequest?: { id: string; nonce: number } | null;
+  inputKeybindings: InputKeybindingSettings;
 }
 
 export const TaskList = memo(function TaskList({
@@ -105,6 +107,7 @@ export const TaskList = memo(function TaskList({
   onEditSubtask,
   onChangeSubtaskPriority,
   editRequest,
+  inputKeybindings,
 }: TaskListProps) {
   const filtersActive = Boolean(searchQuery.trim() || showOpenOnly || priorityFilter !== 'all');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -178,6 +181,7 @@ export const TaskList = memo(function TaskList({
               onChange={onChangeDailyWork}
               isOpen={isDailyWorkOpen}
               onClose={onCloseDailyWorkPanel}
+              inputKeybindings={inputKeybindings}
             />
           </Suspense>
         )}
@@ -193,6 +197,7 @@ export const TaskList = memo(function TaskList({
               onChange={onChangeDailyInspiration}
               isOpen={isInspirationOpen}
               onClose={onCloseInspirationPanel}
+              inputKeybindings={inputKeybindings}
             />
           </Suspense>
         )}

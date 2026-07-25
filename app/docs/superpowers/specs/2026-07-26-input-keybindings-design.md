@@ -44,7 +44,7 @@ The command IDs are stable storage/API identifiers. Labels remain localized UI t
 The resolver supports these scopes:
 
 - `single-line-task`: task capture and task/subtask title edits. It retains native `Enter` submit behavior and does not consume Markdown commands.
-- `completion-note`: completion-record textareas. It supports submit, formatting, undo, and redo. Indentation is available only if the field is marked Markdown-capable.
+- `completion-note`: completion-record Markdown textareas. It supports submit, indentation, list continuation, formatting, undo, and redo.
 - `daily-markdown`: daily work and inspiration textareas. It supports the complete Markdown command set.
 
 The resolver must only prevent the browser default when it resolves a supported command for the active scope. Unsupported or unbound keys, including native form-navigation keys in the standard preset, bubble normally.

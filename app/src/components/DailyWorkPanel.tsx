@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppLanguage } from '../../shared/appSettings';
+import {
+  createDefaultInputKeybindingSettings,
+  type InputKeybindingSettings,
+} from '../../shared/inputKeybindings';
 import { getShellText } from '../i18n';
 import { Task } from '../types/task';
 import { insertDailyCommandMarkdown } from '../utils/dailyCommandEditor';
@@ -17,6 +21,7 @@ interface DailyWorkPanelProps {
   onChange: (value: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  inputKeybindings?: InputKeybindingSettings;
 }
 
 export function DailyWorkPanel({
@@ -28,12 +33,18 @@ export function DailyWorkPanel({
   onChange,
   isOpen,
   onClose,
+  inputKeybindings = createDefaultInputKeybindingSettings(),
 }: DailyWorkPanelProps) {
   const [draft, setDraft] = useState(value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { commandOpen, commandIndex, closeCommandMenu, handleCommandTextChange, handleCommandKeyDown, setCommandIndex } = useDailyWorkPanelCommands(taskCommands.length);
   const { editorHeight, startResize } = useDailyWorkPanelResize(textareaRef);
   const text = getShellText(language).daily;
+
+  const handleSave = () => {
+    onChange(draft);
+    onClose();
+  };
 
   // 编辑能力（历史栈、光标恢复 + 滚动修复、Tab/续列表/Ctrl 快捷键）抽到可复用 Hook。
   // 命令菜单（`/`）是本组件专属，通过 command.onClose 让 Hook 在提交/撤销时关闭它。
@@ -44,6 +55,9 @@ export function DailyWorkPanel({
     command: {
       onClose: closeCommandMenu,
     },
+    inputKeybindings,
+    scope: 'daily-markdown',
+    onSubmit: handleSave,
   });
   useEffect(() => {
     if (isOpen) {
@@ -54,11 +68,6 @@ export function DailyWorkPanel({
   }, [isOpen, value]);
 
   if (!isOpen) return null;
-
-  const handleSave = () => {
-    onChange(draft);
-    onClose();
-  };
 
   const insertMarkdown = (markdown: string) => {
     const textarea = textareaRef.current;

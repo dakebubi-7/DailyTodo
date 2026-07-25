@@ -1,11 +1,13 @@
 import { RefObject, useEffect, useRef } from 'react';
 import {
+  resolveInputKeybinding,
+  type InputKeybindingScope,
+  type InputKeybindingSettings,
+} from '../../shared/inputKeybindings';
+import {
   EditorResult,
-  continueListOnEnter,
-  indentSelection,
-  outdentSelection,
-  wrapSelection,
 } from '../utils/markdownEditor';
+import { applyMarkdownEditorKeyAction } from './markdownEditorKeyActions';
 import { createMarkdownEditorHistory } from './markdownEditorHistory';
 import { restoreTextareaSelection } from './markdownEditorTextarea';
 
@@ -13,7 +15,7 @@ import { restoreTextareaSelection } from './markdownEditorTextarea';
  * 多行 Markdown 编辑框的可复用能力（从 DailyWorkPanel 抽出）：
  * - 自维护撤销/重做历史栈（受控 textarea + 程序化 setValue 会清空浏览器原生 undo 栈，故自管）
  * - 程序化光标恢复，并把光标行滚进可视区（修「回车要敲两下才上移」的 bug）
- * - 键盘分发：Tab/Shift+Tab 缩进、回车续 `1.`/`1.1` 多级编号、Ctrl+B/I、Ctrl+Z、Ctrl+Shift+Z / Ctrl+Y
+ * - 键盘分发：按已配置的输入框快捷键处理 Markdown 编辑命令
  *
  * 命令菜单（`/` 唤起任务列表）是 DailyWorkPanel 专属，作为可选参数；其它框不传即关闭。
  */
@@ -29,10 +31,14 @@ interface UseMarkdownEditorOptions {
   onChange: (value: string) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
   command?: MarkdownEditorCommand;
+  inputKeybindings: InputKeybindingSettings;
+  scope: InputKeybindingScope;
+  /** Ctrl/Cmd+Enter 等已配置提交快捷键的回调（如表单保存）。 */
+  onSubmit?: () => void;
 }
 
 export interface MarkdownEditorApi {
-  /** 绑定到 textarea 的 onKeyDown（处理 Tab / 回车续列表 / Ctrl 快捷键）。 */
+  /** 绑定到 textarea 的 onKeyDown（只处理当前 scope 已解析的编辑快捷键）。 */
   onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** 绑定到 textarea 的 onChange / onCompositionEnd（记录打字历史 + 透传值）。 */
   handleChange: (value: string, cursor: number) => void;
@@ -44,7 +50,15 @@ export interface MarkdownEditorApi {
   resetHistory: (value: string, cursor: number) => void;
 }
 
-export function useMarkdownEditor({ value, onChange, textareaRef, command }: UseMarkdownEditorOptions): MarkdownEditorApi {
+export function useMarkdownEditor({
+  value,
+  onChange,
+  textareaRef,
+  command,
+  inputKeybindings,
+  scope,
+  onSubmit,
+}: UseMarkdownEditorOptions): MarkdownEditorApi {
   const historyRef = useRef(createMarkdownEditorHistory(value));
   const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
 
@@ -102,44 +116,45 @@ export function useMarkdownEditor({ value, onChange, textareaRef, command }: Use
       selectionEnd: textarea.selectionEnd,
     };
 
-    if (event.key === 'Tab') {
+    const action = resolveInputKeybinding(
+      {
+        key: event.key,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        isComposing: event.nativeEvent.isComposing,
+      },
+      scope,
+      inputKeybindings,
+    );
+
+    if (!action) return;
+
+    if (action === 'submit') {
+      if (!onSubmit) return;
       event.preventDefault();
-      applyResult(event.shiftKey ? outdentSelection(state) : indentSelection(state));
+      onSubmit();
       return;
     }
 
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-      const result = continueListOnEnter(state);
-      if (result) {
-        event.preventDefault();
-        applyResult(result);
-      }
+    if (action === 'undo') {
+      event.preventDefault();
+      undo();
       return;
     }
 
-    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
-      const key = event.key.toLowerCase();
-      if (key === 'b') {
-        event.preventDefault();
-        applyResult(wrapSelection(state, '**'));
-        return;
-      }
-      if (key === 'i') {
-        event.preventDefault();
-        applyResult(wrapSelection(state, '*'));
-        return;
-      }
-      if (key === 'z' && !event.shiftKey) {
-        event.preventDefault();
-        undo();
-        return;
-      }
-      if ((key === 'z' && event.shiftKey) || key === 'y') {
-        event.preventDefault();
-        redo();
-        return;
-      }
+    if (action === 'redo') {
+      event.preventDefault();
+      redo();
+      return;
     }
+
+    const result = applyMarkdownEditorKeyAction(action, state);
+    if (!result) return;
+    // continue-list may return null-equivalent when the line is not a list; only preventDefault when applied.
+    event.preventDefault();
+    applyResult(result);
   };
 
   return { onKeyDown, handleChange, commit, undo, redo, resetHistory };
