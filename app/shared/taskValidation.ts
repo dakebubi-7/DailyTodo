@@ -12,6 +12,16 @@ export type ValidatedTaskCompletionReview = {
   reviewedAt: string;
 };
 
+export type ValidatedTaskHandoff = {
+  status: 'done' | 'partial' | 'blocked' | 'in-progress';
+  progressSummary: string;
+  blocker: string;
+  nextStep: string;
+  shouldCarryForward: boolean;
+  createdAt: string;
+  source: 'manual' | 'ai';
+};
+
 export type ValidatedTask = {
   id: string;
   text: string;
@@ -29,6 +39,13 @@ export type ValidatedTask = {
   cleared?: boolean;
   scheduledDates?: string[];
   tags?: string[];
+  focusDate?: string;
+  focusOrder?: number;
+  focusState?: 'not-started' | 'in-progress' | 'blocked' | 'completed';
+  focusReason?: string;
+  nextStep?: string;
+  handoff?: ValidatedTaskHandoff;
+  carryoverContext?: ValidatedTaskHandoff;
   subtasks?: ValidatedTask[];
   parentTaskId?: string;
   collapsed?: boolean;
@@ -60,6 +77,19 @@ export function isTaskCompletionReview(value: unknown): value is ValidatedTaskCo
   );
 }
 
+export function isTaskHandoff(value: unknown): value is ValidatedTaskHandoff {
+  if (!isObjectRecord(value)) return false;
+  return (
+    (value.status === 'done' || value.status === 'partial' || value.status === 'blocked' || value.status === 'in-progress') &&
+    typeof value.progressSummary === 'string' &&
+    typeof value.blocker === 'string' &&
+    typeof value.nextStep === 'string' &&
+    typeof value.shouldCarryForward === 'boolean' &&
+    typeof value.createdAt === 'string' &&
+    (value.source === 'manual' || value.source === 'ai')
+  );
+}
+
 export function isTaskLike(value: unknown): value is ValidatedTask {
   if (!isObjectRecord(value)) return false;
   const subtasks = value.subtasks;
@@ -88,11 +118,26 @@ export function isTaskLike(value: unknown): value is ValidatedTask {
   );
 }
 
+export function isStrictTaskLike(value: unknown): value is ValidatedTask {
+  if (!isTaskLike(value) || !isObjectRecord(value)) return false;
+  const subtasks = value.subtasks;
+  return (
+    isOptionalString(value.focusDate) &&
+    (value.focusOrder === undefined || (typeof value.focusOrder === 'number' && Number.isInteger(value.focusOrder) && value.focusOrder >= 0)) &&
+    (value.focusState === undefined || value.focusState === 'not-started' || value.focusState === 'in-progress' || value.focusState === 'blocked' || value.focusState === 'completed') &&
+    isOptionalString(value.focusReason) &&
+    isOptionalString(value.nextStep) &&
+    (value.handoff === undefined || isTaskHandoff(value.handoff)) &&
+    (value.carryoverContext === undefined || isTaskHandoff(value.carryoverContext)) &&
+    (subtasks === undefined || (Array.isArray(subtasks) && subtasks.every(isStrictTaskLike)))
+  );
+}
+
 export function filterValidTasks(value: unknown): ValidatedTask[] {
   if (!Array.isArray(value)) return [];
   const tasks: ValidatedTask[] = [];
   for (const task of value) {
-    if (isTaskLike(task)) tasks.push(task);
+    if (isStrictTaskLike(task)) tasks.push(task);
   }
   return tasks;
 }

@@ -2,6 +2,7 @@ import {
   readBackfillReport,
   readDailyInspection,
   readGenerationResult,
+  type AiReviewHandoffSuggestion,
 } from './aiReviewIpcResultReaders';
 export {
   isAiReviewProgressEvent,
@@ -120,10 +121,13 @@ export function mergeTokenUsage(items: Array<AiReviewTokenUsage | undefined>): A
 export interface AiReviewGenerationResult {
   ok: boolean;
   error?: string;
+  warning?: string;
   filePath?: string;
   truncated?: boolean;
   filledMarkers?: string[];
   skippedMarkers?: string[];
+  failedMarkers?: Array<{ key: string; error: string }>;
+  handoffs?: AiReviewHandoffSuggestion[];
 }
 
 export interface AiReviewDailyInspection {

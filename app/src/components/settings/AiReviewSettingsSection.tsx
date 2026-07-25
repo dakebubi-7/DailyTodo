@@ -5,6 +5,8 @@ import type {
   WeeklySourceMode,
 } from '../../../shared/aiReview/aiReviewSettings';
 import type { AiReviewProgressEvent, AiReviewRunDiagnostic } from '../../../shared/aiReview/runDiagnostics';
+import type { AiReviewHandoffSuggestion } from '../../../shared/aiReview/aiReviewIpcResultReaders';
+import type { Task } from '../../types/task';
 import { ToggleRow } from './SettingsControls';
 import { AiAccountZone, type GenerationAction } from './AiReviewSettingsWidgets';
 import { AiReviewManualGenerationSection } from './AiReviewManualGenerationSection';
@@ -28,11 +30,14 @@ interface AiReviewSettingsSectionProps {
   currentProgress: AiReviewProgressEvent | null;
   waitingForRealProgress: string;
   lastDiagnostic: AiReviewRunDiagnostic | null;
+  handoffs: AiReviewHandoffSuggestion[];
+  tasks: Task[];
   updateAiReview: <K extends keyof AiReviewSettings>(key: K, value: AiReviewSettings[K]) => void;
   updateAiReviewInput: <K extends keyof AiReviewSettings>(key: K, value: AiReviewSettings[K]) => void;
   saveAiReviewSettings: (next: AiReviewSettings) => void;
   saveAiReviewSettingsInput: (next: AiReviewSettings) => void;
   runGeneration: (action: GenerationAction) => void;
+  applyHandoff: (taskId: string, updateNextStep: boolean) => void;
   onCloseDiagnostic: () => void;
 }
 
@@ -48,11 +53,14 @@ export function AiReviewSettingsSection({
   currentProgress,
   waitingForRealProgress,
   lastDiagnostic,
+  handoffs,
+  tasks,
   updateAiReview,
   updateAiReviewInput,
   saveAiReviewSettings,
   saveAiReviewSettingsInput,
   runGeneration,
+  applyHandoff,
   onCloseDiagnostic,
 }: AiReviewSettingsSectionProps) {
   return (
@@ -86,7 +94,10 @@ export function AiReviewSettingsSection({
           currentProgress={currentProgress}
           waitingForRealProgress={waitingForRealProgress}
           lastDiagnostic={lastDiagnostic}
+          handoffs={handoffs}
+          tasks={tasks}
           runGeneration={runGeneration}
+          applyHandoff={applyHandoff}
           onCloseDiagnostic={onCloseDiagnostic}
         />
 

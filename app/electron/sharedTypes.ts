@@ -25,6 +25,16 @@ export type TaskCompletionReview = {
   reviewedAt: string;
 };
 
+export type TaskHandoff = {
+  status: 'done' | 'partial' | 'blocked' | 'in-progress';
+  progressSummary: string;
+  blocker: string;
+  nextStep: string;
+  shouldCarryForward: boolean;
+  createdAt: string;
+  source: 'manual' | 'ai';
+};
+
 export type ElectronTask = {
   id: string;
   text: string;
@@ -38,5 +48,13 @@ export type ElectronTask = {
   completedAt?: string;
   completionReview?: TaskCompletionReview;
   completionReviews?: TaskCompletionReview[];
+  cleared?: boolean;
+  focusDate?: string;
+  focusOrder?: number;
+  focusState?: 'not-started' | 'in-progress' | 'blocked' | 'completed';
+  focusReason?: string;
+  nextStep?: string;
+  handoff?: TaskHandoff;
+  carryoverContext?: TaskHandoff;
   subtasks?: ElectronTask[];
 };

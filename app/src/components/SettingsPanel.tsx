@@ -33,6 +33,7 @@ interface SettingsPanelProps {
   selectedDate: string;
   completedCount: number;
   tasks: Task[];
+  onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onClearCompleted: () => void;
   onApplyTheme: (preset: ThemePreset) => void;
   onResetTheme: () => void;
@@ -57,6 +58,7 @@ export function SettingsPanel({
   selectedDate,
   completedCount,
   tasks,
+  onUpdateTask,
   onClearCompleted,
   onApplyTheme,
   onResetTheme,
@@ -78,6 +80,7 @@ export function SettingsPanel({
     text,
     selectedDate,
     tasks,
+    onUpdateTask,
   });
 
   useEffect(() => {
@@ -154,6 +157,7 @@ export function SettingsPanel({
         <AiReviewSettingsSection
           text={text}
           zh={zh}
+          tasks={tasks}
           {...aiReviewState}
         />
       )}

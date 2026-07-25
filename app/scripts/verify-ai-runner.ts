@@ -145,7 +145,7 @@ const det = await runReviewForFile({
 assert.equal(det.ok, true);
 const tomorrowBody = readBlockBody(fs.readFileSync(file2, 'utf-8'), REVIEW_MARKERS.TOMORROW);
 assert.ok(tomorrowBody.includes('未完成项A'), '未完成任务结转到明日待办');
-assert.ok(tomorrowBody.includes('（结转）'), '结转标记');
+assert.ok(tomorrowBody.includes('（待结转）'), '待结转标记');
 assert.ok(!tomorrowBody.includes('已完成项B'), '已完成任务不结转');
 
 // LLM 返回可能混有解释/思考；写入 Obsidian 前只截取显式最终结果块。

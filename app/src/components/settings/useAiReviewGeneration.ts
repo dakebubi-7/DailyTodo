@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { getShellText } from '../../i18n';
 import type { Task } from '../../types/task';
+import { applyAiHandoff } from '../../hooks/taskHandoff';
+import type { AiReviewHandoffSuggestion } from '../../../shared/aiReview/aiReviewIpcResultReaders';
 import {
   isAiReviewProgressEvent,
   readAiReviewDailyInspection,
@@ -26,6 +28,7 @@ type UseAiReviewGenerationOptions = {
   text: SettingsText;
   selectedDate: string;
   tasks: Task[];
+  onUpdateTask: (id: string, patch: Partial<Task>) => void;
 };
 
 export function useAiReviewGeneration({
@@ -34,11 +37,13 @@ export function useAiReviewGeneration({
   text,
   selectedDate,
   tasks,
+  onUpdateTask,
 }: UseAiReviewGenerationOptions) {
   const [generationStatus, setGenerationStatus] = useState('');
   const [generatingAction, setGeneratingAction] = useState<GenerationAction | null>(null);
   const [lastDiagnostic, setLastDiagnostic] = useState<AiReviewRunDiagnostic | null>(null);
   const [currentProgress, setCurrentProgress] = useState<AiReviewProgressEvent | null>(null);
+  const [handoffs, setHandoffs] = useState<AiReviewHandoffSuggestion[]>([]);
   const generationActiveRef = useRef(false);
   const progressFallbackTimerRef = useRef<number | null>(null);
 
@@ -86,6 +91,7 @@ export function useAiReviewGeneration({
     setGeneratingAction(action);
     generationActiveRef.current = true;
     setLastDiagnostic(null);
+    setHandoffs([]);
     setCurrentProgress(initialProgressForAction(action));
     scheduleFallbackProgress();
     setGenerationStatus(text.aiReview.generating);
@@ -112,10 +118,11 @@ export function useAiReviewGeneration({
         if (dailyDiagnostic) {
           setLastDiagnostic(dailyDiagnostic);
         }
+        setHandoffs(result.handoffs ?? []);
         setCurrentProgress(finishProgress(action, result.ok));
         setGenerationStatus(
           result.ok
-            ? `${text.aiReview.genSuccess}${selectedDate}`
+            ? `${text.aiReview.genSuccess}${selectedDate}${result.warning ? ` (${result.warning})` : ''}`
             : `${text.aiReview.genFailed}${result.error ?? '未知错误'}`,
         );
         return;
@@ -159,7 +166,14 @@ export function useAiReviewGeneration({
     currentProgress,
     waitingForRealProgress,
     lastDiagnostic,
+    handoffs,
     runGeneration,
+    applyHandoff: (taskId: string, updateNextStep: boolean) => {
+      const suggestion = handoffs.find((entry) => entry.taskId === taskId);
+      const task = tasks.find((item) => item.id === taskId);
+      if (!suggestion || !task) return;
+      onUpdateTask(taskId, applyAiHandoff(task, suggestion.handoff, updateNextStep));
+    },
     onCloseDiagnostic: () => setLastDiagnostic(null),
   };
 }

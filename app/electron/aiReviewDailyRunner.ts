@@ -4,10 +4,17 @@ import type { AiReviewProfileResolution, AiReviewReportKind } from '../shared/ai
 import type { SectionConfig } from '../shared/aiReview/sectionConfig';
 import type { AiReviewRunDiagnostic, AiReviewRunFinalStatus, AiReviewStageDiagnostic } from '../shared/aiReview/runDiagnostics';
 import type { ChatMessage, LlmResult } from '../shared/llm/openaiClient';
+import { buildHandoffMessages, parseAiHandoff } from '../shared/aiReview/handoff';
+import { getTaskDate } from '../shared/taskRollover';
 import { runReviewForFile } from './aiReview/runner';
 import { inspectDailyAiContentWithSnapshot } from './aiReviewDailyContentInspection';
 import { createDailyAiReviewProgress } from './aiReviewDailyProgress';
 import type { ElectronTask, InspectDailyResult } from './sharedTypes';
+
+type AiReviewHandoffSuggestion = {
+  taskId: string;
+  handoff: NonNullable<ElectronTask['handoff']>;
+};
 
 type AiReviewDailyRunnerTask = ElectronTask;
 
@@ -85,7 +92,7 @@ export function createAiReviewDailyRunner({
         stages: [stage('requestAi', labels.requestAi, 'failed', undefined, llm.error)],
         error: llm.error,
       });
-      return { ok: false, error: llm.error, filledMarkers: [], skippedMarkers: [], diagnostic };
+      return { ok: false, error: llm.error, filledMarkers: [], skippedMarkers: [], failedMarkers: [], handoffs: [], diagnostic };
     }
 
     const prepareStart = Date.now();
@@ -103,7 +110,7 @@ export function createAiReviewDailyRunner({
         stages: progress.stages,
         error,
       });
-      return { ok: false, error, filledMarkers: [], skippedMarkers: [], diagnostic };
+      return { ok: false, error, filledMarkers: [], skippedMarkers: [], failedMarkers: [], handoffs: [], diagnostic };
     }
 
     progress.emit('prepareMaterials', 'running', messages.prepareMaterialsRunning);
@@ -117,7 +124,7 @@ export function createAiReviewDailyRunner({
         stages: progress.stages,
         error: messages.dailyNoteMissing,
       });
-      return { ok: false, error: messages.dailyNoteMissing, filledMarkers: [], skippedMarkers: [], diagnostic };
+      return { ok: false, error: messages.dailyNoteMissing, filledMarkers: [], skippedMarkers: [], failedMarkers: [], handoffs: [], diagnostic };
     }
 
     const sourceChars = inspection.snapshot?.content.length ?? 0;
@@ -148,22 +155,54 @@ export function createAiReviewDailyRunner({
 
     progress.record('requestAi', progress.getRequestStatus(llmResults), Date.now() - requestStart, llmResults.length ? undefined : '没有需要 AI 填写的复盘块');
 
+    const handoffs: AiReviewHandoffSuggestion[] = [];
+    const handoffWarnings: string[] = [];
+    if (result.ok) {
+      for (const task of tasks) {
+        if (
+          task.completed
+          || task.cleared
+          || getTaskDate(task, date) !== date
+          || (task.focusDate !== date && !task.carryoverContext)
+        ) continue;
+        let handoffResult: LlmResult;
+        try {
+          handoffResult = await llm.callLlm(buildHandoffMessages({ date, task }));
+        } catch (error) {
+          handoffResult = { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+        llmResults.push(handoffResult);
+        if (!handoffResult.ok) {
+          handoffWarnings.push(`${task.text}: ${handoffResult.error}`);
+          continue;
+        }
+        const handoff = parseAiHandoff(handoffResult.content);
+        if (!handoff) {
+          handoffWarnings.push(`${task.text}: AI 交接建议格式无效`);
+          continue;
+        }
+        handoffs.push({ taskId: task.id, handoff });
+      }
+    }
+
+    const warning = [result.warning, ...handoffWarnings].filter(Boolean).join('; ') || undefined;
     const writeStatus = result.ok ? 'completed' : 'failed';
-    const writeMessage = result.ok ? messages.writeObsidianCompleted : result.error;
+    const writeMessage = result.ok ? (warning ?? messages.writeObsidianCompleted) : result.error;
     progress.record('writeObsidian', writeStatus, undefined, writeMessage);
 
-    progress.record('confirmResult', result.ok ? 'completed' : 'failed', undefined, result.ok ? messages.confirmResultCompleted : result.error);
+    progress.record('confirmResult', warning ? 'warning' : result.ok ? 'completed' : 'failed', undefined, result.ok ? (warning ?? messages.confirmResultCompleted) : result.error);
     const diagnostic = createDiagnostic({
       reportKind: 'daily',
       startedAt,
-      finalStatus: progress.getFinalStatus(result.ok, llmResults),
+      finalStatus: warning && result.ok ? 'completedWithWarning' : progress.getFinalStatus(result.ok, llmResults),
       resolution: llm.resolution,
       stages: progress.stages,
       llmResults,
       sourceChars,
       error: result.error,
+      warning,
     });
-    return { ...result, diagnostic };
+    return { ...result, ...(warning ? { warning } : {}), handoffs, diagnostic };
   }
 
   return {

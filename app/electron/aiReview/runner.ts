@@ -19,15 +19,17 @@ export interface RunParams {
 export interface RunResult {
   ok: boolean;
   error?: string;
+  warning?: string;
   filledMarkers: string[];
   skippedMarkers: string[];
+  failedMarkers: Array<{ key: string; error: string }>;
 }
 
 export async function runReviewForFile(params: RunParams): Promise<RunResult> {
   const { filePath, date, tasks, sections, customBlocks, callLlm, force } = params;
   const snap = params.initialSnapshot ?? readWithStamp(filePath);
   if (snap.stamp === null) {
-    return { ok: false, error: '\u65e5\u8bb0\u6587\u4ef6\u4e0d\u5b58\u5728', filledMarkers: [], skippedMarkers: [] };
+    return { ok: false, error: '\u65e5\u8bb0\u6587\u4ef6\u4e0d\u5b58\u5728', filledMarkers: [], skippedMarkers: [], failedMarkers: [] };
   }
 
   const fileFrozen = snap.content.includes('<!-- DAILYTODO:FREEZE -->');
@@ -35,6 +37,7 @@ export async function runReviewForFile(params: RunParams): Promise<RunResult> {
   let content = snap.content;
   const filled: string[] = [];
   const skipped: string[] = [];
+  const failed: Array<{ key: string; error: string }> = [];
   const blocks = buildReviewBlocks({ sections, customBlocks, date, stats, content });
 
   for (const block of blocks) {
@@ -42,11 +45,26 @@ export async function runReviewForFile(params: RunParams): Promise<RunResult> {
     content = result.content;
     if (result.filled) filled.push(block.key);
     if (result.skipped) skipped.push(block.key);
+    if (result.failed) failed.push({ key: block.key, error: result.error ?? 'AI generation failed' });
   }
 
-  if (!filled.length) return { ok: true, filledMarkers: [], skippedMarkers: skipped };
+  if (!filled.length) {
+    const error = failed.map((item) => `${item.key}: ${item.error}`).join('; ');
+    return {
+      ok: failed.length === 0,
+      ...(error ? { error } : {}),
+      filledMarkers: [],
+      skippedMarkers: skipped,
+      failedMarkers: failed,
+    };
+  }
 
   const write = atomicReplace(filePath, content, snap.stamp);
-  if (!write.ok) return { ok: false, error: write.error, filledMarkers: [], skippedMarkers: skipped };
-  return { ok: true, filledMarkers: filled, skippedMarkers: skipped };
+  if (!write.ok) {
+    return { ok: false, error: write.error, filledMarkers: [], skippedMarkers: skipped, failedMarkers: failed };
+  }
+  const warning = failed.length
+    ? failed.map((item) => `${item.key}: ${item.error}`).join('; ')
+    : undefined;
+  return { ok: true, ...(warning ? { warning } : {}), filledMarkers: filled, skippedMarkers: skipped, failedMarkers: failed };
 }

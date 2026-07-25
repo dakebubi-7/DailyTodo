@@ -1,7 +1,8 @@
 import { getBusinessDateKey, getTaskDate, isDateKey } from '../../shared/taskRollover';
-import type { Task, TaskCompletionReview } from '../types/task';
+import type { FocusState, Task, TaskCompletionReview, TaskHandoff } from '../types/task';
 import {
   isTaskCompletionReview as isSharedTaskCompletionReview,
+  isTaskHandoff as isSharedTaskHandoff,
   isTaskLike as isSharedTaskLike,
 } from '../../shared/taskValidation';
 
@@ -52,6 +53,10 @@ export function isTaskCompletionReview(value: unknown): value is TaskCompletionR
   return isSharedTaskCompletionReview(value);
 }
 
+export function isTaskHandoff(value: unknown): value is TaskHandoff {
+  return isSharedTaskHandoff(value);
+}
+
 export function isTaskLike(value: unknown): value is Task {
   return isSharedTaskLike(value);
 }
@@ -79,6 +84,17 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     : normalizedScheduledDates;
   const subtasks = normalizeSubtasks(task.subtasks, currentBusinessDate);
   const completionReview = getLatestCompletionReview(completionReviews, task.completionReview);
+  const focusDate = isDateKey(task.focusDate) ? task.focusDate : undefined;
+  const focusState: FocusState | undefined = task.focusState === 'not-started' || task.focusState === 'in-progress' || task.focusState === 'blocked' || task.focusState === 'completed'
+    ? task.focusState
+    : undefined;
+  const focusOrder = focusDate && typeof task.focusOrder === 'number' && Number.isInteger(task.focusOrder) && task.focusOrder >= 0
+    ? task.focusOrder
+    : undefined;
+  const focusReason = typeof task.focusReason === 'string' ? task.focusReason : undefined;
+  const nextStep = typeof task.nextStep === 'string' ? task.nextStep : undefined;
+  const handoff = isTaskHandoff(task.handoff) ? task.handoff : undefined;
+  const carryoverContext = isTaskHandoff(task.carryoverContext) ? task.carryoverContext : undefined;
 
   if (
     task.taskDate === taskDate
@@ -87,6 +103,13 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     && subtasks === task.subtasks
     && completionReviews === task.completionReviews
     && completionReview === task.completionReview
+    && focusDate === task.focusDate
+    && focusOrder === task.focusOrder
+    && focusState === task.focusState
+    && focusReason === task.focusReason
+    && nextStep === task.nextStep
+    && handoff === task.handoff
+    && carryoverContext === task.carryoverContext
     && Object.hasOwn(task, 'taskDate')
     && Object.hasOwn(task, 'isToday')
     && Object.hasOwn(task, 'scheduledDates')
@@ -97,13 +120,31 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     return task;
   }
 
+  const {
+    focusDate: _storedFocusDate,
+    focusOrder: _storedFocusOrder,
+    focusState: _storedFocusState,
+    focusReason: _storedFocusReason,
+    nextStep: _storedNextStep,
+    handoff: _storedHandoff,
+    carryoverContext: _storedCarryoverContext,
+    ...taskWithoutWorkflowMetadata
+  } = task;
+
   return {
-    ...task,
+    ...taskWithoutWorkflowMetadata,
     taskDate,
     isToday: taskDate === currentBusinessDate,
     scheduledDates,
     subtasks,
     completionReviews,
     completionReview,
+    ...(focusDate ? { focusDate } : {}),
+    ...(focusOrder !== undefined ? { focusOrder } : {}),
+    ...(focusState ? { focusState } : {}),
+    ...(focusReason !== undefined ? { focusReason } : {}),
+    ...(nextStep !== undefined ? { nextStep } : {}),
+    ...(handoff ? { handoff } : {}),
+    ...(carryoverContext ? { carryoverContext } : {}),
   };
 }

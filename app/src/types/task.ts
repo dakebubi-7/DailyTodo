@@ -1,5 +1,17 @@
 export type TaskSource = 'personal' | 'external';
 
+export type FocusState = 'not-started' | 'in-progress' | 'blocked' | 'completed';
+
+export interface TaskHandoff {
+  status: 'done' | 'partial' | 'blocked' | 'in-progress';
+  progressSummary: string;
+  blocker: string;
+  nextStep: string;
+  shouldCarryForward: boolean;
+  createdAt: string;
+  source: 'manual' | 'ai';
+}
+
 export interface Task {
   id: string;
   text: string;
@@ -22,6 +34,13 @@ export interface Task {
   // Same task's extra visible/planned dates; these are not separate task instances.
   scheduledDates?: string[];
   tags?: string[];
+  focusDate?: string;
+  focusOrder?: number;
+  focusState?: FocusState;
+  focusReason?: string;
+  nextStep?: string;
+  handoff?: TaskHandoff;
+  carryoverContext?: TaskHandoff;
   subtasks?: Task[];
   parentTaskId?: string;
   collapsed?: boolean;

@@ -9,6 +9,7 @@ import {
   normalizeAiReviewSettings,
 } from '../../../shared/aiReview/aiReviewSettings';
 import type { AiReviewProgressEvent, AiReviewRunDiagnostic } from '../../../shared/aiReview/runDiagnostics';
+import type { AiReviewHandoffSuggestion } from '../../../shared/aiReview/aiReviewIpcResultReaders';
 import {
   areDeferredPersistenceValuesEqual,
   createDeferredPersistence,
@@ -31,6 +32,7 @@ interface UseAiReviewSettingsPanelStateOptions {
   text: SettingsText;
   selectedDate: string;
   tasks: Task[];
+  onUpdateTask: (id: string, patch: Partial<Task>) => void;
 }
 
 interface UseAiReviewSettingsPanelStateResult {
@@ -43,11 +45,13 @@ interface UseAiReviewSettingsPanelStateResult {
   currentProgress: AiReviewProgressEvent | null;
   waitingForRealProgress: string;
   lastDiagnostic: AiReviewRunDiagnostic | null;
+  handoffs: AiReviewHandoffSuggestion[];
   updateAiReview: <K extends keyof AiReviewSettings>(key: K, value: AiReviewSettings[K]) => void;
   updateAiReviewInput: <K extends keyof AiReviewSettings>(key: K, value: AiReviewSettings[K]) => void;
   saveAiReviewSettings: (next: AiReviewSettings) => void;
   saveAiReviewSettingsInput: (next: AiReviewSettings) => void;
   runGeneration: (action: GenerationAction) => void;
+  applyHandoff: (taskId: string, updateNextStep: boolean) => void;
   onCloseDiagnostic: () => void;
 }
 
@@ -57,6 +61,7 @@ export function useAiReviewSettingsPanelState({
   text,
   selectedDate,
   tasks,
+  onUpdateTask,
 }: UseAiReviewSettingsPanelStateOptions): UseAiReviewSettingsPanelStateResult {
   const [aiReviewSettings, setAiReviewSettings] = useState<AiReviewSettings>(() => createDefaultAiReviewSettings());
   const aiReviewSettingsRef = useRef(aiReviewSettings);
@@ -120,7 +125,7 @@ export function useAiReviewSettingsPanelState({
   };
 
   const { weeklySourceOptions, monthlySourceOptions, weekOptions } = createAiReviewPanelOptions(text, zh);
-  const generation = useAiReviewGeneration({ isOpen, zh, text, selectedDate, tasks });
+  const generation = useAiReviewGeneration({ isOpen, zh, text, selectedDate, tasks, onUpdateTask });
 
   return {
     aiReviewSettings,

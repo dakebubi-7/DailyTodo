@@ -33,6 +33,7 @@ function buildCarryoverTask(task: Task, targetDate: string): Task {
     isToday: true,
     carriedFromDate: sourceDate,
     carriedFromTaskId: task.id,
+    carryoverContext: task.handoff,
   };
 }
 

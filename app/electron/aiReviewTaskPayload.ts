@@ -1,4 +1,4 @@
-import type { ElectronTask, TaskCompletionReview } from './sharedTypes';
+import type { ElectronTask, TaskCompletionReview, TaskHandoff } from './sharedTypes';
 import { isObjectRecord } from './unknownValueGuards';
 
 function isTaskCompletionReview(value: unknown): value is TaskCompletionReview {
@@ -15,6 +15,19 @@ function isTaskCompletionReview(value: unknown): value is TaskCompletionReview {
   );
 }
 
+function isTaskHandoff(value: unknown): value is TaskHandoff {
+  if (!isObjectRecord(value)) return false;
+  return (
+    (value.status === 'done' || value.status === 'partial' || value.status === 'blocked' || value.status === 'in-progress') &&
+    typeof value.progressSummary === 'string' &&
+    typeof value.blocker === 'string' &&
+    typeof value.nextStep === 'string' &&
+    typeof value.shouldCarryForward === 'boolean' &&
+    typeof value.createdAt === 'string' &&
+    (value.source === 'manual' || value.source === 'ai')
+  );
+}
+
 function isAiReviewTask(value: unknown): value is ElectronTask {
   if (!isObjectRecord(value)) return false;
   return (
@@ -28,6 +41,14 @@ function isAiReviewTask(value: unknown): value is ElectronTask {
     (value.carriedFromDate === undefined || typeof value.carriedFromDate === 'string') &&
     (value.carriedFromTaskId === undefined || typeof value.carriedFromTaskId === 'string') &&
     (value.completedAt === undefined || typeof value.completedAt === 'string') &&
+    (value.cleared === undefined || typeof value.cleared === 'boolean') &&
+    (value.focusDate === undefined || typeof value.focusDate === 'string') &&
+    (value.focusOrder === undefined || (typeof value.focusOrder === 'number' && Number.isInteger(value.focusOrder) && value.focusOrder >= 0)) &&
+    (value.focusState === undefined || value.focusState === 'not-started' || value.focusState === 'in-progress' || value.focusState === 'blocked' || value.focusState === 'completed') &&
+    (value.focusReason === undefined || typeof value.focusReason === 'string') &&
+    (value.nextStep === undefined || typeof value.nextStep === 'string') &&
+    (value.handoff === undefined || isTaskHandoff(value.handoff)) &&
+    (value.carryoverContext === undefined || isTaskHandoff(value.carryoverContext)) &&
     (value.completionReview === undefined || isTaskCompletionReview(value.completionReview)) &&
     (value.completionReviews === undefined || (Array.isArray(value.completionReviews) && value.completionReviews.every(isTaskCompletionReview))) &&
     (value.subtasks === undefined || (Array.isArray(value.subtasks) && value.subtasks.every(isAiReviewTask)))

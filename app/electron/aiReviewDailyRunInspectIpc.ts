@@ -20,6 +20,8 @@ export function registerAiReviewDailyRunInspectIpcHandlers({
         error: 'AI Review tasks contain malformed entries.',
         filledMarkers: [],
         skippedMarkers: [],
+        failedMarkers: [],
+        handoffs: [],
       };
     }
     return runReviewForDate(getDateKey(date), tasks, force === true);

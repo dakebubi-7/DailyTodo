@@ -42,6 +42,7 @@ assert.doesNotMatch(
   'token usage aggregation should not repeatedly filter and map the same result collection.',
 );
 const mainSrc = fs.readFileSync(path.join(process.cwd(), 'electron/main.ts'), 'utf-8');
+const mainAiReviewServicesSrc = fs.readFileSync(path.join(process.cwd(), 'electron/mainAiReviewServices.ts'), 'utf-8');
 const aiReviewRuntimeSrc = fs.readFileSync(path.join(process.cwd(), 'electron/aiReviewRuntime.ts'), 'utf-8');
 const aiReviewDailyRunnerSrc = fs.readFileSync(path.join(process.cwd(), 'electron/aiReviewDailyRunner.ts'), 'utf-8');
 const aiReviewDailyProgressSrc = fs.readFileSync(path.join(process.cwd(), 'electron/aiReviewDailyProgress.ts'), 'utf-8');
@@ -187,8 +188,9 @@ assert.equal(readAiReviewBackfillReport(null), undefined, 'readAiReviewBackfillR
 
 assert.ok(runDiagnosticsSrc.includes("| 'inspectDaily'"), 'runDiagnostics stage key union includes inspectDaily');
 
-assert.ok(mainSrc.includes('createAiReviewRuntimeHelpers({'), 'main process should delegate AI runtime wiring through aiReviewRuntime helpers');
-assert.ok(mainSrc.includes('createAiReviewDailyRunner({'), 'main process should delegate daily AI review orchestration through aiReviewDailyRunner');
+assert.ok(mainSrc.includes('createMainAiReviewServices({'), 'main process should compose the dedicated AI review services module');
+assert.ok(mainAiReviewServicesSrc.includes('createAiReviewRuntimeHelpers({'), 'AI review services should delegate runtime wiring through aiReviewRuntime helpers');
+assert.ok(mainAiReviewServicesSrc.includes('createAiReviewDailyRunner({'), 'AI review services should delegate daily orchestration through aiReviewDailyRunner');
 assert.ok(aiReviewRuntimeSrc.includes('createDiagnostic'), 'AI review runtime module builds AI run diagnostics');
 assert.ok(aiReviewRuntimeSrc.includes('emitAiReviewProgress'), 'AI review runtime module emits staged progress');
 assert.ok(aiReviewRuntimeSrc.includes("'aiReview:progress'"), 'AI review runtime module sends progress IPC event');

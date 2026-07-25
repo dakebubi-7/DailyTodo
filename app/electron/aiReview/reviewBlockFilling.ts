@@ -5,6 +5,7 @@ import type { CustomBlock, SectionConfig } from '../../shared/aiReview/sectionCo
 import { SectionType } from '../../shared/aiReview/sectionConfig';
 import { buildCustomBlockReviewMessages, buildReviewMessages } from '../../shared/aiReview/promptBuilder';
 import { computeDailyStats, type StatTask } from '../../shared/aiReview/stats';
+import { renderTomorrowProjection } from '../../shared/aiReview/tomorrowProjection';
 import type { ChatMessage, LlmResult } from '../../shared/llm/openaiClient';
 import { cleanReviewContent, stripDuplicateReviewHeading } from './reviewContentCleanup';
 
@@ -61,14 +62,8 @@ export function findNearestHeadingBeforeMarker(content: string, markerStart: str
   return '';
 }
 
-function buildDeterministicTomorrowBody(tasks: StatTask[]) {
-  const carried: string[] = [];
-  for (const task of tasks) {
-    if (task.completed || !task.text) continue;
-    const text = task.text.trim();
-    if (text) carried.push(`- [ ] ${text}\uff08\u7ed3\u8f6c\uff09`);
-  }
-  return embedHash(carried.length ? carried.join('\n') : '- [ ] ');
+function buildDeterministicTomorrowBody(tasks: StatTask[], date: string) {
+  return embedHash(renderTomorrowProjection(tasks, date));
 }
 
 export function buildReviewBlocks(params: {
@@ -92,7 +87,7 @@ export function buildReviewBlocks(params: {
       key: `CUSTOM:${block.id}`,
       marker: customBlockMarker(block.id),
       title: block.name,
-      type: SectionType.Ai,
+      type: block.contentSource === 'tomorrowProjection' ? SectionType.Deterministic : SectionType.Ai,
       buildMessages: (currentContent: string) => buildCustomBlockReviewMessages({ date, dailyContent: currentContent, block, stats }),
     })),
   ].filter((block) => hasBlock(content, block.marker));
@@ -118,14 +113,16 @@ export async function fillReviewBlock(params: {
 
   if (block.type === SectionType.Deterministic) {
     return {
-      content: upsertBlock(params.content, block.marker, buildDeterministicTomorrowBody(tasks)),
+      content: upsertBlock(params.content, block.marker, buildDeterministicTomorrowBody(tasks, date)),
       filled: true,
       skipped: false,
     };
   }
 
   const llm = await callLlm(block.buildMessages(params.content));
-  if (!llm.ok) return { content: params.content, filled: false, skipped: true };
+  if (!llm.ok) {
+    return { content: params.content, filled: false, skipped: false, failed: true, error: llm.error };
+  }
 
   const outerHeading = findNearestHeadingBeforeMarker(params.content, block.marker.start);
   const rawCleaned = cleanReviewContent(llm.content);
