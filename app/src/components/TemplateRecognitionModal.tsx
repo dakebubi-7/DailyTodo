@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { isRenderType, RENDER_TYPES, type CustomBlock, type RenderType } from '../../shared/aiReview/sectionConfig';
 import { parseRecognizedBlocks } from '../../shared/recognizeTemplateBlocks';
+import { TrashIcon } from './taskItem/taskItemIcons';
 
 const RENDER_TYPE_LABELS: Record<RenderType, string> = {
   text: '纯文本', list: '列表', table: '表格', callout: '引用框', dataview: '数据视图',
@@ -152,7 +153,7 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
                     title={`删除 ${block.name}`}
                     onClick={() => removeRecognized(block.id)}
                   >
-                    &times;
+                    <TrashIcon />
                   </button>
                   {promptExpanded && (
                     <textarea

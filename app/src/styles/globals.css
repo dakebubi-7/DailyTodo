@@ -3604,21 +3604,22 @@ button, .select-none {
 }
 
 .recognition-remove-button {
-  display: inline-grid;
+  display: inline-flex;
   width: 2rem;
   height: 2rem;
-  place-items: center;
-  border: 1px solid rgba(190, 24, 93, 0.2);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
   border-radius: 0.7rem;
-  background: rgba(255, 241, 242, 0.92);
+  background: transparent;
   padding: 0;
-  color: #be123c;
-  font-size: 1.1rem;
-  font-weight: 900;
-  line-height: 1;
+  color: #a1a1aa;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
-.recognition-remove-button:hover {
+.recognition-remove-button:hover,
+.recognition-remove-button:focus-visible {
+  border-color: rgba(190, 24, 93, 0.16);
   background: #ffe4e6;
   color: #9f1239;
 }
@@ -3655,12 +3656,14 @@ button, .select-none {
 }
 
 .dark .recognition-remove-button {
-  border-color: rgba(251, 113, 133, 0.32);
-  background: rgba(136, 19, 55, 0.3);
-  color: #fda4af;
+  border-color: transparent;
+  background: transparent;
+  color: #71717a;
 }
 
-.dark .recognition-remove-button:hover {
+.dark .recognition-remove-button:hover,
+.dark .recognition-remove-button:focus-visible {
+  border-color: rgba(251, 113, 133, 0.24);
   background: rgba(159, 18, 57, 0.48);
   color: #fecdd3;
 }

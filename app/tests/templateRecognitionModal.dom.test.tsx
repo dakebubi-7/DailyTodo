@@ -21,7 +21,10 @@ describe('TemplateRecognitionModal', () => {
       target: { value: '## First\nContent\n## Second\nContent' },
     });
     fireEvent.click(screen.getByRole('button', { name: '开始识别' }));
-    fireEvent.click(screen.getByRole('button', { name: '删除 First' }));
+    const removeFirst = screen.getByRole('button', { name: '删除 First' });
+    expect(removeFirst.querySelector('svg')).toBeTruthy();
+    expect(removeFirst.textContent?.trim()).toBe('');
+    fireEvent.click(removeFirst);
     fireEvent.click(screen.getByRole('button', { name: '替换自定义区块' }));
 
     expect(onApply).toHaveBeenCalledWith(
