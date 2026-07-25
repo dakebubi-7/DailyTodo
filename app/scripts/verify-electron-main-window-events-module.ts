@@ -33,8 +33,8 @@ assert.match(helper, /win\.webContents\.on\('did-fail-load'/, 'mainWindowEvents 
 assert.match(helper, /win\.webContents\.on\('preload-error'/, 'mainWindowEvents should own preload-error diagnostics.');
 assert.match(helper, /win\.on\('hide'/, 'mainWindowEvents should own hide diagnostics.');
 assert.match(helper, /win\.on\('minimize'/, 'mainWindowEvents should own minimize handling.');
-assert.match(helper, /needsDesktopGuard\(/, 'mainWindowEvents should preserve desktop guard checks for minimize recovery.');
-assert.match(helper, /win\.showInactive\(\)/, 'mainWindowEvents should preserve desktop guard recovery.');
+assert.match(helper, /from '\.\/minimizeRecovery'/, 'mainWindowEvents should delegate unexpected minimize recovery through the focused helper.');
+assert.match(helper, /recoverFromUnexpectedMinimize\(\{/, 'mainWindowEvents should invoke unexpected minimize recovery.');
 assert.match(helper, /win\.on\('blur'/, 'mainWindowEvents should own blur diagnostics.');
 assert.match(helper, /win\.on\('focus'/, 'mainWindowEvents should own focus diagnostics.');
 assert.match(helper, /ensureDesktopHosted\(win\)/, 'mainWindowEvents should immediately restore component hosting after window lifecycle changes.');

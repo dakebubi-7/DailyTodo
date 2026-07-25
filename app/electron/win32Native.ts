@@ -25,6 +25,7 @@ export type Win32Api = {
   clearDesktopOwner: (handle: Buffer) => void;
   getCursorPosition: () => Win32CursorPosition | null;
   setWindowDragRegion: (handle: Buffer, region: NativeWindowDragRegion) => boolean;
+  setWindowMinimizeProtection: (handle: Buffer, enabled: boolean) => boolean;
   setAcrylic: (handle: Buffer, settings: InvisibleGlassSettings) => boolean;
   setDwmBlur: (handle: Buffer, enabled: boolean) => boolean;
 };
@@ -54,6 +55,7 @@ export type Win32NativeHelpers = {
   applyNativeBackgroundMaterial(win: BrowserWindow): void;
   setInvisibleGlassBackgroundMaterial(win: BrowserWindow, payload: unknown): boolean;
   setNativeWindowDragRegion(win: BrowserWindow, region: NativeWindowDragRegion): boolean;
+  setNativeWindowMinimizeProtection(win: BrowserWindow, enabled: boolean): boolean;
 };
 
 export type NativeBackgroundMaterialWindow = {
@@ -149,6 +151,7 @@ function createWin32Api(diag: (message: string) => void): Win32Api | null {
     const hitTestDll = koffi.load(hitTestDllPath);
     const InstallWindowHitTest = hitTestDll.func('bool __stdcall InstallWindowHitTest(void* hWnd)');
     const SetWindowDragRegion = hitTestDll.func('bool __stdcall SetWindowDragRegion(void* hWnd, int left, int top, int right, int bottom, int enabled)');
+    const SetWindowMinimizeProtection = hitTestDll.func('bool __stdcall SetWindowMinimizeProtection(void* hWnd, int enabled)');
     const AccentPolicy = koffi.struct('ACCENT_POLICY', {
       AccentState: 'uint32_t',
       AccentFlags: 'uint32_t',
@@ -287,6 +290,12 @@ function createWin32Api(diag: (message: string) => void): Win32Api | null {
             Math.round(region.bottom),
             region.enabled ? 1 : 0,
           ));
+        }, false);
+      },
+      setWindowMinimizeProtection: (handle: Buffer, enabled: boolean) => {
+        return runWin32Operation(diag, 'setWindowMinimizeProtection', () => {
+          const hwnd = decodeNativeWindowHandle(handle);
+          return Boolean(SetWindowMinimizeProtection(hwnd, enabled ? 1 : 0));
         }, false);
       },
       setAcrylic: (handle: Buffer, settings: InvisibleGlassSettings) => {
@@ -468,6 +477,21 @@ export function applyNativeWindowDragRegion(
   return applied;
 }
 
+export function applyNativeWindowMinimizeProtection(
+  win32: Pick<Win32Api, 'setWindowMinimizeProtection'> | null,
+  win: Pick<BrowserWindow, 'isDestroyed' | 'getNativeWindowHandle'>,
+  enabled: boolean,
+  diag: (message: string) => void = () => undefined,
+): boolean {
+  if (!win32 || win.isDestroyed()) {
+    diag('native minimize protection skipped because the Win32 bridge or window was unavailable');
+    return false;
+  }
+  const applied = win32.setWindowMinimizeProtection(win.getNativeWindowHandle(), enabled);
+  diag(`native minimize protection ${applied ? (enabled ? 'enabled' : 'disabled') : 'rejected'}`);
+  return applied;
+}
+
 export function createWin32NativeHelpers({
   diag,
 }: CreateWin32NativeHelpersOptions): Win32NativeHelpers {
@@ -506,5 +530,6 @@ export function createWin32NativeHelpers({
       );
     },
     setNativeWindowDragRegion: (win, region) => applyNativeWindowDragRegion(win32, win, region, diag),
+    setNativeWindowMinimizeProtection: (win, enabled) => applyNativeWindowMinimizeProtection(win32, win, enabled, diag),
   };
 }

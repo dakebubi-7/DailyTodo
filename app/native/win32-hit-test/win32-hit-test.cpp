@@ -11,6 +11,7 @@ namespace {
 struct DragRegion {
   RECT rect{};
   bool enabled = false;
+  bool minimize_protection_enabled = false;
   WNDPROC original_proc = nullptr;
 };
 
@@ -68,8 +69,22 @@ bool PointIsInDragRegion(HWND hwnd, LPARAM l_param) {
   return is_caption;
 }
 
+bool IsMinimizeProtectionEnabled(HWND hwnd) {
+  AcquireSRWLockShared(&g_regions_lock);
+  const auto found = g_regions.find(hwnd);
+  const bool enabled = found != g_regions.end() && found->second.minimize_protection_enabled;
+  ReleaseSRWLockShared(&g_regions_lock);
+  return enabled;
+}
+
 LRESULT CALLBACK HitTestWindowProc(HWND hwnd, UINT message, WPARAM w_param, LPARAM l_param) {
   TraceDragMessage(hwnd, message, w_param, l_param);
+
+  if (message == WM_SYSCOMMAND
+    && (w_param & 0xFFF0) == SC_MINIMIZE
+    && IsMinimizeProtectionEnabled(hwnd)) {
+    return 0;
+  }
 
   if (message == WM_NCHITTEST && PointIsInDragRegion(hwnd, l_param)) {
     return HTCAPTION;
@@ -124,8 +139,29 @@ extern "C" __declspec(dllexport) BOOL __stdcall InstallWindowHitTest(HWND hwnd) 
     return FALSE;
   }
 
-  g_regions.emplace(hwnd, DragRegion{ {}, false, original_proc });
+  g_regions.emplace(hwnd, DragRegion{ {}, false, false, original_proc });
   WriteTraceLine(L"InstallWindowHitTest installed the subclass");
+  ReleaseSRWLockExclusive(&g_regions_lock);
+  return TRUE;
+}
+
+extern "C" __declspec(dllexport) BOOL __stdcall SetWindowMinimizeProtection(
+  HWND hwnd,
+  BOOL enabled) {
+  if (!InstallWindowHitTest(hwnd)) return FALSE;
+
+  AcquireSRWLockExclusive(&g_regions_lock);
+  const auto found = g_regions.find(hwnd);
+  if (found == g_regions.end()) {
+    WriteTraceLine(L"SetWindowMinimizeProtection failed because no subclass was installed");
+    ReleaseSRWLockExclusive(&g_regions_lock);
+    return FALSE;
+  }
+
+  found->second.minimize_protection_enabled = enabled != FALSE;
+  WriteTraceLine(found->second.minimize_protection_enabled
+    ? L"SetWindowMinimizeProtection enabled"
+    : L"SetWindowMinimizeProtection disabled");
   ReleaseSRWLockExclusive(&g_regions_lock);
   return TRUE;
 }

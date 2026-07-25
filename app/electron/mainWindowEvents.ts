@@ -1,10 +1,11 @@
 ﻿import { BrowserWindow, screen } from 'electron';
 import { hardenRendererNavigation } from './windowNavigationSecurity';
-import { needsDesktopGuard, type WindowMode } from '../shared/windowMode';
+import type { WindowMode } from '../shared/windowMode';
 import type { SettingsModeState } from './settingsModeState';
 import type { UserHiddenState } from './userHiddenState';
 import type { EdgeAutoHideController } from './edgeAutoHideController';
 import { ensureWindowBoundsVisible } from './windowState';
+import { recoverFromUnexpectedMinimize } from './minimizeRecovery';
 
 type AppSettingsLike = {
   minimizeToTrayOnClose?: boolean;
@@ -91,13 +92,13 @@ export function registerMainWindowEventHandlers({
     edgeAutoHide.noteForcedExpandAndClear();
     diag('evt: minimize');
     diag(`  userHidden=${userHidden.isHidden()} windowMode=${getWindowMode()} isVisible=${win.isVisible()}`);
-    if (!needsDesktopGuard(getWindowMode()) || isQuitting() || win.isDestroyed() || userHidden.isHidden()) return;
-    try {
-      win.showInactive();
-      diag('desktop guard: showInactive after minimize');
-    } catch (error) {
-      diag(`desktop guard failed: ${String(error)}`);
-    }
+    recoverFromUnexpectedMinimize({
+      win,
+      getWindowMode,
+      isQuitting,
+      userHidden,
+      diag,
+    });
   });
   win.on('restore', () => {
     rescueIfOffscreen('restore');

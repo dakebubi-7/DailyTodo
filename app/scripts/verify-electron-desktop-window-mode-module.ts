@@ -49,6 +49,7 @@ assert.match(desktopHost, /win32\.attachToDesktop\(handle\)/, 'desktopWindowHost
 assert.match(desktopHost, /detachFromDesktop\(win\.getNativeWindowHandle\(\)\)/, 'desktopWindowHost should detach from the Explorer desktop host.');
 assert.match(helper, /win\.setAlwaysOnTop\(false,\s*'normal'\)/, 'desktopWindowMode should preserve desktop mode z-order normalization.');
 assert.match(helper, /win\.setSkipTaskbar\(mode !== 'normal'\)/, 'desktopWindowMode should preserve skipTaskbar behavior per mode.');
+assert.match(helper, /setNativeWindowMinimizeProtection\(win, mode === 'onTop'\)/, 'desktopWindowMode should enable native minimize protection only in on-top mode.');
 assert.match(helper, /diag\(`applyWindowMode mode=\$\{mode\}/, 'desktopWindowMode should preserve applyWindowMode diagnostics.');
 assert.doesNotMatch(helper, /DESKTOP_GUARD_INTERVAL_MS = 64/, 'desktopWindowMode must not retain high-frequency desktop polling.');
 assert.doesNotMatch(helper, /sendToBottom/, 'desktopWindowMode must not sink the desktop widget beneath applications.');

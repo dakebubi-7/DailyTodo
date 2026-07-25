@@ -64,7 +64,10 @@ const titleBarSource = readFileSync(join(here, '../src/components/TitleBar.tsx')
 const titleBarWindowModeSource = readFileSync(join(here, '../src/components/useTitleBarWindowMode.ts'), 'utf8');
 const viteEnvSource = readFileSync(join(here, '../src/vite-env.d.ts'), 'utf8');
 assert(desktopWindowModeSource.includes('function reapplyWindowZOrder'), 'desktopWindowMode.ts should define reapplyWindowZOrder helper');
-assert(mainWindowModeControllerSource.includes('setTimeout(() => reapplyWindowZOrder(win), 80)'), 'mainWindowModeController.ts should preserve delayed z-order reapplication.');
+assert(
+  /setTimeout\(\s*\(\)\s*=>\s*\{[\s\S]*?reapplyWindowZOrder\(win\);[\s\S]*?\},\s*80\);/.test(mainWindowModeControllerSource),
+  'mainWindowModeController.ts should preserve delayed z-order reapplication.',
+);
 assert(mainWindowCompositionSource.includes('reapplyWindowZOrder: desktopWindowMode.reapplyWindowZOrder'), 'main-window composition should pass controller reapplyWindowZOrder into downstream window-mode helpers.');
 assert(windowIpcSource.includes('reapplyWindowZOrder(mainWindow);'), 'lock window position changes should reapply z-order for the main window');
 assert(titleBarSource.includes('useTitleBarWindowMode'), 'TitleBar should use the dedicated window-mode hook');

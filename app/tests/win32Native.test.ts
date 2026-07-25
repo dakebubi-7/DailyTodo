@@ -11,6 +11,7 @@ import {
   shouldDisableWin32GlassForDesktopHost,
   shouldPreferWin32AcrylicFallback,
 } from '../electron/win32Native';
+import * as win32Native from '../electron/win32Native';
 
 describe('Win32 native operations', () => {
   it('decodes Electron native-window-handle buffers to their HWND value', () => {
@@ -154,6 +155,37 @@ describe('Win32 native operations', () => {
       getNativeWindowHandle: vi.fn(() => Buffer.alloc(8)),
     };
     expect(applyNativeWindowDragRegion({ setWindowDragRegion }, destroyedWindow, region)).toBe(false);
+    expect(destroyedWindow.getNativeWindowHandle).not.toHaveBeenCalled();
+  });
+
+  it('updates native minimize protection only for a live window', () => {
+    type ApplyNativeWindowMinimizeProtection = (
+      win32: { setWindowMinimizeProtection(handle: Buffer, enabled: boolean): boolean } | null,
+      win: { isDestroyed(): boolean; getNativeWindowHandle(): Buffer },
+      enabled: boolean,
+    ) => boolean;
+    const applyNativeWindowMinimizeProtection = Reflect.get(
+      win32Native,
+      'applyNativeWindowMinimizeProtection',
+    ) as ApplyNativeWindowMinimizeProtection | undefined;
+
+    expect(applyNativeWindowMinimizeProtection).toBeTypeOf('function');
+    if (!applyNativeWindowMinimizeProtection) return;
+
+    const setWindowMinimizeProtection = vi.fn(() => true);
+    const window = {
+      isDestroyed: () => false,
+      getNativeWindowHandle: () => Buffer.alloc(8),
+    };
+    expect(applyNativeWindowMinimizeProtection({ setWindowMinimizeProtection }, window, true)).toBe(true);
+    expect(setWindowMinimizeProtection).toHaveBeenCalledOnce();
+    expect(setWindowMinimizeProtection).toHaveBeenCalledWith(expect.any(Buffer), true);
+
+    const destroyedWindow = {
+      isDestroyed: () => true,
+      getNativeWindowHandle: vi.fn(() => Buffer.alloc(8)),
+    };
+    expect(applyNativeWindowMinimizeProtection({ setWindowMinimizeProtection }, destroyedWindow, false)).toBe(false);
     expect(destroyedWindow.getNativeWindowHandle).not.toHaveBeenCalled();
   });
 

@@ -17,4 +17,11 @@ describe('Win32 hit-test native drag bridge', () => {
     expect(nativeSource).toContain('message == WM_NCLBUTTONDOWN && w_param == HTCAPTION');
     expect(nativeSource).toContain('return DefWindowProcW(hwnd, message, w_param, l_param);');
   });
+
+  it('blocks standard minimize system commands only when minimize protection is enabled', () => {
+    expect(nativeSource).toContain('WM_SYSCOMMAND');
+    expect(nativeSource).toContain('SC_MINIMIZE');
+    expect(nativeSource).toContain('(w_param & 0xFFF0) == SC_MINIMIZE');
+    expect(nativeSource).toContain('SetWindowMinimizeProtection');
+  });
 });

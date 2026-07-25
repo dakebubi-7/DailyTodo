@@ -9,6 +9,7 @@ export type CreateDesktopWindowModeControllerOptions = {
   getWindowMode(): WindowMode;
   setWindowModeState(mode: WindowMode): void;
   getWin32(): DesktopWindowModeWin32Like | null;
+  setNativeWindowMinimizeProtection(win: BrowserWindow, enabled: boolean): boolean;
 };
 
 export type DesktopWindowModeController = {
@@ -27,6 +28,7 @@ export function createDesktopWindowModeController({
   getWindowMode,
   setWindowModeState,
   getWin32,
+  setNativeWindowMinimizeProtection,
 }: CreateDesktopWindowModeControllerOptions): DesktopWindowModeController {
   let desktopGuardTimer: ReturnType<typeof setInterval> | null = null;
   const desktopHost = createDesktopWindowHost({ diag, getWin32 });
@@ -49,6 +51,7 @@ export function createDesktopWindowModeController({
   function applyWindowMode(win: BrowserWindow, mode: WindowMode) {
     setWindowModeState(mode);
     try {
+      setNativeWindowMinimizeProtection(win, mode === 'onTop');
       win.setSkipTaskbar(mode !== 'normal');
       if (mode === 'desktop') {
         win.setAlwaysOnTop(false, 'normal');

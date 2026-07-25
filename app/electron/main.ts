@@ -63,6 +63,7 @@ const {
   applyNativeBackgroundMaterial,
   setInvisibleGlassBackgroundMaterial,
   setNativeWindowDragRegion,
+  setNativeWindowMinimizeProtection,
   getCursorPosition,
 } = createWin32NativeHelpers({
   diag,
@@ -135,6 +136,7 @@ const desktopWindowMode = createDesktopWindowModeController({
   getWindowMode: windowModeState.getMode,
   setWindowModeState: windowModeState.setMode,
   getWin32: () => win32,
+  setNativeWindowMinimizeProtection,
 });
 
 const trayRefreshBridge = createTrayRefreshBridge();

@@ -19,6 +19,8 @@ const scripts = packageJson.scripts as Record<string, string>;
 
 assert.match(helper, /export type Win32Api\b/, 'win32Native should export the Win32 bridge type.');
 assert.match(helper, /export function createWin32NativeHelpers\b/, 'win32Native should export a Win32/native helper factory.');
+assert.match(helper, /setWindowMinimizeProtection:/, 'win32Native should expose the native minimize-protection bridge.');
+assert.match(helper, /export function applyNativeWindowMinimizeProtection\b/, 'win32Native should expose a minimized-window protection helper.');
 assert.match(helper, /export function runWin32Operation\b/, 'win32Native should expose a guarded native operation wrapper.');
 assert.match(helper, /diag\(`Win32 \$\{operation\} failed:/, 'win32Native should diagnose native operation failures with an operation name.');
 assert.match(helper, /function createWin32Api\b/, 'win32Native should own Win32 binding creation.');
@@ -78,6 +80,7 @@ assert.match(main, /createWin32NativeHelpers\(\{/, 'main should create Win32/nat
 assert.match(main, /const \{\s*win32,[\s\S]*applyToolWindowStyle,[\s\S]*applyNativeBackgroundMaterial,[\s\S]*setInvisibleGlassBackgroundMaterial,[\s\S]*\} = createWin32NativeHelpers\(\{/s, 'main should destructure the Win32/native and invisible-glass helpers from the module.');
 assert.match(main, /diag,/, 'main should pass diagnostics into the Win32/native helper factory.');
 assert.match(main, /getWin32:\s*\(\)\s*=>\s*win32/, 'main should continue to inject the Win32 bridge into desktopWindowMode.');
+assert.match(main, /setNativeWindowMinimizeProtection,/, 'main should inject native minimize protection into desktopWindowMode.');
 assert.match(main, /applyNativeBackgroundMaterial,/, 'main should continue to pass the background-material helper into the main-window factory.');
 assert.match(main, /applyToolWindowStyle,/, 'main should continue to pass the tool-window helper into the main-window factory.');
 
