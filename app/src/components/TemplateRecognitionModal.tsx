@@ -57,6 +57,10 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
     setRecognized((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   };
 
+  const removeRecognized = (id: string) => {
+    setRecognized((prev) => prev.filter((block) => block.id !== id));
+  };
+
   const togglePrompt = (id: string) => {
     setExpandedPromptIds((prev) => {
       const next = new Set(prev);
@@ -141,6 +145,15 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
                   >
                     {promptExpanded ? '收起提示词' : '提示词'}
                   </button>
+                  <button
+                    type="button"
+                    className="recognition-remove-button"
+                    aria-label={`删除 ${block.name}`}
+                    title={`删除 ${block.name}`}
+                    onClick={() => removeRecognized(block.id)}
+                  >
+                    &times;
+                  </button>
                   {promptExpanded && (
                     <textarea
                       className="recognition-prompt-input"
@@ -154,11 +167,14 @@ export function TemplateRecognitionModal({ existingBlocks, onApply, onCancel }: 
                 </div>
               );
             })}
+            {recognized.length === 0 && (
+              <p className="recognition-empty">没有可应用的识别区块。你可以重新识别。</p>
+            )}
             {error && <p className="recognition-error">{error}</p>}
             <div className="recognition-footer">
               <button onClick={() => setStep('input')}>重新识别</button>
-              <button onClick={() => onApply(recognized, 'append')}>追加到自定义区块</button>
-              <button className="btn-primary" onClick={() => onApply(recognized, 'replace')}>替换自定义区块</button>
+              <button disabled={recognized.length === 0} onClick={() => onApply(recognized, 'append')}>追加到自定义区块</button>
+              <button className="btn-primary" disabled={recognized.length === 0} onClick={() => onApply(recognized, 'replace')}>替换自定义区块</button>
             </div>
           </>
         )}

@@ -3442,7 +3442,7 @@ button, .select-none {
 
 .recognition-block-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: 0.5rem;
 }
@@ -3485,6 +3485,7 @@ button, .select-none {
 }
 
 .recognition-hint,
+.recognition-empty,
 .recognition-error {
   color: #71717a;
   font-size: 0.72rem;
@@ -3516,6 +3517,31 @@ button, .select-none {
   color: var(--personal-accent);
 }
 
+.recognition-remove-button {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid rgba(190, 24, 93, 0.2);
+  border-radius: 0.7rem;
+  background: rgba(255, 241, 242, 0.92);
+  padding: 0;
+  color: #be123c;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.recognition-remove-button:hover {
+  background: #ffe4e6;
+  color: #9f1239;
+}
+
+.recognition-footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .recognition-footer .btn-primary {
   background: var(--personal-accent);
   color: white;
@@ -3540,6 +3566,17 @@ button, .select-none {
 .dark .recognition-footer .btn-primary {
   background: var(--personal-accent);
   color: white;
+}
+
+.dark .recognition-remove-button {
+  border-color: rgba(251, 113, 133, 0.32);
+  background: rgba(136, 19, 55, 0.3);
+  color: #fda4af;
+}
+
+.dark .recognition-remove-button:hover {
+  background: rgba(159, 18, 57, 0.48);
+  color: #fecdd3;
 }
 
   html {
