@@ -203,6 +203,20 @@ assert.deepEqual(sourceGroups.map((group) => group.tasks.map((item) => item.id))
 assert.equal(derivations.shouldShowSourceGroups([task('personal-only')]), false, 'Source groups should stay hidden when no external tasks exist.');
 assert.equal(derivations.shouldShowSourceGroups([task('external-visible', { source: 'external' })]), true, 'Source groups should show when external tasks exist.');
 
+const sourceChangedParent = task('source-change-parent', {
+  source: 'external',
+  subtasks: [task('source-change-child', { source: 'personal', parentTaskId: 'source-change-parent' })],
+});
+const sourceChangedDerivations = derivations.getTaskListDerivations(
+  [sourceChangedParent],
+  ['personal', 'external'],
+);
+assert.deepEqual(
+  sourceChangedDerivations.sourceGroups.find((group) => group.source === 'external')?.tasks,
+  [sourceChangedParent],
+  'Changing a parent task source should place the parent in its new source group.',
+);
+
 assert.deepEqual(
   derivations.getTaskListDerivations([
     task('personal-one', { tags: ['work', 'urgent'] }),

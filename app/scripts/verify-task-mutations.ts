@@ -366,6 +366,21 @@ const updatedFields = updateTaskFields(baseTask, {
 assert.equal(updatedFields.priority, 'high');
 assert.deepEqual(updatedFields.tags, ['cleanup']);
 assert.equal(updatedFields.text, 'Write plan');
+const sourceChangeChild: Task = {
+  ...baseTask,
+  id: 'source-change-child',
+  source: 'personal',
+  parentTaskId: 'source-change-parent',
+};
+const sourceChangeParent: Task = {
+  ...baseTask,
+  id: 'source-change-parent',
+  source: 'personal',
+  subtasks: [sourceChangeChild],
+};
+const sourceChangedParent = updateTaskFields(sourceChangeParent, { source: 'external' });
+assert.equal(sourceChangedParent.source, 'external');
+assert.equal(sourceChangedParent.subtasks?.[0].source, 'personal');
 assert.strictEqual(
   updateTaskFields(baseTask, { priority: 'medium' }),
   baseTask,

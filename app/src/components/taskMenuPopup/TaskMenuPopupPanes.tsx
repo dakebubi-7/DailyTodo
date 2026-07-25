@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Task } from '../../types/task';
 import { TaskMenuPopupPaneHeader } from './TaskMenuPopupPaneHeader';
 
-export type TaskMenuPopupPane = 'menu' | 'date' | 'tag' | 'subtask';
+export type TaskMenuPopupPane = 'menu' | 'date' | 'tag' | 'subtask' | 'source';
 
 export type TaskMenuPopupActionUpdate = {
   __action: 'edit' | 'delete' | 'addSubtask';
@@ -23,6 +23,7 @@ function Icon({ path }: { path: string }) {
 function CalendarIcon() { return <Icon path="M7 3v3M17 3v3M4 9h16M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V7A1.5 1.5 0 0 1 5 5.5" />; }
 function TagIcon() { return <Icon path="M20.5 13.5l-7 7a2 2 0 0 1-2.8 0L3 13V3h10l7.5 7.5a2 2 0 0 1 0 2.8z" />; }
 function SubtaskIcon() { return <Icon path="M6 6h12M6 12h8M6 18h5M4 6h.01M4 12h.01M4 18h.01" />; }
+function SourceIcon() { return <Icon path="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />; }
 function EditIcon() { return <Icon path="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />; }
 function TrashIcon() { return <Icon path="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m1 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />; }
 function ChevronRight() { return <svg className="tm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>; }
@@ -53,6 +54,11 @@ export function MenuPane({ task, onPick }: { task: Task; onPick: (pane: TaskMenu
           <span className="tm-item-icon"><TagIcon /></span>
           <span className="tm-item-label">编辑标签</span>
           <span className="tm-item-hint">{tagCount ? `${tagCount} 个` : '编辑'}</span>
+          <ChevronRight />
+        </button>
+        <button type="button" className="tm-item" onClick={() => onPick('source')}>
+          <span className="tm-item-icon"><SourceIcon /></span>
+          <span className="tm-item-label">任务类型</span>
           <ChevronRight />
         </button>
         <div className="tm-divider" />
