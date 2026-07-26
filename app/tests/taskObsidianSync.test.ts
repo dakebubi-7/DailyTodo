@@ -18,6 +18,45 @@ function createTask(overrides: Partial<Task> = {}): Task {
 }
 
 describe('Obsidian daily note sync equivalence', () => {
+  it('ignores task state that is not rendered into the daily note', () => {
+    const previous = {
+      tasks: [createTask()],
+      selectedDate: '2026-07-21',
+      dailyWork: '',
+      dailyInspiration: '',
+    };
+
+    expect(areSelectedDailyNoteSyncInputsEquivalent(previous, {
+      ...previous,
+      tasks: [createTask({
+        cleared: true,
+        focusDate: '2026-07-21',
+        focusOrder: 1,
+        focusState: 'in-progress',
+        focusReason: 'Start after standup',
+        nextStep: 'Review the release checklist',
+        handoff: {
+          status: 'partial',
+          progressSummary: 'Initial implementation is complete',
+          blocker: '',
+          nextStep: 'Review the release checklist',
+          shouldCarryForward: true,
+          createdAt: '2026-07-21T10:00:00.000Z',
+          source: 'manual',
+        },
+        carryoverContext: {
+          status: 'partial',
+          progressSummary: 'Initial implementation is complete',
+          blocker: '',
+          nextStep: 'Review the release checklist',
+          shouldCarryForward: true,
+          createdAt: '2026-07-20T18:00:00.000Z',
+          source: 'manual',
+        },
+      })],
+    })).toBe(true);
+  });
+
   it('detects a remaining carryover subtask count change', () => {
     const previous = {
       tasks: [createTask()],

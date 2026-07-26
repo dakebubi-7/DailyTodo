@@ -82,18 +82,6 @@ function areSubtaskCarryoverProgressEqual(
   return Boolean(left && right && left.total === right.total && left.remaining === right.remaining);
 }
 
-function areTaskHandoffsEqual(left: Task['handoff'] | undefined, right: Task['handoff'] | undefined) {
-  if (left === right) return true;
-  return Boolean(left && right
-    && left.status === right.status
-    && left.progressSummary === right.progressSummary
-    && left.blocker === right.blocker
-    && left.nextStep === right.nextStep
-    && left.shouldCarryForward === right.shouldCarryForward
-    && left.createdAt === right.createdAt
-    && left.source === right.source);
-}
-
 function areTasksEquivalentForObsidianSync(left: Task[], right: Task[]): boolean {
   if (left === right) return true;
   if (left.length !== right.length) return false;
@@ -108,14 +96,6 @@ function areTasksEquivalentForObsidianSync(left: Task[], right: Task[]): boolean
       || task.createdAt !== other.createdAt
       || task.taskDate !== other.taskDate
       || task.completedAt !== other.completedAt
-      || task.cleared !== other.cleared
-      || task.focusDate !== other.focusDate
-      || task.focusOrder !== other.focusOrder
-      || task.focusState !== other.focusState
-      || task.focusReason !== other.focusReason
-      || task.nextStep !== other.nextStep
-      || !areTaskHandoffsEqual(task.handoff, other.handoff)
-      || !areTaskHandoffsEqual(task.carryoverContext, other.carryoverContext)
       || !areCompletionReviewListsEqual(task.completionReviews, other.completionReviews)
       || !areCompletionReviewsEqual(task.completionReview, other.completionReview)
       || !areSubtaskCarryoverProgressEqual(task.subtaskCarryoverProgress, other.subtaskCarryoverProgress)
