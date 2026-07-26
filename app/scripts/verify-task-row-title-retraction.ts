@@ -85,8 +85,10 @@ assertRuleIncludes('.task-card > .task-text-wrap,\n.task-card > .task-edit-input
 const preciseHoverRange = readCssRange(globals, '@media (hover: hover) and (pointer: fine)');
 const preciseHover = preciseHoverRange.content;
 const outsidePreciseHover = `${globals.slice(0, preciseHoverRange.start)}${globals.slice(preciseHoverRange.end)}`;
-assertRuleIncludes(`${normalCardSelector} > .task-action-layer`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal task cards without fine hover should keep their action layer visible and interactive.', outsidePreciseHover);
-assertRuleIncludes(`${normalCardSelector} > .task-action-layer .task-delete-action`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal task cards without fine hover should keep delete reachable.', outsidePreciseHover);
+const touchFallback = `@media (hover: none), (pointer: coarse)`;
+const touchFallbackCss = readCssBlock(globals, touchFallback);
+assertRuleIncludes(`${normalCardSelector} > .task-action-layer`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal task cards without fine hover should keep their action layer visible and interactive.', touchFallbackCss);
+assertRuleIncludes(`${normalCardSelector} > .task-action-layer .task-delete-action`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal task cards without fine hover should keep delete reachable.', touchFallbackCss);
 assertRuleIncludes(normalCardSelector, ['--task-row-action-space: 0rem;', 'padding-right: calc(0.5rem + var(--task-row-action-space)) !important;'], 'Idle normal task cards should reserve trailing space through the action-space variable.', preciseHover);
 assertRuleIncludes(`${normalCardSelector} > .task-action-layer`, ['opacity: 0;', 'pointer-events: none;'], 'Idle task action space should be hidden and non-interactive.', preciseHover);
 assertRuleIncludes(`${normalCardSelector} > .task-drag-slot`, ['width: 0;'], 'Idle normal task cards should retract the drag slot.', preciseHover);
