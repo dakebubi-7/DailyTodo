@@ -1,5 +1,5 @@
 import { getBusinessDateKey, getTaskDate, isDateKey } from '../../shared/taskRollover';
-import type { FocusState, Task, TaskCompletionReview, TaskHandoff } from '../types/task';
+import type { FocusState, SubtaskCarryoverProgress, Task, TaskCompletionReview, TaskHandoff } from '../types/task';
 import {
   isTaskCompletionReview as isSharedTaskCompletionReview,
   isTaskHandoff as isSharedTaskHandoff,
@@ -57,6 +57,16 @@ export function isTaskHandoff(value: unknown): value is TaskHandoff {
   return isSharedTaskHandoff(value);
 }
 
+export function isSubtaskCarryoverProgress(value: unknown): value is SubtaskCarryoverProgress {
+  if (!value || typeof value !== 'object') return false;
+  const progress = value as Record<string, unknown>;
+  return Number.isInteger(progress.total)
+    && (progress.total as number) > 0
+    && Number.isInteger(progress.remaining)
+    && (progress.remaining as number) > 0
+    && (progress.remaining as number) <= (progress.total as number);
+}
+
 export function isTaskLike(value: unknown): value is Task {
   return isSharedTaskLike(value);
 }
@@ -95,6 +105,9 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
   const nextStep = typeof task.nextStep === 'string' ? task.nextStep : undefined;
   const handoff = isTaskHandoff(task.handoff) ? task.handoff : undefined;
   const carryoverContext = isTaskHandoff(task.carryoverContext) ? task.carryoverContext : undefined;
+  const subtaskCarryoverProgress = isSubtaskCarryoverProgress(task.subtaskCarryoverProgress)
+    ? task.subtaskCarryoverProgress
+    : undefined;
 
   if (
     task.taskDate === taskDate
@@ -110,12 +123,14 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     && nextStep === task.nextStep
     && handoff === task.handoff
     && carryoverContext === task.carryoverContext
+    && subtaskCarryoverProgress === task.subtaskCarryoverProgress
     && Object.hasOwn(task, 'taskDate')
     && Object.hasOwn(task, 'isToday')
     && Object.hasOwn(task, 'scheduledDates')
     && Object.hasOwn(task, 'subtasks')
     && Object.hasOwn(task, 'completionReviews')
     && Object.hasOwn(task, 'completionReview')
+    && (subtaskCarryoverProgress !== undefined || !Object.hasOwn(task, 'subtaskCarryoverProgress'))
   ) {
     return task;
   }
@@ -128,6 +143,7 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     nextStep: _storedNextStep,
     handoff: _storedHandoff,
     carryoverContext: _storedCarryoverContext,
+    subtaskCarryoverProgress: _storedSubtaskCarryoverProgress,
     ...taskWithoutWorkflowMetadata
   } = task;
 
@@ -146,5 +162,6 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     ...(nextStep !== undefined ? { nextStep } : {}),
     ...(handoff ? { handoff } : {}),
     ...(carryoverContext ? { carryoverContext } : {}),
+    ...(subtaskCarryoverProgress ? { subtaskCarryoverProgress } : {}),
   };
 }

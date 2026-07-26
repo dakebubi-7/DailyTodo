@@ -22,6 +22,11 @@ export type ValidatedTaskHandoff = {
   source: 'manual' | 'ai';
 };
 
+export type ValidatedSubtaskCarryoverProgress = {
+  total: number;
+  remaining: number;
+};
+
 export type ValidatedTask = {
   id: string;
   text: string;
@@ -33,6 +38,7 @@ export type ValidatedTask = {
   isToday?: boolean;
   carriedFromDate?: string;
   carriedFromTaskId?: string;
+  subtaskCarryoverProgress?: ValidatedSubtaskCarryoverProgress;
   completedAt?: string;
   completionReview?: ValidatedTaskCompletionReview;
   completionReviews?: ValidatedTaskCompletionReview[];

@@ -107,6 +107,22 @@ assert.equal(
   false,
   'sync input equivalence should detect completion review changes that must update Obsidian Markdown.',
 );
+assert.equal(
+  areSelectedDailyNoteSyncInputsEquivalent(
+    { ...syncInput, tasks: [{ ...task, subtaskCarryoverProgress: { total: 3, remaining: 2 } }] },
+    { ...syncInput, tasks: [{ ...task, subtaskCarryoverProgress: { total: 3, remaining: 1 } }] },
+  ),
+  false,
+  'sync input equivalence should detect subtask carryover remaining-count changes that must update Obsidian Markdown.',
+);
+assert.equal(
+  areSelectedDailyNoteSyncInputsEquivalent(
+    { ...syncInput, tasks: [{ ...task, subtaskCarryoverProgress: { total: 3, remaining: 2 } }] },
+    { ...syncInput, tasks: [{ ...task, subtaskCarryoverProgress: { total: 4, remaining: 2 } }] },
+  ),
+  false,
+  'sync input equivalence should detect subtask carryover total-count changes that must update Obsidian Markdown.',
+);
 
 const retainedReviewTasks = buildObsidianSyncTasks({
   allTasks: [task],

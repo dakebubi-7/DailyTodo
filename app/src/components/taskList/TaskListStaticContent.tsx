@@ -27,6 +27,7 @@ interface StaticTaskItemProps extends Omit<TaskListItemContentProps, 'tasks' | '
 
 const StaticTaskItem = memo(function StaticTaskItem({
   task,
+  language,
   allTags,
   onToggle,
   onDelete,
@@ -45,6 +46,7 @@ const StaticTaskItem = memo(function StaticTaskItem({
     <div style={STATIC_TASK_CONTENT_VISIBILITY}>
       <TaskItem
         task={task}
+        language={language}
         onToggle={() => onToggle(task.id)}
         onDelete={() => onDelete(task.id)}
         onEdit={(text) => onEdit(task.id, text)}
@@ -65,6 +67,7 @@ const StaticTaskItem = memo(function StaticTaskItem({
 
 export const TaskListStaticContent = memo(function TaskListStaticContent({
   tasks,
+  language,
   sourceGroups,
   shouldGroupBySource,
   allTags,
@@ -85,6 +88,7 @@ export const TaskListStaticContent = memo(function TaskListStaticContent({
     <StaticTaskItem
       key={task.id}
       task={task}
+      language={language}
       allTags={allTags}
       onToggle={onToggle}
       onDelete={onDelete}

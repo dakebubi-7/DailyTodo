@@ -12,6 +12,11 @@ export interface TaskHandoff {
   source: 'manual' | 'ai';
 }
 
+export interface SubtaskCarryoverProgress {
+  total: number;
+  remaining: number;
+}
+
 export interface Task {
   id: string;
   text: string;
@@ -23,6 +28,7 @@ export interface Task {
   isToday: boolean;
   carriedFromDate?: string;
   carriedFromTaskId?: string;
+  subtaskCarryoverProgress?: SubtaskCarryoverProgress;
   completedAt?: string;
   completionReview?: TaskCompletionReview;
   completionReviews?: TaskCompletionReview[];

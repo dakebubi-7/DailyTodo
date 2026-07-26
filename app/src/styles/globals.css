@@ -8615,6 +8615,19 @@ html {
   min-width: 0;
 }
 
+.task-subtask-carryover-notice {
+  display: block;
+  margin: 0.08rem 0 0.26rem 1.55rem;
+  color: #71717a;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.dark .task-subtask-carryover-notice {
+  color: #a1a1aa;
+}
+
 .task-subtask-virtual-list-active {
   display: block;
 }

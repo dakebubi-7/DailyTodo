@@ -1,4 +1,5 @@
 import type { Task } from '../../types/task';
+import type { AppLanguage } from '../../../shared/appSettings';
 
 export const priorityTitles: Record<Task['priority'], string> = {
   high: '高优先级',
@@ -60,6 +61,26 @@ export const TASK_DRAG_HANDLE_LABEL = '\u62d6\u52a8\u8c03\u6574\u4efb\u52a1\u987
 export const TASK_EDIT_INPUT_LABEL = '\u7f16\u8f91\u4efb\u52a1';
 export const TASK_DELETE_ACTION_LABEL = '\u5220\u9664\u4efb\u52a1';
 export const TASK_SUBTASKS_LABEL = '\u5b50\u4efb\u52a1';
+
+export function getSubtaskCarryoverNotice(
+  language: AppLanguage,
+  carriedFromDate: string | undefined,
+  progress: Task['subtaskCarryoverProgress'],
+) {
+  if (!carriedFromDate || !progress) return undefined;
+
+  const date = new Date(`${carriedFromDate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return undefined;
+
+  const formattedDate = new Intl.DateTimeFormat(language, {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).format(date);
+  return language === 'en-US'
+    ? `Continued from ${formattedDate} \u00b7 ${progress.remaining}/${progress.total} remaining`
+    : `\u627f\u63a5\u81ea ${formattedDate} \u00b7 \u5269\u4f59 ${progress.remaining}/${progress.total} \u9879`;
+}
 
 export function getVisibleTaskTags(tags: string[] | undefined) {
   return {
