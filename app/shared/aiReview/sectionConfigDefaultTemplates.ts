@@ -14,7 +14,7 @@ export function createDefaultDailyTemplate(): DailyTemplate {
   ];
   const customBlocks: CustomBlock[] = [
     { id: crypto.randomUUID(), name: '复盘', aiGenerate: true, renderType: 'text', prompt: '' },
-    { id: crypto.randomUUID(), name: '明日待办', aiGenerate: true, renderType: 'list', prompt: '' },
+    { id: crypto.randomUUID(), name: '明日待办', aiGenerate: true, renderType: 'list', prompt: '', contentSource: 'tomorrowProjection' },
     { id: crypto.randomUUID(), name: '可复用知识', aiGenerate: true, renderType: 'text', prompt: '' },
   ];
   return {

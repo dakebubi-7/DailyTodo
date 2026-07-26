@@ -1,10 +1,16 @@
 import { getTaskDate, shiftDateKey } from '../taskRollover';
 
 export interface StatTask {
+  id?: string;
   completed: boolean;
+  cleared?: boolean;
   taskDate?: string;
   createdAt?: string;
   text?: string;
+  carriedFromDate?: string;
+  carriedFromTaskId?: string;
+  nextStep?: string;
+  carryoverContext?: { nextStep?: string };
 }
 
 export interface DailyStats {

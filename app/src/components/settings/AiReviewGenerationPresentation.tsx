@@ -20,9 +20,10 @@ export function previousMonthStart() {
   return formatLocalDate(date);
 }
 
-export function resultMessage(text: AiReviewText, result: { ok: boolean; error?: string; filePath?: string; truncated?: boolean }) {
+export function resultMessage(text: AiReviewText, result: { ok: boolean; error?: string; warning?: string; filePath?: string; truncated?: boolean }) {
   if (!result.ok) return `${text.genFailed}${result.error ?? '未知错误'}`;
   const prefix = result.truncated ? text.genTruncated : text.genSuccess;
+  if (result.warning) return `${prefix}${result.warning}`;
   return `${prefix}${result.filePath ?? '完成'}`;
 }
 
@@ -92,6 +93,7 @@ export function DiagnosticCard({ diagnostic, onClose }: { diagnostic: AiReviewRu
       <p>{diagnostic.profile.profileName || diagnostic.profile.model} · {diagnostic.profile.provider} · {diagnostic.finalStatus}</p>
       <p>{usage && usage.source !== 'missing' ? `Token：${usage.totalTokens ?? '-'}（输入 ${usage.promptTokens ?? '-'} / 输出 ${usage.completionTokens ?? '-'}）` : '服务未返回 token 用量'}</p>
       {diagnostic.error && <p>{diagnostic.error}</p>}
+      {diagnostic.warning && <p>{diagnostic.warning}</p>}
     </div>
   );
 }

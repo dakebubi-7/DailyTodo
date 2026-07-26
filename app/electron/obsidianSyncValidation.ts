@@ -1,4 +1,4 @@
-import type { ElectronTask } from './sharedTypes';
+import type { ElectronTask, TaskHandoff } from './sharedTypes';
 import { isObjectRecord } from './unknownValueGuards';
 
 export type ObsidianSyncTask = ElectronTask;
@@ -43,6 +43,19 @@ function isSubtaskCarryoverProgress(value: unknown): value is NonNullable<Obsidi
     && value.remaining <= value.total;
 }
 
+function isTaskHandoff(value: unknown): value is TaskHandoff {
+  return (
+    isObjectRecord(value) &&
+    (value.status === 'done' || value.status === 'partial' || value.status === 'blocked' || value.status === 'in-progress') &&
+    typeof value.progressSummary === 'string' &&
+    typeof value.blocker === 'string' &&
+    typeof value.nextStep === 'string' &&
+    typeof value.shouldCarryForward === 'boolean' &&
+    typeof value.createdAt === 'string' &&
+    (value.source === 'manual' || value.source === 'ai')
+  );
+}
+
 function isObsidianSyncTask(value: unknown): value is ObsidianSyncTask {
   if (!isObjectRecord(value)) return false;
   const subtasks = value.subtasks;
@@ -59,6 +72,14 @@ function isObsidianSyncTask(value: unknown): value is ObsidianSyncTask {
     isOptionalString(value.carriedFromTaskId) &&
     (value.subtaskCarryoverProgress === undefined || isSubtaskCarryoverProgress(value.subtaskCarryoverProgress)) &&
     isOptionalString(value.completedAt) &&
+    (value.cleared === undefined || typeof value.cleared === 'boolean') &&
+    isOptionalString(value.focusDate) &&
+    (value.focusOrder === undefined || (typeof value.focusOrder === 'number' && Number.isInteger(value.focusOrder) && value.focusOrder >= 0)) &&
+    (value.focusState === undefined || value.focusState === 'not-started' || value.focusState === 'in-progress' || value.focusState === 'blocked' || value.focusState === 'completed') &&
+    isOptionalString(value.focusReason) &&
+    isOptionalString(value.nextStep) &&
+    (value.handoff === undefined || isTaskHandoff(value.handoff)) &&
+    (value.carryoverContext === undefined || isTaskHandoff(value.carryoverContext)) &&
     (value.completionReview === undefined || isTaskCompletionReview(value.completionReview)) &&
     (completionReviews === undefined ||
       (Array.isArray(completionReviews) && completionReviews.every(isTaskCompletionReview))) &&

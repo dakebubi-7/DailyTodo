@@ -117,6 +117,7 @@ export function createAppShellCompositionInputs({
       selectedDate: taskState.selectedDate,
       completedCount: taskState.completedCount,
       allTasks: taskState.allTasks,
+      updateTask: taskState.updateTask,
       clearCompleted: taskState.clearCompleted,
       appPersonalizationActions,
       updateAppSettings: taskState.updateAppSettings,

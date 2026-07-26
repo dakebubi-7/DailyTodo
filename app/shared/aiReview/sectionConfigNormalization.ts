@@ -13,6 +13,7 @@ export interface DailyTemplateValue<FixedBlockId extends string, RenderType exte
     aiGenerate: boolean;
     renderType: RenderType;
     prompt: string;
+    contentSource?: 'ai' | 'tomorrowProjection';
   }>;
   blockOrder: Array<{ type: 'fixed'; id: FixedBlockId } | { type: 'custom'; id: string }>;
 }
@@ -24,6 +25,7 @@ export interface ReportTemplateValue<RenderType extends string> {
     aiGenerate: boolean;
     renderType: RenderType;
     prompt: string;
+    contentSource?: 'ai' | 'tomorrowProjection';
   }>;
 }
 
@@ -75,6 +77,9 @@ function normalizeCustomBlock<RenderType extends string>(
     aiGenerate: typeof value.aiGenerate === 'boolean' ? value.aiGenerate : true,
     renderType: isRenderType(value.renderType) ? value.renderType : 'text' as RenderType,
     prompt: typeof value.prompt === 'string' ? value.prompt : '',
+    ...(value.contentSource === 'ai' || value.contentSource === 'tomorrowProjection'
+      ? { contentSource: value.contentSource }
+      : {}),
   };
 }
 

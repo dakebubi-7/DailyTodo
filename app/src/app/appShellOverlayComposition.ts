@@ -24,6 +24,7 @@ export interface AppShellOverlayCompositionOptions {
   selectedDate: string;
   completedCount: number;
   allTasks: Task[];
+  updateTask: ComponentProps<typeof SettingsPanel>['onUpdateTask'];
   clearCompleted: ComponentProps<typeof SettingsPanel>['onClearCompleted'];
   appPersonalizationActions: ReturnType<typeof createAppPersonalizationActions>;
   updateAppSettings: ComponentProps<typeof SettingsPanel>['onAppSettingsChange'];
@@ -62,6 +63,7 @@ export function createAppShellOverlayComposition({
   selectedDate,
   completedCount,
   allTasks,
+  updateTask,
   clearCompleted,
   appPersonalizationActions,
   updateAppSettings,
@@ -100,6 +102,7 @@ export function createAppShellOverlayComposition({
     selectedDate,
     completedCount,
     tasks: allTasks,
+    onUpdateTask: updateTask,
     onClearCompleted: clearCompleted,
     onApplyTheme: appPersonalizationActions.applyThemePreset,
     onResetTheme: appPersonalizationActions.resetCurrentThemeDefaults,

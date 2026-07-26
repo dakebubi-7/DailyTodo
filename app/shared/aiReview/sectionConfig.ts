@@ -77,6 +77,8 @@ export function normalizeSections(value: unknown): SectionConfig[] {
 
 export type RenderType = 'text' | 'list' | 'table' | 'callout' | 'dataview';
 
+export type CustomBlockContentSource = 'ai' | 'tomorrowProjection';
+
 export const RENDER_TYPES = ['text', 'list', 'table', 'callout', 'dataview'] as const satisfies readonly RenderType[];
 
 export function isRenderType(value: unknown): value is RenderType {
@@ -94,6 +96,7 @@ export interface CustomBlock {
   aiGenerate: boolean;
   renderType: RenderType;
   prompt: string;
+  contentSource?: CustomBlockContentSource;
 }
 
 export interface FixedBlock {
