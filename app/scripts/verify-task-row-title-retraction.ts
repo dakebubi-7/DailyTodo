@@ -13,30 +13,64 @@ const globals = readFileSync(join(root, 'src/styles/globals.css'), 'utf8').repla
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
   scripts: Record<string, string>;
 };
+const normalCardSelector = '.task-card:not(.history-cleanup-task-card)';
+const normalCardInteractiveSelector = `${normalCardSelector}:is(:hover, :focus-within)`;
+
+function readCssBlock(css: string, selector: string): string {
+  const selectorStart = css.lastIndexOf(selector);
+  assert.notEqual(selectorStart, -1, `CSS should define ${selector}.`);
+
+  const blockStart = css.indexOf('{', selectorStart + selector.length);
+  assert.notEqual(blockStart, -1, `CSS rule for ${selector} should open a declaration block.`);
+
+  let depth = 1;
+  for (let index = blockStart + 1; index < css.length; index += 1) {
+    if (css[index] === '{') depth += 1;
+    if (css[index] === '}') depth -= 1;
+    if (depth === 0) return css.slice(blockStart + 1, index);
+  }
+
+  assert.fail(`CSS rule for ${selector} should close its declaration block.`);
+}
+
+function assertRuleIncludes(selector: string, declarations: string[], message: string, css = globals): void {
+  const block = readCssBlock(css, selector);
+  for (const declaration of declarations) {
+    assert.match(block, new RegExp(`^|\\n\\s*${declaration.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `${message}: ${declaration}`);
+  }
+}
 
 assert.ok(controls.includes('className="task-text task-text-browse"'), 'Browse mode should render the visible two-line task title.');
 assert.match(controls, /className="task-text task-text-active"\s+aria-hidden="true"/s, 'Active title should remain available as an aria-hidden one-line layout layer.');
-assert.ok(controls.includes('className="task-text-row"'), 'The task title row should preserve its row class.');
-assert.ok(controls.includes('title={getTaskTextTitle(task)}'), 'The task title should preserve its tooltip.');
-assert.ok(controls.includes('onDoubleClick={onStartEdit}'), 'The task title should preserve double-click editing.');
+assert.match(
+  controls,
+  /<span(?=[^>]*className="task-text-row")(?=[^>]*title=\{getTaskTextTitle\(task\)\})(?=[^>]*onDoubleClick=\{onStartEdit\})[^>]*>\s*<span\s+className="task-text task-text-browse">[\s\S]*?<\/span>\s*<span\s+className="task-text task-text-active"\s+aria-hidden="true">[\s\S]*?<\/span>\s*<\/span>/,
+  'The title row should own its tooltip and double-click behavior around browse and aria-hidden active title layers.',
+);
 assert.match(taskItem, /className="task-drag-slot"/, 'Task rows should preserve a dedicated drag slot.');
 assert.doesNotMatch(taskItem, /task-cluster-main-spacer/, 'Task rows should no longer retain the removed cluster main spacer.');
 assert.match(taskItem, /!isCleanupMode && \([\s\S]*?<TaskActionLayer/, 'History cleanup mode should continue to guard the action layer.');
 assert.match(taskItem, /from '\.\/taskItem\/taskItemActionControls'/, 'TaskItem should retain action-layer module ownership.');
 assert.match(actionControls, /export function TaskActionLayer\b/, 'The focused action-controls module should continue to own TaskActionLayer.');
 
-assert.ok(globals.includes('.task-card-no-children {\n  grid-template-columns: auto auto auto minmax(0, 1fr) !important;'), 'No-child task cards should use the four-column row grid.');
-assert.match(globals, /\.task-card > \.task-text-wrap,\n\.task-card > \.task-edit-input \{[\s\S]*?grid-column: 4 !important;/, 'Task content and editing should occupy grid column 4.');
-assert.match(globals, /@media \(hover: hover\) and \(pointer: fine\)/, 'Task action reveal should be gated behind precise hover capability.');
-assert.match(globals, /\.task-card:hover[\s\S]*?\.task-action-layer[\s\S]*?opacity: 1/, 'Hovering a task card should reveal its action space.');
-assert.match(globals, /\.task-card:focus-within[\s\S]*?\.task-action-layer[\s\S]*?opacity: 1/, 'Focusing within a task card should reveal its action space.');
-assert.match(globals, /\.task-action-layer \{[\s\S]*?opacity: 0;[\s\S]*?pointer-events: none;/, 'Idle task action space should be hidden and non-interactive.');
-assert.match(globals, /\.task-card:hover[\s\S]*?\.task-action-layer[\s\S]*?pointer-events: auto;/, 'Revealed task actions should accept pointer interaction.');
-assert.match(globals, /\.task-text-browse \{[\s\S]*?-webkit-line-clamp: 2;/, 'Browse titles should clamp to two lines.');
-assert.match(globals, /\.task-text-active \{[\s\S]*?white-space: nowrap;[\s\S]*?text-overflow: ellipsis;/, 'Active titles should remain one-line and ellipsize.');
-assert.match(globals, /\.task-text-active \{[\s\S]*?height: 1\.25em;/, 'Active titles should reserve a one-line 1.25em height.');
+assertRuleIncludes('.task-card-no-children', ['grid-template-columns: auto auto auto minmax(0, 1fr) !important;'], 'No-child task cards should use the four-column row grid.');
+assertRuleIncludes('.task-card-has-children', ['grid-template-columns: auto auto auto minmax(0, 1fr) !important;'], 'Task cards with children should use the four-column row grid.');
+assertRuleIncludes('.task-card > .task-text-wrap,\n.task-card > .task-edit-input', ['grid-column: 4 !important;'], 'Task content and editing should occupy grid column 4.');
+assertRuleIncludes(`${normalCardSelector} > .task-action-layer`, ['opacity: 0;', 'pointer-events: none;'], 'Idle task action space should be hidden and non-interactive.');
+assertRuleIncludes(`${normalCardSelector} > .task-drag-slot`, ['width: 0;'], 'Idle normal task cards should retract the drag slot.');
+assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-browse`, ['display: -webkit-box;', 'overflow: hidden;', '-webkit-box-orient: vertical;', '-webkit-line-clamp: 2;'], 'Normal task cards should render browse titles as two-line clamps.');
+assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-active`, ['display: block;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;'], 'Normal task cards should render active titles as one-line ellipses.');
+assertRuleIncludes(normalCardInteractiveSelector, ['--task-row-action-space: var(--task-action-safe-space);'], 'Normal hover/focus cards should reserve action space.');
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-action-layer`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal hover/focus cards should reveal their exact action layer.');
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-drag-slot:has(.task-drag-handle:not(:disabled))`, ['width: 0.95rem;'], 'Normal hover/focus cards should reveal the enabled drag slot.');
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap .task-text-browse`, ['opacity: 0;'], 'Normal hover/focus cards should hide browse titles.');
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap .task-text-active`, ['opacity: 1;'], 'Normal hover/focus cards should reveal active titles.');
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap > .task-text-row`, ['height: 1.25em;'], 'Normal hover/focus cards should retract the title row to one line.');
 assert.match(globals, /\.task-card\.history-cleanup-task-card \{/, 'History cleanup styling should target the exact cleanup task-card selector.');
-assert.match(globals, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.task-action-layer[\s\S]*?transition: none/, 'Reduced motion should disable task action transitions.');
+const reducedMotion = readCssBlock(globals, '@media (prefers-reduced-motion: reduce)');
+assertRuleIncludes('.task-text-row', ['transition: none !important;'], 'Reduced motion should disable title-row transitions.', reducedMotion);
+assertRuleIncludes('.task-drag-slot', ['transition: none !important;'], 'Reduced motion should disable drag-slot transitions.', reducedMotion);
+assertRuleIncludes('.task-action-layer', ['transition: none !important;'], 'Reduced motion should disable action-layer transitions.', reducedMotion);
 
 assert.equal(packageJson.scripts['verify:task-row-title-retraction'], 'tsx scripts/verify-task-row-title-retraction.ts', 'package.json should expose the focused task row title retraction verifier.');
 assertCleanupCoreIncludes('verify:task-row-title-retraction', 'cleanup-core should include the focused task row title retraction verifier.');
