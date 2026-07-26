@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { lazy, Suspense, type KeyboardEvent } from 'react';
+import type { AppLanguage } from '../../shared/appSettings';
 import { Task } from '../types/task';
 import { PriorityPicker } from './PriorityPicker';
 import { TaskStackSegments } from './taskItem/TaskStackSegments';
@@ -21,6 +22,7 @@ export type { TaskDragHandleProps } from './taskItem/taskItemControls';
 
 interface TaskItemProps {
   task: Task;
+  language: AppLanguage;
   dragHandleProps?: TaskDragHandleProps;
   onToggle: () => void;
   onDelete: () => void;
@@ -39,6 +41,7 @@ interface TaskItemProps {
 
 export function TaskItem({
   task,
+  language,
   dragHandleProps,
   onToggle,
   onDelete,
@@ -190,6 +193,9 @@ export function TaskItem({
           <Suspense fallback={null}>
             <TaskSubtasksViewport
               taskId={task.id}
+              language={language}
+              carriedFromDate={task.carriedFromDate}
+              subtaskCarryoverProgress={task.subtaskCarryoverProgress}
               viewportRef={virtualSubtasks.viewportRef}
               isVirtual={virtualSubtasks.isVirtual}
               totalHeight={virtualSubtasks.totalHeight}

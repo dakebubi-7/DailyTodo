@@ -32,6 +32,17 @@ function isTaskCompletionReview(value: unknown): value is NonNullable<ObsidianSy
   );
 }
 
+function isSubtaskCarryoverProgress(value: unknown): value is NonNullable<ObsidianSyncTask['subtaskCarryoverProgress']> {
+  return isObjectRecord(value)
+    && typeof value.total === 'number'
+    && Number.isInteger(value.total)
+    && value.total > 0
+    && typeof value.remaining === 'number'
+    && Number.isInteger(value.remaining)
+    && value.remaining > 0
+    && value.remaining <= value.total;
+}
+
 function isObsidianSyncTask(value: unknown): value is ObsidianSyncTask {
   if (!isObjectRecord(value)) return false;
   const subtasks = value.subtasks;
@@ -46,6 +57,7 @@ function isObsidianSyncTask(value: unknown): value is ObsidianSyncTask {
     isOptionalString(value.taskDate) &&
     isOptionalString(value.carriedFromDate) &&
     isOptionalString(value.carriedFromTaskId) &&
+    (value.subtaskCarryoverProgress === undefined || isSubtaskCarryoverProgress(value.subtaskCarryoverProgress)) &&
     isOptionalString(value.completedAt) &&
     (value.completionReview === undefined || isTaskCompletionReview(value.completionReview)) &&
     (completionReviews === undefined ||

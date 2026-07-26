@@ -71,6 +71,39 @@ assert.equal(carriedFromYesterday.every((candidate) => candidate.taskDate === '2
 assert.equal(carriedFromYesterday.every((candidate) => candidate.completed === false), true);
 assert.equal(carriedFromYesterday.every((candidate) => candidate.isToday === true), true);
 
+const subtaskSource = task('subtask-source', {
+  text: 'Subtask source',
+  subtasks: [
+    task('completed-subtask', {
+      completed: true,
+      parentTaskId: 'subtask-source',
+      completionReview: {
+        status: 'done',
+        percent: 100,
+        summary: 'Done',
+        unknowns: '',
+        nextStep: '',
+        reviewedAt: '2026-07-05T10:00:00.000Z',
+      },
+    }),
+    task('open-subtask', { parentTaskId: 'subtask-source' }),
+  ],
+});
+const subtaskCarryoverResult = applyBusinessDateCarryover({
+  tasks: [subtaskSource],
+  targetDate: '2026-07-06',
+  ledger: {},
+  settings,
+});
+const carriedSubtaskParent = subtaskCarryoverResult.tasks.find((candidate) => candidate.carriedFromTaskId === 'subtask-source');
+assert.equal(carriedSubtaskParent?.text, 'Subtask source');
+assert.deepEqual(carriedSubtaskParent?.subtaskCarryoverProgress, { total: 2, remaining: 1 });
+assert.equal(carriedSubtaskParent?.subtasks?.length, 1);
+assert.equal(carriedSubtaskParent?.subtasks?.[0]?.text, 'open-subtask');
+assert.equal(carriedSubtaskParent?.subtasks?.[0]?.completed, false);
+assert.equal(carriedSubtaskParent?.subtasks?.[0]?.parentTaskId, carriedSubtaskParent?.id);
+assert.notEqual(carriedSubtaskParent?.subtasks?.[0]?.id, 'open-subtask');
+
 assert.equal(
   rolloverResult.tasks.find((candidate) => candidate.id === 'legacy-created-at-only')?.taskDate,
   '2026-07-06',
@@ -187,6 +220,22 @@ assert.ok(
 assert.ok(
   taskCarryoverSource.includes('const nextCarryovers: Task[] = [];') && taskCarryoverSource.includes('const nextCarriedIds: string[] = [];'),
   'carryover should build task copies and ledger ids in one candidate traversal.',
+);
+assert.ok(
+  taskCarryoverSource.includes('function shouldCarryParentForward(task: Task)'),
+  'carryover should include direct-child eligibility when deciding whether a parent needs continuation.',
+);
+assert.ok(
+  taskCarryoverSource.includes('function buildCarryoverSubtasks(task: Task, parentTaskId: string, targetDate: string, createdAt: string)'),
+  'carryover should construct fresh direct subtask copies in a focused helper.',
+);
+assert.ok(
+  taskCarryoverSource.includes('text: task.text,'),
+  'carryover should preserve a clean parent title rather than appending provenance into task text.',
+);
+assert.ok(
+  !taskCarryoverSource.includes('const suffix ='),
+  'carryover should not generate legacy inherited-from title suffixes for new tasks.',
 );
 assert.ok(
   !taskCarryoverSource.includes('const normalizedTasks = tasks.map((task) => normalizeTask(task, targetDate));'),

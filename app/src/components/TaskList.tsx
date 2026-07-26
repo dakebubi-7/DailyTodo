@@ -127,6 +127,7 @@ export const TaskList = memo(function TaskList({
 
   const contentProps = {
     tasks,
+    language,
     sourceGroups,
     shouldGroupBySource,
     allTags,

@@ -1,12 +1,14 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import { memo, useEffect, useLayoutEffect } from 'react';
+import type { AppLanguage } from '../../../shared/appSettings';
 import type { Task } from '../../types/task';
 import { TaskItem, type TaskDragHandleProps } from '../TaskItem';
 import { REDUCED_SORTABLE_MOTION, TASK_SORTABLE_MOTION, getTaskSortableId } from './taskListDnd';
 
 interface SortableTaskItemProps {
   task: Task;
+  language: AppLanguage;
   index: number;
   dragDisabled: boolean;
   isDragActive: boolean;
@@ -34,6 +36,7 @@ function haveSameTags(previous: string[], next: string[]) {
 function areTaskItemPropsEqual(previous: SortableTaskItemProps, next: SortableTaskItemProps) {
   return (
     previous.task === next.task &&
+    previous.language === next.language &&
     previous.index === next.index &&
     previous.dragDisabled === next.dragDisabled &&
     previous.isDragActive === next.isDragActive &&
@@ -55,6 +58,7 @@ function areTaskItemPropsEqual(previous: SortableTaskItemProps, next: SortableTa
 
 export const SortableTaskItem = memo(function SortableTaskItem({
   task,
+  language,
   index,
   dragDisabled,
   isDragActive,
@@ -134,6 +138,7 @@ export const SortableTaskItem = memo(function SortableTaskItem({
       >
         <TaskItem
           task={task}
+          language={language}
           dragHandleProps={dragHandleProps}
           onToggle={() => onToggle(task.id)}
           onDelete={() => onDelete(task.id)}

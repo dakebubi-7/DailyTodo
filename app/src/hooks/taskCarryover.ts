@@ -17,23 +17,55 @@ export interface ApplyBusinessDateCarryoverInput {
   settings: AppBehaviorSettings;
 }
 
+function shouldCarryParentForward(task: Task) {
+  return shouldCarryTaskForward(task) || Boolean(task.subtasks?.some(shouldCarryTaskForward));
+}
+
+function buildCarryoverSubtasks(task: Task, parentTaskId: string, targetDate: string, createdAt: string) {
+  const subtasks: Task[] = [];
+  for (const subtask of task.subtasks || []) {
+    if (!shouldCarryTaskForward(subtask)) continue;
+    subtasks.push({
+      id: crypto.randomUUID(),
+      text: subtask.text,
+      completed: false,
+      priority: subtask.priority,
+      source: subtask.source,
+      createdAt,
+      taskDate: targetDate,
+      isToday: true,
+      parentTaskId,
+      ...(subtask.handoff ? { carryoverContext: subtask.handoff } : {}),
+    });
+  }
+  return subtasks;
+}
+
 function buildCarryoverTask(task: Task, targetDate: string): Task {
   const sourceDate = getTaskDate(task);
-  const suffix = `（继承自 ${sourceDate}）`;
-  const baseText = task.text.includes(suffix) ? task.text : `${task.text}${suffix}`;
+  const id = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+  const subtasks = buildCarryoverSubtasks(task, id, targetDate, createdAt);
 
   return {
-    id: crypto.randomUUID(),
-    text: baseText,
+    id,
+    text: task.text,
     completed: false,
     priority: task.priority,
     source: task.source,
-    createdAt: new Date().toISOString(),
+    createdAt,
     taskDate: targetDate,
     isToday: true,
     carriedFromDate: sourceDate,
     carriedFromTaskId: task.id,
     carryoverContext: task.handoff,
+    ...(subtasks.length ? {
+      subtasks,
+      subtaskCarryoverProgress: {
+        total: task.subtasks?.length || 0,
+        remaining: subtasks.length,
+      },
+    } : {}),
   };
 }
 
@@ -55,7 +87,7 @@ export function carryForwardTasks(
     }
     if (
       getTaskDate(task) === sourceDate &&
-      shouldCarryTaskForward(task) &&
+      shouldCarryParentForward(task) &&
       !carriedIds.has(task.id)
     ) {
       candidateTasks.push(task);

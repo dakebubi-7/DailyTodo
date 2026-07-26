@@ -28,6 +28,19 @@ function isTaskHandoff(value: unknown): value is TaskHandoff {
   );
 }
 
+function isSubtaskCarryoverProgress(value: unknown): value is NonNullable<ElectronTask['subtaskCarryoverProgress']> {
+  return (
+    isObjectRecord(value) &&
+    typeof value.total === 'number' &&
+    Number.isInteger(value.total) &&
+    value.total > 0 &&
+    typeof value.remaining === 'number' &&
+    Number.isInteger(value.remaining) &&
+    value.remaining > 0 &&
+    value.remaining <= value.total
+  );
+}
+
 function isAiReviewTask(value: unknown): value is ElectronTask {
   if (!isObjectRecord(value)) return false;
   return (
@@ -40,6 +53,7 @@ function isAiReviewTask(value: unknown): value is ElectronTask {
     (value.taskDate === undefined || typeof value.taskDate === 'string') &&
     (value.carriedFromDate === undefined || typeof value.carriedFromDate === 'string') &&
     (value.carriedFromTaskId === undefined || typeof value.carriedFromTaskId === 'string') &&
+    (value.subtaskCarryoverProgress === undefined || isSubtaskCarryoverProgress(value.subtaskCarryoverProgress)) &&
     (value.completedAt === undefined || typeof value.completedAt === 'string') &&
     (value.cleared === undefined || typeof value.cleared === 'boolean') &&
     (value.focusDate === undefined || typeof value.focusDate === 'string') &&

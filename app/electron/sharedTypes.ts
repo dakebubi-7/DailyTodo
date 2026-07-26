@@ -35,6 +35,11 @@ export type TaskHandoff = {
   source: 'manual' | 'ai';
 };
 
+export type SubtaskCarryoverProgress = {
+  total: number;
+  remaining: number;
+};
+
 export type ElectronTask = {
   id: string;
   text: string;
@@ -45,6 +50,7 @@ export type ElectronTask = {
   isToday: boolean;
   carriedFromDate?: string;
   carriedFromTaskId?: string;
+  subtaskCarryoverProgress?: SubtaskCarryoverProgress;
   completedAt?: string;
   completionReview?: TaskCompletionReview;
   completionReviews?: TaskCompletionReview[];

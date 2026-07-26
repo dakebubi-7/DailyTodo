@@ -19,6 +19,9 @@ assert.match(viewport, /type VirtualSubtaskItem \} from '\.\/useVirtualSubtasks'
 assert.match(viewport, /export interface TaskSubtasksViewportProps\b/, 'TaskSubtasksViewport module should export its props.');
 assert.match(viewport, /export function TaskSubtasksViewport\b/, 'TaskSubtasksViewport module should export TaskSubtasksViewport.');
 assert.match(viewport, /taskId: string/, 'TaskSubtasksViewport props should receive the parent task id for aria-controls matching.');
+assert.match(viewport, /language: AppLanguage/, 'TaskSubtasksViewport props should receive the app language for localized carryover text.');
+assert.match(viewport, /carriedFromDate: string \| undefined/, 'TaskSubtasksViewport props should receive optional carryover provenance.');
+assert.match(viewport, /subtaskCarryoverProgress: Task\['subtaskCarryoverProgress'\]/, 'TaskSubtasksViewport props should receive optional carryover progress.');
 assert.match(viewport, /visibleVirtualItems: VirtualSubtaskItem\[\]/, 'TaskSubtasksViewport props should receive visible virtual items.');
 assert.match(viewport, /viewportRef: RefObject<HTMLSpanElement>/, 'TaskSubtasksViewport props should receive the virtual scroll viewport ref.');
 assert.match(viewport, /isVirtual: boolean/, 'TaskSubtasksViewport props should receive virtual-list mode.');
@@ -36,6 +39,8 @@ assert.match(viewport, /style=\{\{ maxHeight: TASK_SUBTASK_VIEWPORT_HEIGHT \}\}/
 assert.match(viewport, /ref=\{viewportRef\}/, 'TaskSubtasksViewport should attach the virtual scroll ref.');
 assert.match(viewport, /onClick=\{stopClusterToggle\}/, 'TaskSubtasksViewport should preserve click propagation blocking.');
 assert.match(viewport, /onPointerDown=\{stopClusterToggle\}/, 'TaskSubtasksViewport should preserve pointer propagation blocking.');
+assert.match(viewport, /getSubtaskCarryoverNotice\(language, carriedFromDate, subtaskCarryoverProgress\)/, 'TaskSubtasksViewport should derive the localized carryover notice from parent provenance and progress.');
+assert.match(viewport, /className="task-subtask-carryover-notice"/, 'TaskSubtasksViewport should render the carryover notice with a dedicated class.');
 assert.match(viewport, /className=\{`task-subtask-virtual-list \$\{isVirtual \? 'task-subtask-virtual-list-active' : ''\}`\}/, 'TaskSubtasksViewport should preserve virtual-list classes.');
 assert.match(viewport, /style=\{isVirtual \? \{ height: totalHeight \} : undefined\}/, 'TaskSubtasksViewport should preserve virtual-list height behavior.');
 assert.match(viewport, /visibleVirtualItems\.map\(\(virtualItem\) =>/, 'TaskSubtasksViewport should render only visible virtual items.');
@@ -43,11 +48,16 @@ assert.match(viewport, /className="task-subtask-virtual-spacer"/, 'TaskSubtasksV
 assert.match(viewport, /style=\{isVirtual \? \{ top: virtualItem\.top \} : undefined\}/, 'TaskSubtasksViewport should preserve virtual spacer top positioning.');
 assert.match(viewport, /delay: virtualItem\.index \* TASK_SUBTASK_STAGGER_MS \* 0\.001/, 'TaskSubtasksViewport should preserve subtask stagger timing.');
 assert.match(viewport, /<SubtaskCard\s+subtask=\{virtualItem\.task\}\s+onToggleSubtask=\{onToggleSubtask\}\s+onDeleteSubtask=\{onDeleteSubtask\}\s+onViewSubtaskReview=\{onViewSubtaskReview\}\s+onEditSubtask=\{onEditSubtask\}\s+onChangeSubtaskPriority=\{onChangeSubtaskPriority\}/s, 'TaskSubtasksViewport should pass subtask callbacks through to SubtaskCard.');
+assert.ok(
+  viewport.indexOf('className="task-subtask-carryover-notice"') < viewport.indexOf('className={`task-subtask-virtual-list'),
+  'TaskSubtasksViewport should render the carryover notice above its virtual subtask list.',
+);
 
 assert.match(taskItem, /lazy\(\(\) => import\('\.\/taskItem\/TaskSubtasksViewport'\)/, 'TaskItem should lazy-load TaskSubtasksViewport.');
 assert.doesNotMatch(taskItem, /import \{ TaskSubtasksViewport \} from '\.\/taskItem\/TaskSubtasksViewport'/, 'TaskItem should not statically import TaskSubtasksViewport.');
 assert.match(taskItem, /<Suspense fallback=\{null\}>[\s\S]*<TaskSubtasksViewport/s, 'TaskItem should suspend only the expanded subtask viewport while its chunk loads.');
-assert.match(taskItem, /<TaskSubtasksViewport\s+taskId=\{task\.id\}\s+viewportRef=\{virtualSubtasks\.viewportRef\}\s+isVirtual=\{virtualSubtasks\.isVirtual\}\s+totalHeight=\{virtualSubtasks\.totalHeight\}\s+visibleVirtualItems=\{virtualSubtasks\.visibleVirtualItems\}\s+shouldReduceMotion=\{shouldReduceMotion\}/s, 'TaskItem should render TaskSubtasksViewport with hook output.');
+assert.match(taskItem, /\{isExpanded && \(\s*<Suspense fallback=\{null\}>[\s\S]*?<TaskSubtasksViewport/s, 'TaskItem should mount the carryover notice only with expanded subtasks.');
+assert.match(taskItem, /<TaskSubtasksViewport\s+taskId=\{task\.id\}\s+language=\{language\}\s+carriedFromDate=\{task\.carriedFromDate\}\s+subtaskCarryoverProgress=\{task\.subtaskCarryoverProgress\}\s+viewportRef=\{virtualSubtasks\.viewportRef\}\s+isVirtual=\{virtualSubtasks\.isVirtual\}\s+totalHeight=\{virtualSubtasks\.totalHeight\}\s+visibleVirtualItems=\{virtualSubtasks\.visibleVirtualItems\}\s+shouldReduceMotion=\{shouldReduceMotion\}/s, 'TaskItem should render TaskSubtasksViewport with localized carryover data and hook output.');
 assert.match(taskItem, /onToggleSubtask=\{onToggleSubtask\}/, 'TaskItem should pass subtask toggle routing into TaskSubtasksViewport.');
 assert.match(taskItem, /onDeleteSubtask=\{onDeleteSubtask\}/, 'TaskItem should pass subtask delete routing into TaskSubtasksViewport.');
 assert.match(taskItem, /onViewSubtaskReview=\{onViewSubtaskReview\}/, 'TaskItem should pass subtask review routing into TaskSubtasksViewport.');

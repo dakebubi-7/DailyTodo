@@ -33,9 +33,13 @@ assert.match(taskPayload, /export function isAiReviewTaskArray\(value: unknown\)
 assert.match(taskPayload, /import \{ isObjectRecord \} from '\.\/unknownValueGuards';/, 'shared task payload module should reuse the Electron object-record guard.');
 assert.doesNotMatch(taskPayload, /function isObject\(value: unknown\)/, 'shared task payload module should not redeclare an Electron object-record guard.');
 assert.match(taskPayload, /function isTaskCompletionReview\(value: unknown\): value is TaskCompletionReview/, 'shared task payload module should define a runtime guard for optional completion-review entries.');
+assert.match(taskPayload, /function isSubtaskCarryoverProgress\(value: unknown\): value is NonNullable<ElectronTask\['subtaskCarryoverProgress'\]>/, 'shared task payload module should define a runtime guard for carryover progress snapshots.');
+assert.match(taskPayload, /typeof value\.total === 'number'[\s\S]*Number\.isInteger\(value\.total\)[\s\S]*value\.total > 0/s, 'carryover progress snapshots should require a positive integer total.');
+assert.match(taskPayload, /typeof value\.remaining === 'number'[\s\S]*Number\.isInteger\(value\.remaining\)[\s\S]*value\.remaining > 0[\s\S]*value\.remaining <= value\.total/s, 'carryover progress snapshots should require bounded positive integer remaining work.');
 for (const optionalStringField of ['carriedFromDate', 'carriedFromTaskId', 'completedAt']) {
   assert.match(taskPayload, new RegExp(`value\\.${optionalStringField} === undefined \\|\\| typeof value\\.${optionalStringField} === 'string'`), `shared task payload module should validate optional ${optionalStringField} strings.`);
 }
+assert.match(taskPayload, /value\.subtaskCarryoverProgress === undefined \|\| isSubtaskCarryoverProgress\(value\.subtaskCarryoverProgress\)/, 'shared task payload module should validate optional carryover progress snapshots.');
 assert.match(taskPayload, /value\.completionReview === undefined \|\| isTaskCompletionReview\(value\.completionReview\)/, 'shared task payload module should validate optional completionReview objects.');
 assert.match(taskPayload, /value\.completionReviews === undefined \|\| \(Array\.isArray\(value\.completionReviews\) && value\.completionReviews\.every\(isTaskCompletionReview\)\)/, 'shared task payload module should validate optional completionReviews arrays.');
 assert.match(moduleSource, /from '\.\/aiReviewTaskPayload'/, 'daily run/inspect IPC module should use the shared AI Review task payload guard.');

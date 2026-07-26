@@ -74,6 +74,14 @@ function areCompletionReviewListsEqual(left: Task['completionReviews'], right: T
   return left.every((review, index) => areCompletionReviewsEqual(review, right[index]));
 }
 
+function areSubtaskCarryoverProgressEqual(
+  left: Task['subtaskCarryoverProgress'],
+  right: Task['subtaskCarryoverProgress'],
+) {
+  if (left === right) return true;
+  return Boolean(left && right && left.total === right.total && left.remaining === right.remaining);
+}
+
 function areTasksEquivalentForObsidianSync(left: Task[], right: Task[]): boolean {
   if (left === right) return true;
   if (left.length !== right.length) return false;
@@ -90,6 +98,7 @@ function areTasksEquivalentForObsidianSync(left: Task[], right: Task[]): boolean
       || task.completedAt !== other.completedAt
       || !areCompletionReviewListsEqual(task.completionReviews, other.completionReviews)
       || !areCompletionReviewsEqual(task.completionReview, other.completionReview)
+      || !areSubtaskCarryoverProgressEqual(task.subtaskCarryoverProgress, other.subtaskCarryoverProgress)
       || task.tags?.length !== other.tags?.length
       || task.tags?.some((tag, tagIndex) => tag !== other.tags?.[tagIndex])) {
       return false;

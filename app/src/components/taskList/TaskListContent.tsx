@@ -1,6 +1,7 @@
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { AnimatePresence } from 'framer-motion';
 import { memo } from 'react';
+import type { AppLanguage } from '../../../shared/appSettings';
 import type { Task, TaskSource } from '../../types/task';
 import { SortableSourceSection } from './SortableSourceSection';
 import { SortableTaskItem } from './SortableTaskItem';
@@ -10,6 +11,7 @@ import { getSourceSortableId, getTaskSortableId } from './taskListDnd';
 
 export interface TaskListItemContentProps {
   tasks: Task[];
+  language: AppLanguage;
   allTags: string[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
@@ -34,6 +36,7 @@ export interface TaskListContentProps extends TaskListItemContentProps {
 
 export const TaskListContent = memo(function TaskListContent({
   tasks,
+  language,
   sourceGroups,
   shouldGroupBySource,
   dragDisabled,
@@ -56,6 +59,7 @@ export const TaskListContent = memo(function TaskListContent({
     <SortableTaskItem
       key={task.id}
       task={task}
+      language={language}
       index={index}
       dragDisabled={dragDisabled}
       isDragActive={isDragActive}

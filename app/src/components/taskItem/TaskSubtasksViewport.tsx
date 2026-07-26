@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import type { RefObject } from 'react';
+import type { AppLanguage } from '../../../shared/appSettings';
 import type { Task } from '../../types/task';
 import { SubtaskCard } from './SubtaskCard';
 import { stopClusterToggle } from './taskItemInteractions';
@@ -8,11 +9,14 @@ import {
   TASK_CLUSTER_SPRING,
   TASK_SUBTASK_STAGGER_MS,
 } from './taskItemStack';
-import { TASK_SUBTASKS_LABEL } from './taskItemPresentation';
+import { getSubtaskCarryoverNotice, TASK_SUBTASKS_LABEL } from './taskItemPresentation';
 import { TASK_SUBTASK_VIEWPORT_HEIGHT, type VirtualSubtaskItem } from './useVirtualSubtasks';
 
 export interface TaskSubtasksViewportProps {
   taskId: string;
+  language: AppLanguage;
+  carriedFromDate: string | undefined;
+  subtaskCarryoverProgress: Task['subtaskCarryoverProgress'];
   viewportRef: RefObject<HTMLSpanElement>;
   isVirtual: boolean;
   totalHeight: number | undefined;
@@ -27,6 +31,9 @@ export interface TaskSubtasksViewportProps {
 
 export function TaskSubtasksViewport({
   taskId,
+  language,
+  carriedFromDate,
+  subtaskCarryoverProgress,
   viewportRef,
   isVirtual,
   totalHeight,
@@ -38,6 +45,8 @@ export function TaskSubtasksViewport({
   onEditSubtask,
   onChangeSubtaskPriority,
 }: TaskSubtasksViewportProps) {
+  const carryoverNotice = getSubtaskCarryoverNotice(language, carriedFromDate, subtaskCarryoverProgress);
+
   return (
     <motion.span
       id={`task-subtasks-${taskId}`}
@@ -52,6 +61,9 @@ export function TaskSubtasksViewport({
       onClick={stopClusterToggle}
       onPointerDown={stopClusterToggle}
     >
+      {carryoverNotice && (
+        <span className="task-subtask-carryover-notice">{carryoverNotice}</span>
+      )}
       <span
         className={`task-subtask-virtual-list ${isVirtual ? 'task-subtask-virtual-list-active' : ''}`}
         style={isVirtual ? { height: totalHeight } : undefined}
