@@ -40,6 +40,10 @@ function expectNotIncludes(source: string, needle: string, message: string) {
   assert.ok(!source.includes(needle), message);
 }
 
+function expectMatches(source: string, pattern: RegExp, message: string) {
+  assert.match(source, pattern, message);
+}
+
 expectIncludes(windowState, 'function normalizeRestoredWindowState', 'Window restore should normalize saved settings-sized bounds before startup.');
 expectIncludes(mainWindowComposition, "from './mainWindowPersistence'", 'Main-window composition should import the extracted persistence helper.');
 expectIncludes(mainWindowPersistence, 'normalizeRestoredWindowState(stored)', 'Initial bounds should use normalized saved bounds.');
@@ -273,6 +277,13 @@ expectNotIncludes(globals, ".app-shell[data-theme='invisible'] .tabbar button.fo
 expectNotIncludes(globals, ".dark .app-shell[data-theme='invisible'] :is(.daily-panel-tab-active, .tabbar button.font-semibold, .tabbar button[class*=\"font-semibold\"]) {\n  border-color: var(--neutral-border) !important;", 'Invisible dark active tabs should not use the generic active pill background.');
 expectNotIncludes(globals, ".dark .app-shell[data-theme='watercolor'] .date-today-button {\n  background: rgba(255, 255, 255, 0.94) !important;", 'Watercolor dark today button should not keep the old white-background exception.');
 
+expectIncludes(globals, ".app-shell[data-theme='invisible'] .date-today-button {\n  border-color: rgba(0, 0, 0, 0.12) !important;\n  background: rgba(0, 0, 0, 0.09) !important;\n  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10) !important;", 'Invisible light return-to-today should use the approved quiet glass surface.');
+expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .date-today-button {\n  border-color: rgba(255, 255, 255, 0.12) !important;\n  background: rgba(255, 255, 255, 0.09) !important;\n  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10) !important;", 'Invisible dark return-to-today should use the approved quiet glass surface.');
+expectIncludes(globals, ".app-shell[data-theme='invisible'] .today-focus-execution-zone {\n  border-color: rgba(0, 0, 0, 0.13);\n  background: rgba(0, 0, 0, 0.20);\n  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10);", 'Invisible light Today Focus should use the approved extremely light glass surface.');
+expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] .today-focus-execution-zone {\n  border-color: rgba(255, 255, 255, 0.13);\n  background: rgba(255, 255, 255, 0.20);\n  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10);", 'Invisible dark Today Focus should use the approved extremely light glass surface.');
+expectIncludes(globals, ".app-shell[data-theme='invisible'] :is(.today-focus-adjust, .today-focus-state-select, .today-focus-blocker-input) {\n  border-color: rgba(0, 0, 0, 0.12);\n  background: rgba(0, 0, 0, 0.12);", 'Invisible light Today Focus controls should use the approved quiet glass surface.');
+expectIncludes(globals, ".dark .app-shell[data-theme='invisible'] :is(.today-focus-adjust, .today-focus-state-select, .today-focus-blocker-input) {\n  border-color: rgba(255, 255, 255, 0.12);\n  background: rgba(255, 255, 255, 0.12);", 'Invisible dark Today Focus controls should use the approved quiet glass surface.');
+
 expectNotIncludes(titleBarPrimaryActions, 'titlebarPrimaryActiveStyle', 'Primary titlebar action selection should be styled by CSS rather than an inline style object.');
 expectNotIncludes(titleBarPrimaryActions, 'style={', 'Primary titlebar actions should not carry inline selected-theme styles.');
 expectNotIncludes(titleBarPrimaryActions, 'CSSProperties', 'Primary titlebar actions should not import CSSProperties for selected-theme styling.');
@@ -297,7 +308,7 @@ expectIncludes(globals, ".compact-day-strip-day {\n    min-height: 2.72rem;\n   
 expectIncludes(globals, ".compact-day-strip.compact-day-strip-has-today-action {\n    grid-template-columns: 2rem minmax(0, 1fr);\n    gap: 0.18rem;", 'Narrow viewports should shrink the back-to-today column.');
 expectIncludes(globals, ".compact-day-strip .compact-day-strip-today-label {\n    position: absolute;", 'Narrow viewports should visually hide the today label while retaining its accessible name.');
 expectIncludes(globals, ".task-toolbar {\n  position: relative;\n  z-index: 2;\n  container-type: inline-size;", 'Toolbar controls should respond to their own available width.');
-expectIncludes(globals, "@container (max-width: 280px) {\n  .task-toolbar-row {", 'Toolbar controls should share a container-width compact breakpoint.');
+expectMatches(globals, /@container \(max-width: 280px\) \{[\s\S]*?\.task-toolbar-row \{/, 'Toolbar controls should share a container-width compact breakpoint.');
 expectIncludes(globals, ".task-toolbar .task-toolbar-tools :is(.task-tool-icon, .task-view-launcher),\n  .task-toolbar .task-daily-action {\n    height: 1.72rem;\n    min-height: 1.72rem;\n    font-size: 0.62rem;", 'Small-window toolbar controls should share the compact sizing contract.');
 expectIncludes(globals, ".task-toolbar :is(.task-filter-button, .task-filter-select, .task-clear-filter, .task-search-input) {\n    height: 1.72rem;\n    min-height: 1.72rem;", 'Expanded toolbar search and filter controls should match the compact control height.');
 

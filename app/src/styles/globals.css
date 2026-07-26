@@ -13171,6 +13171,41 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   outline-color: color-mix(in srgb, var(--personal-secondary) 70%, transparent);
 }
 
+/* Invisible theme: keep Today Focus as an extremely light glass layer. */
+.app-shell[data-theme='invisible'] .date-today-button {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  background: rgba(0, 0, 0, 0.09) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10) !important;
+}
+
+.dark .app-shell[data-theme='invisible'] .date-today-button {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10) !important;
+}
+
+.app-shell[data-theme='invisible'] .today-focus-execution-zone {
+  border-color: rgba(0, 0, 0, 0.13);
+  background: rgba(0, 0, 0, 0.20);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10);
+}
+
+.dark .app-shell[data-theme='invisible'] .today-focus-execution-zone {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.20);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.10);
+}
+
+.app-shell[data-theme='invisible'] :is(.today-focus-adjust, .today-focus-state-select, .today-focus-blocker-input) {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.dark .app-shell[data-theme='invisible'] :is(.today-focus-adjust, .today-focus-state-select, .today-focus-blocker-input) {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.12);
+}
+
 @container (max-width: 280px) {
   .today-focus-execution-item {
     grid-template-columns: 1.35rem minmax(0, 1fr);
