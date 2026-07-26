@@ -84,14 +84,13 @@ export function TaskMainContent({
 
   return (
     <span className="task-text-wrap">
-      <span className="task-text-row">
-        <span
-          onDoubleClick={onStartEdit}
-          className="task-text"
-          title={getTaskTextTitle(task)}
-        >
-          {task.text}
-        </span>
+      <span
+        className="task-text-row"
+        title={getTaskTextTitle(task)}
+        onDoubleClick={onStartEdit}
+      >
+        <span className="task-text task-text-browse">{task.text}</span>
+        <span className="task-text task-text-active" aria-hidden="true">{task.text}</span>
       </span>
 
       {visibleTags.length > 0 && (
@@ -118,19 +117,21 @@ export function DragHandleButton({
   dragHandleProps?: TaskDragHandleProps;
 }) {
   return (
-    <button
-      type="button"
-      ref={dragHandleProps?.setActivatorNodeRef}
-      className="task-drag-handle"
-      disabled={dragHandleProps?.disabled ?? true}
-      aria-label={TASK_DRAG_HANDLE_LABEL}
-      onClick={(event) => event.stopPropagation()}
-      onPointerDown={(event) => event.stopPropagation()}
-      {...(dragHandleProps?.attributes || {})}
-      {...(dragHandleProps?.listeners || {})}
-      aria-disabled={dragHandleProps?.disabled ?? true}
-    >
-      <DragDotsIcon />
-    </button>
+    <span className="task-drag-slot">
+      <button
+        type="button"
+        ref={dragHandleProps?.setActivatorNodeRef}
+        className="task-drag-handle"
+        disabled={dragHandleProps?.disabled ?? true}
+        aria-label={TASK_DRAG_HANDLE_LABEL}
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        {...(dragHandleProps?.attributes || {})}
+        {...(dragHandleProps?.listeners || {})}
+        aria-disabled={dragHandleProps?.disabled ?? true}
+      >
+        <DragDotsIcon />
+      </button>
+    </span>
   );
 }

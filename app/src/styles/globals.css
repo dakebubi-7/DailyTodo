@@ -8209,11 +8209,11 @@ html {
    an absolutely-positioned .task-action-layer, so they take NO column — their
    room is reserved with --task-action-safe-space (padding-right). */
 .task-card-has-children {
-  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
+  grid-template-columns: auto auto auto minmax(0, 1fr) !important;
 }
 
 .task-card-no-children {
-  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
+  grid-template-columns: auto auto auto minmax(0, 1fr) !important;
 }
 
 .task-priority-rail,
@@ -8333,7 +8333,7 @@ html {
 
 @media (max-height: 560px), (max-width: 420px) {
   .task-card-has-children {
-    grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
+    grid-template-columns: auto auto auto minmax(0, 1fr) !important;
   }
 
   .task-card-no-children {
@@ -9340,13 +9340,13 @@ html {
 /* Theme-scoped final fixes 2026-06-16: keep each theme isolated. */
 .task-card-has-children,
 .task-card-no-children {
-  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;
+  grid-template-columns: auto auto auto minmax(0, 1fr) !important;
   grid-auto-flow: column !important;
 }
 
 .task-card > .task-text-wrap,
 .task-card > .task-edit-input {
-  grid-column: 5 !important;
+  grid-column: 4 !important;
   grid-row: 1 !important;
   align-self: center !important;
 }
@@ -9355,7 +9355,7 @@ html {
 .task-card > .task-complete-action,
 .task-card > .task-tree-toggle,
 .task-card > .task-tree-spacer,
-.task-card > .task-drag-handle {
+.task-card > .task-drag-slot {
   grid-row: 1 !important;
   align-self: center !important;
 }

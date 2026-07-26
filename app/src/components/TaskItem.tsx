@@ -167,7 +167,6 @@ export function TaskItem({
           ) : (
             <>
               <DragHandleButton dragHandleProps={dragHandleProps} />
-              <span className="task-cluster-main-spacer task-cluster-leading-spacer" aria-hidden="true" />
               <CompleteActionButton
                 completed={task.completed}
                 label={completeActionLabel}
