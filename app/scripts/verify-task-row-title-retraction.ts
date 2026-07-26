@@ -21,7 +21,14 @@ function escapeRegExp(value: string): string {
 }
 
 function readCssRange(css: string, selector: string): { start: number; end: number; content: string } {
-  const selectorMatch = new RegExp(`^[ \\t]*${escapeRegExp(selector)}[ \\t]*\\{`, 'm').exec(css);
+  const selectorPattern = new RegExp(`^[ \\t]*${escapeRegExp(selector)}[ \\t]*\\{`, 'gm');
+  let selectorMatch: RegExpExecArray | null = null;
+  let match: RegExpExecArray | null;
+
+  while ((match = selectorPattern.exec(css)) !== null) {
+    selectorMatch = match;
+  }
+
   assert.ok(selectorMatch?.index !== undefined, `CSS should define ${selector}.`);
   const selectorStart = selectorMatch.index;
 
@@ -63,10 +70,10 @@ assert.ok(controls.includes('className="task-text task-text-browse"'), 'Browse m
 assert.match(controls, /className="task-text task-text-active"\s+aria-hidden="true"/s, 'Active title should remain available as an aria-hidden one-line layout layer.');
 assert.match(
   controls,
-  /<span(?=[^>]*className="task-text-row")(?=[^>]*title=\{getTaskTextTitle\(task\)\})(?=[^>]*onDoubleClick=\{onStartEdit\})[^>]*>\s*<span\s+className="task-text task-text-browse">[\s\S]*?<\/span>\s*<span\s+className="task-text task-text-active"\s+aria-hidden="true">[\s\S]*?<\/span>\s*<\/span>/,
+  /<span(?=[^>]*className="task-text-row")(?=[^>]*title=\{getTaskTextTitle\(task\)\})(?=[^>]*onDoubleClick=\{onStartEdit\})[^>]*>\s*<span\s+className="task-text task-text-browse">\s*\{task\.text\}\s*<\/span>\s*<span\s+className="task-text task-text-active"\s+aria-hidden="true">\s*\{task\.text\}\s*<\/span>\s*<\/span>/,
   'The title row should own its tooltip and double-click behavior around browse and aria-hidden active title layers.',
 );
-assert.match(taskItem, /className="task-drag-slot"/, 'Task rows should preserve a dedicated drag slot.');
+assert.match(controls, /export function DragHandleButton[\s\S]*?return \(\s*<span\s+className="task-drag-slot">\s*<button[\s\S]*?className="task-drag-handle"/, 'DragHandleButton should own the drag-slot wrapper around its drag-handle button.');
 assert.doesNotMatch(taskItem, /task-cluster-main-spacer/, 'Task rows should no longer retain the removed cluster main spacer.');
 assert.match(taskItem, /!isCleanupMode && \([\s\S]*?<TaskActionLayer/, 'History cleanup mode should continue to guard the action layer.');
 assert.match(taskItem, /from '\.\/taskItem\/taskItemActionControls'/, 'TaskItem should retain action-layer module ownership.');
@@ -82,7 +89,7 @@ assertRuleIncludes(normalCardSelector, ['--task-row-action-space: 0rem;', 'paddi
 assertRuleIncludes(`${normalCardSelector} > .task-action-layer`, ['opacity: 0;', 'pointer-events: none;'], 'Idle task action space should be hidden and non-interactive.', preciseHover);
 assertRuleIncludes(`${normalCardSelector} > .task-drag-slot`, ['width: 0;'], 'Idle normal task cards should retract the drag slot.', preciseHover);
 assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-browse`, ['display: -webkit-box;', 'overflow: hidden;', '-webkit-box-orient: vertical;', '-webkit-line-clamp: 2;'], 'Normal task cards should render browse titles as two-line clamps.', preciseHover);
-assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-active`, ['display: block;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;'], 'Normal task cards should render active titles as one-line ellipses.', preciseHover);
+assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-active`, ['display: block;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;', 'opacity: 0;'], 'Normal task cards should render active titles as one-line ellipses until hover or focus.', preciseHover);
 assertRuleIncludes(normalCardInteractiveSelector, ['--task-row-action-space: var(--task-action-safe-space);'], 'Normal hover/focus cards should reserve action space.', preciseHover);
 assertRuleIncludes(`${normalCardInteractiveSelector} > .task-action-layer`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal hover/focus cards should reveal their exact action layer.', preciseHover);
 assertRuleIncludes(`${normalCardInteractiveSelector} > .task-drag-slot:has(.task-drag-handle:not(:disabled))`, ['width: 0.95rem;'], 'Normal hover/focus cards should reveal the enabled drag slot.', preciseHover);
