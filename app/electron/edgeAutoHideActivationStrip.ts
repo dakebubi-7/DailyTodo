@@ -1,7 +1,7 @@
 ﻿import { BrowserWindow } from 'electron';
 import type { EdgeAutoHideActivationStrip } from './edgeAutoHideController';
 import {
-  EDGE_AUTO_HIDE_REVEAL_PX,
+  EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX,
   getActivationStripBounds,
   type EdgeAutoHideEdge,
   type Rect,
@@ -23,6 +23,7 @@ export function createEdgeAutoHideActivationStrip({
   let ready = false;
   let visible = false;
   let pending: { edge: EdgeAutoHideEdge; expandedBounds: Rect; workArea: Rect } | null = null;
+  let pageRevision = 0;
 
   function notifyActivate(source: string): void {
     // Never activate while the strip is supposed to be hidden; a stale always-on-top
@@ -33,6 +34,7 @@ export function createEdgeAutoHideActivationStrip({
   }
 
   function hardHide(target: BrowserWindow): void {
+    pageRevision += 1;
     visible = false;
     pending = null;
     try {
@@ -45,14 +47,43 @@ export function createEdgeAutoHideActivationStrip({
 
   function applyShow(target: BrowserWindow, edge: EdgeAutoHideEdge, expandedBounds: Rect, workArea: Rect): void {
     const bounds = getActivationStripBounds(edge, expandedBounds, workArea);
+    const revision = ++pageRevision;
     target.setBounds(bounds);
     if (typeof target.setAlwaysOnTop === 'function') {
       target.setAlwaysOnTop(true, 'screen-saver');
     }
-    target.setIgnoreMouseEvents(false);
-    visible = true;
-    target.showInactive();
-    diag?.(`edge auto-hide: activation strip shown ${edge} ${bounds.x},${bounds.y} ${bounds.width}x${bounds.height}`);
+    target.setIgnoreMouseEvents(true);
+
+    const isCurrent = (): boolean => !disposed
+      && visible
+      && strip === target
+      && !target.isDestroyed()
+      && pageRevision === revision;
+    const hideAndRestore = (): void => {
+      if (!isCurrent()) return;
+      hardHide(target);
+      activate();
+    };
+
+    let setEdge: Promise<unknown>;
+    try {
+      setEdge = target.webContents.executeJavaScript(
+        `document.documentElement.dataset.edge = ${JSON.stringify(edge)};`,
+        true,
+      );
+    } catch {
+      hideAndRestore();
+      return;
+    }
+
+    void setEdge
+      .then(() => {
+        if (!isCurrent()) return;
+        target.setIgnoreMouseEvents(false);
+        target.showInactive();
+        diag?.(`edge auto-hide: activation strip shown ${edge} ${bounds.x},${bounds.y} ${bounds.width}x${bounds.height}`);
+      })
+      .catch(hideAndRestore);
   }
 
   function ensureWindow(): BrowserWindow | null {
@@ -62,8 +93,8 @@ export function createEdgeAutoHideActivationStrip({
     ready = false;
     visible = false;
     strip = new BrowserWindow({
-      width: EDGE_AUTO_HIDE_REVEAL_PX,
-      height: EDGE_AUTO_HIDE_REVEAL_PX,
+      width: EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX,
+      height: EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -96,16 +127,9 @@ export function createEdgeAutoHideActivationStrip({
     });
     strip.webContents.on('did-finish-load', () => {
       ready = true;
-      if (!strip || strip.isDestroyed() || !pending || !visible && !pending) {
-        // If we were asked to hide before load finished, stay hidden.
-      }
-      if (!strip || strip.isDestroyed() || !pending) return;
-      if (!visible && pending) {
-        // show() may have been requested before ready; only apply if still wanted.
-      }
+      if (!strip || strip.isDestroyed() || !visible || !pending) return;
       const next = pending;
       pending = null;
-      // Only show if a show is still desired. pending existing means show was requested.
       applyShow(strip, next.edge, next.expandedBounds, next.workArea);
     });
     strip.on('closed', () => {
@@ -149,7 +173,7 @@ export function createEdgeAutoHideActivationStrip({
 
 export function getActivationStripPageHtml(): string {
   return `<!doctype html>
-<html>
+<html data-edge="right">
   <head>
     <meta charset="utf-8" />
     <style>
@@ -161,25 +185,94 @@ export function getActivationStripPageHtml(): string {
         background: transparent;
         cursor: pointer;
       }
-      .strip {
-        width: 100%;
-        height: 100%;
-        border-radius: 999px;
+      .glass-pull {
+        position: absolute;
+        display: block;
+        box-sizing: border-box;
         background:
-          linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0.10) 48%, rgba(180,210,255,0.16)),
-          rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.34);
+          linear-gradient(180deg, rgba(255,255,255,0.26), rgba(194,231,210,0.12)),
+          rgba(207,242,221,0.16);
         box-shadow:
-          inset 0 1px 0 rgba(255,255,255,0.55),
-          inset 0 -1px 0 rgba(255,255,255,0.08),
-          0 4px 14px rgba(20, 30, 50, 0.16);
-        backdrop-filter: blur(18px) saturate(1.35);
-        -webkit-backdrop-filter: blur(18px) saturate(1.35);
+          inset 0 1px 0 rgba(255,255,255,0.34),
+          0 4px 12px rgba(0,8,6,0.27);
+        backdrop-filter: blur(14px) saturate(1.2);
+        -webkit-backdrop-filter: blur(14px) saturate(1.2);
+        transition: width 150ms ease, height 150ms ease, background 150ms ease, box-shadow 150ms ease;
+      }
+      .glass-pull::before {
+        content: "";
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        border-right: 1.5px solid rgba(244,255,248,0.94);
+        border-bottom: 1.5px solid rgba(244,255,248,0.94);
+      }
+      html[data-edge="right"] .glass-pull {
+        top: 50%;
+        right: 0;
+        width: 15px;
+        height: 72px;
+        transform: translateY(-50%);
+        border: 1px solid rgba(237,255,244,0.42);
+        border-right: 0;
+        border-radius: 9px 0 0 9px;
+      }
+      html[data-edge="right"] .glass-pull::before {
+        top: 50%;
+        left: 50%;
+        transform: translate(-23%, -50%) rotate(135deg);
+      }
+      html[data-edge="right"] body:hover .glass-pull {
+        width: 19px;
+      }
+      html[data-edge="left"] .glass-pull {
+        top: 50%;
+        left: 0;
+        width: 15px;
+        height: 72px;
+        transform: translateY(-50%);
+        border: 1px solid rgba(237,255,244,0.42);
+        border-left: 0;
+        border-radius: 0 9px 9px 0;
+      }
+      html[data-edge="left"] .glass-pull::before {
+        top: 50%;
+        left: 50%;
+        transform: translate(-77%, -50%) rotate(-45deg);
+      }
+      html[data-edge="left"] body:hover .glass-pull {
+        width: 19px;
+      }
+      html[data-edge="top"] .glass-pull {
+        top: 0;
+        left: 50%;
+        width: 72px;
+        height: 15px;
+        transform: translateX(-50%);
+        border: 1px solid rgba(237,255,244,0.42);
+        border-top: 0;
+        border-radius: 0 0 9px 9px;
+      }
+      html[data-edge="top"] .glass-pull::before {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -77%) rotate(45deg);
+      }
+      html[data-edge="top"] body:hover .glass-pull {
+        height: 19px;
+      }
+      body:hover .glass-pull {
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.34), rgba(202,244,220,0.18)),
+          rgba(217,251,230,0.27);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.4),
+          0 4px 13px rgba(0,8,6,0.3);
       }
     </style>
   </head>
   <body>
-    <div class="strip"></div>
+    <div class="glass-pull"></div>
     <script>
       const notify = () => console.log('${ACTIVATE_MESSAGE}');
       document.addEventListener('mouseenter', notify);
