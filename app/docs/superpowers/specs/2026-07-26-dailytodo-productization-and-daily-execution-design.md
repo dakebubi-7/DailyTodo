@@ -11,7 +11,7 @@ This is the consolidated product plan for DailyTodo. It combines the earlier Win
 - next-business-day AI review based on the user's actual completion records;
 - public stable-release readiness after local quality is proven.
 
-DailyTodo remains a local-first Windows desktop application. AI is an optional enhancement layer: no task, completion record, backup, restore, or ordinary carryover flow may depend on AI availability.
+DailyTodo remains a local-first Windows desktop application. AI is an optional enhancement layer: no task, completion record, backup, restore, or ordinary carryover flow may depend on AI availability. The default experience is a clean standard task mode; AI-assisted review is an explicit opt-in in Settings.
 
 ## 2. Product Decisions Already Made
 
@@ -47,6 +47,15 @@ DailyTodo remains a local-first Windows desktop application. AI is an optional e
 - AI never chooses Today Focus automatically. The user can use AI context, but must explicitly select or confirm every focus task.
 - Ordinary unfinished tasks carry over normally. They do not each demand a next-day decision or AI advice merely because they are unfinished.
 
+### Standard Task Mode and Optional AI-Assisted Mode
+
+- Standard task mode is the default. It provides task management, completion records, ordinary carryover, backup, restore, tray behavior, and manually selected Today Focus without requiring an AI account, key, provider, or balance.
+- A user who wants AI explicitly enables AI-assisted review in Settings and configures the existing AI provider/profile.
+- Only while AI-assisted review is enabled may the task workspace show AI-specific entry points, including review-ready prompts, suggested actions, account/credit availability states, and AI retry controls.
+- Turning AI-assisted review off stops scheduled and user-initiated AI-review requests, hides AI-only task-page prompts and suggestion controls, and prevents new AI cost.
+- Turning AI-assisted review off never deletes task data, completion records, saved review evidence, past AI suggestions, or manually selected Today Focus. Re-enabling it allows future review batches to use retained local records under the normal source-date and idempotency rules.
+- Today Focus remains available in both modes. In standard task mode it is purely manual; in AI-assisted mode, an AI suggestion is only one optional route for the user to select or edit a focus action.
+
 ## 3. Scope and Boundaries
 
 ### In Scope
@@ -57,6 +66,7 @@ DailyTodo remains a local-first Windows desktop application. AI is an optional e
 4. Keep task-row density and task-title width intact.
 5. Add local data recovery, diagnostics access, and explicit Windows tray behavior.
 6. Prepare an auditable path to a future public stable release.
+7. Keep AI-assisted review opt-in so DailyTodo remains a complete daily task application without it.
 
 ### Explicitly Out of Scope for This Plan
 
@@ -65,7 +75,7 @@ DailyTodo remains a local-first Windows desktop application. AI is an optional e
 - Silent background updates.
 - A permanent task-row button, icon, or expanded AI text for Today Focus.
 - AI automatically rewriting task titles, auto-promoting priorities, or auto-selecting Today's Focus.
-- Requiring AI to use DailyTodo's normal task, review, or backup features.
+- Requiring AI to use DailyTodo's normal task, completion-record, carryover, Today Focus, or backup features.
 
 ## 4. Current Baseline and Gaps
 
@@ -153,17 +163,19 @@ Completed tasks with no next step appear only in the previous-day completion sum
 
 The review concerns the prior business date and is generated as one daily batch, never separately every time a task is completed.
 
-Opening the task page must not silently issue a model request or spend balance. Generation uses the user's already configured AI Review flow:
+Opening the task page must not silently issue a model request or spend balance. AI generation is available only when the user has enabled AI-assisted review. When it is enabled, generation uses the user's already configured AI Review flow:
 
 - when automatic daily generation is explicitly enabled, the scheduled or next-day daily run creates the batch;
 - when it is not enabled, the user can initiate the same batch from the existing AI Review flow or the quiet next-day prompt;
 - the task page observes the local result and shows the appropriate state; it is not itself a hidden billing trigger.
 
+When AI-assisted review is disabled, no scheduled or user-initiated AI-review request may run from the task workspace. The workspace continues to show the user's tasks, completion records, ordinary carryover, and manual Today Focus without AI prompts, suggestion controls, balance warnings, or retry actions.
+
 Each batch is keyed by source date and input-record revisions. It must be idempotent: a retry resumes unresolved items, preserves successful task results, and never produces duplicate suggestions for the same evidence.
 
 ### 5.6 AI Unavailable and Failure States
 
-The user's local review records remain readable and actionable even if AI cannot run.
+The user's local review records remain readable and actionable even if AI cannot run. These AI-availability states appear only when AI-assisted review is enabled; when it is disabled, the task workspace does not display AI status or retry controls.
 
 | Situation | Behavior |
 | --- | --- |
@@ -191,7 +203,7 @@ Today Focus is reached from a compact top-level control and, secondarily, an acc
 
 ### 6.2 Daily Prompt
 
-On the first visit to the task page on a day, DailyTodo may show one compact, non-blocking line when there are actionable prior-day records or a review state that needs the user's attention:
+Only when AI-assisted review is enabled, DailyTodo may show one compact, non-blocking line on the first visit to the task page on a day when there are actionable prior-day records or a review state that needs the user's attention:
 
 ```text
 Yesterday's review is ready · 2 optional actions   [View]
@@ -201,11 +213,11 @@ It does not open a modal, does not expand automatically, does not play sound, an
 
 If no actionable continuation exists, DailyTodo does not show a next-day prompt. The completed summary remains available from the review area.
 
-When AI is unavailable, the same one-line surface gives access to the saved human records and an explicit retry action. It must not pretend a review was generated.
+When AI is unavailable, the same one-line surface gives access to the saved human records and an explicit retry action. It must not pretend a review was generated. In standard task mode, this entire AI-specific prompt is absent; the user continues directly with the ordinary task workspace and manual Today Focus.
 
 ### 6.3 Review Detail
 
-Selecting `View` opens the review detail, not a long text block inside the task workspace. Suggestions are grouped by original task, never merged into a single synthetic to-do list.
+Selecting `View` opens the review detail, not a long text block inside the task workspace. Suggestions are grouped by original task, never merged into a single synthetic to-do list. This AI review detail is not surfaced from the task workspace while AI-assisted review is disabled; retained review evidence remains local and becomes available again if the user re-enables the feature.
 
 Each task section shows:
 
@@ -283,7 +295,7 @@ The renderer receives narrow IPC commands and validated results. It must not acc
 1. Change completion persistence so `partial` and `blocked` save a review without falsely completing a task.
 2. Preserve `done`-with-next-step as a completed stage and candidate continuation without auto-reopening it.
 3. Add validated storage/migration for Today Focus membership, order, focus action, and adoption provenance.
-4. Add a compact top-level focus entry, temporary selection mode, context-menu fallback, focus limit enforcement, and accessible selection behavior.
+4. Add a compact top-level focus entry, temporary selection mode, context-menu fallback, focus limit enforcement, and accessible selection behavior that works without AI enabled.
 
 **Exit criteria:** A 70% partial task stays visible and carries forward normally; a blocked task remains actionable; a user can select one to three tasks without permanent task-row crowding; existing priority behavior is unchanged.
 
@@ -291,8 +303,8 @@ The renderer receives narrow IPC commands and validated results. It must not acc
 
 1. Feed the latest structured completion record into the AI handoff prompt and enforce the evidence-first output rules.
 2. Build the persisted daily-batch state, eligibility filtering, provenance, idempotency, and controlled retry rules.
-3. Integrate with the existing daily AI Review flow without making a task-page visit an implicit charged request.
-4. Add the quiet first-visit prompt, per-task review detail, readable human-only state, and retry actions.
+3. Integrate with the existing daily AI Review flow behind an explicit AI-assisted-review setting, without making a task-page visit an implicit charged request.
+4. Add the quiet first-visit prompt, per-task review detail, readable human-only state, and retry actions only for users who enabled AI-assisted review.
 5. Add the confirmation/edit/cancel adoption flow and deliberate reopening for a completed-stage continuation.
 
 **Exit criteria:** Suggestions stay tied to their source tasks; human records remain visible if AI fails; no duplicate suggestions are produced after retry; the user alone decides Today Focus; task-list width remains stable.
@@ -320,8 +332,8 @@ The renderer receives narrow IPC commands and validated results. It must not acc
 ### Automated Coverage
 
 - Task-state tests: done, partial, blocked, done-with-next-step, reopen-on-adoption, subtasks, carryover, and history preservation.
-- AI tests: evidence passed to prompts, output validation, task eligibility, one-task-one-suggestion association, invalid response handling, no hidden generation on task-page render, and retry idempotency.
-- UI tests: focus limit, keyboard/context-menu entry, prompt dismissal for a single day, failure states, confirmation/edit/cancel adoption, and unchanged ordinary task-row layout.
+- AI tests: evidence passed to prompts, output validation, task eligibility, one-task-one-suggestion association, invalid response handling, no hidden generation on task-page render, disabled-mode request blocking, and retry idempotency.
+- UI tests: focus limit, keyboard/context-menu entry, manual Today Focus in standard task mode, AI prompt dismissal for a single day, disabled-mode AI surface hiding, failure states, confirmation/edit/cancel adoption, and unchanged ordinary task-row layout.
 - Backup tests: logical-state round trip, secret redaction, Obsidian exclusion, invalid artifact rejection, pre-restore recovery point, and schema migration.
 - Electron tests: tray/window policy, diagnostics IPC validation, and restricted renderer APIs.
 - Build checks: typecheck, lint, test suite, packaging verification, security scan, and portable environment checks.
