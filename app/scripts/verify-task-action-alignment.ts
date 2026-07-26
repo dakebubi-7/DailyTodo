@@ -49,6 +49,8 @@ assert.ok(globals.includes('place-items: center !important;'), 'Subtask action s
 assert.ok(globals.includes('line-height: 0 !important;'), 'Subtask buttons should remove text line-box offset that visually lowers SVG icons.');
 assert.ok(globals.includes('padding: 0 !important;'), 'Subtask buttons should not have padding that shifts icons.');
 assert.ok(globals.includes('.task-subtask-review svg,\n.task-subtask-delete svg {\n  display: block !important;'), 'Subtask action SVGs should be block-level to avoid baseline offset.');
+assert.ok(globals.includes('.task-card > .task-action-layer .task-review-action svg,\n.task-card > .task-action-layer .task-delete-action svg {\n  transform: translateY(-3px) !important;'), 'Main-task review and delete glyphs should align their optical centers with the main-task text center at compact icon size.');
+assert.ok(globals.includes('.task-card > .task-action-layer .task-review-action-visible {\n  border-color: transparent !important;\n  background: transparent !important;'), 'Main-task review actions should not show a persistent circular background when they are available.');
 assert.ok(globals.includes('.task-subtask-row {') && globals.includes('grid-template-columns:'), 'Subtask row should use grid layout.');
 assert.ok(watercolor.includes('.theme-watercolor .task-icon-action'), 'Watercolor should explicitly use compact shared action button size.');
 assert.ok(!watercolor.includes('width: 2.8rem') && !watercolor.includes('height: 2.8rem'), 'Watercolor should not keep oversized action buttons.');

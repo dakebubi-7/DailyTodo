@@ -12853,3 +12853,15 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
     transition: none !important;
   }
 }
+
+/* Compact action outlines sit optically below the main-task text center. */
+.task-card > .task-action-layer .task-review-action svg,
+.task-card > .task-action-layer .task-delete-action svg {
+  transform: translateY(-3px) !important;
+}
+
+/* Keep the review action visually consistent with the unframed delete action. */
+.task-card > .task-action-layer .task-review-action-visible {
+  border-color: transparent !important;
+  background: transparent !important;
+}
