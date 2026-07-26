@@ -9145,7 +9145,6 @@ html {
   transform: none;
 }
 
-.task-delete-zone,
 .task-subtask-delete-zone {
   transform: translateY(2px);
 }
