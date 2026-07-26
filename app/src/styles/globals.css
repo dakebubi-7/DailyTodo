@@ -12686,3 +12686,154 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   border-color: rgba(255, 255, 255, 0.18) !important;
   background: rgba(255, 255, 255, 0.08) !important;
 }
+
+/* Top-level task rows keep controls accessible on touch, then retract them for fine-pointer browsing. */
+.task-drag-slot {
+  display: inline-grid;
+  width: 0.95rem;
+  height: 1.5rem;
+  place-items: center;
+  overflow: hidden;
+}
+
+.task-card.history-cleanup-task-card {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  padding-right: 0.5rem !important;
+}
+
+.history-cleanup-task-card > .task-text-wrap,
+.history-cleanup-task-card > .task-edit-input {
+  grid-column: 2 !important;
+}
+
+.task-text-browse {
+  display: block;
+}
+
+.task-text-active {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .task-card:not(.history-cleanup-task-card) {
+    --task-row-action-space: 0rem;
+    column-gap: 0 !important;
+    padding-right: calc(0.5rem + var(--task-row-action-space)) !important;
+    transition: column-gap 0.18s ease, padding-right 0.18s ease;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-complete-action {
+    margin-right: 0.32rem !important;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-priority-stop {
+    margin-right: 0.32rem;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-drag-slot {
+    width: 0;
+    margin-right: 0;
+    opacity: 0;
+    transform: translateX(-0.3rem);
+    transition: width 0.18s ease, margin-right 0.18s ease, opacity 0.16s ease, transform 0.18s ease;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-action-layer {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(0.3rem, -50%) !important;
+    transition: opacity 0.16s ease, transform 0.18s ease;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-text-wrap > .task-text-row {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    height: 2.5em;
+    overflow: hidden;
+    transition: height 0.18s ease;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-text-wrap .task-text-browse,
+  .task-card:not(.history-cleanup-task-card) > .task-text-wrap .task-text-active {
+    grid-area: 1 / 1;
+    min-width: 0;
+    transition: opacity 0.16s ease, transform 0.18s ease;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-text-wrap .task-text-browse {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal !important;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-text-wrap .task-text-active {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(0.3em);
+  }
+
+  .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) {
+    --task-row-action-space: var(--task-action-safe-space);
+  }
+
+  .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-drag-slot:has(.task-drag-handle:not(:disabled)) {
+    width: 0.95rem;
+    margin-right: 0.32rem;
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-action-layer {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) !important;
+  }
+
+  .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-text-wrap .task-text-browse {
+    opacity: 0;
+    transform: translateY(-0.3em);
+  }
+
+  .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-text-wrap .task-text-active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-text-wrap > .task-text-row {
+    height: 1.25em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card:not(.history-cleanup-task-card) {
+    transition: none !important;
+  }
+
+  .task-text-row {
+    transition: none !important;
+  }
+
+  .task-text-browse {
+    transition: none !important;
+  }
+
+  .task-text-active {
+    transition: none !important;
+  }
+
+  .task-drag-slot {
+    transition: none !important;
+  }
+
+  .task-action-layer {
+    transition: none !important;
+  }
+}
