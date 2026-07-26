@@ -12714,6 +12714,18 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   display: none;
 }
 
+@media (hover: none), (pointer: coarse) {
+  .task-card:not(.history-cleanup-task-card) > .task-action-layer {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .task-card:not(.history-cleanup-task-card) > .task-action-layer .task-delete-action {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .task-card:not(.history-cleanup-task-card) {
     --task-row-action-space: 0rem;
