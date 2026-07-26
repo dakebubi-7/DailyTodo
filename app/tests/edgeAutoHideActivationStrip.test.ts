@@ -9,16 +9,16 @@ describe('edge auto-hide activation strip', () => {
     expect(getActivationStripBounds('left', bounds, workArea)).toEqual({
       x: -1920,
       y: 312,
-      width: 8,
+      width: 28,
       height: 96,
     });
   });
 
   it('places a short right activation strip inside the matching display edge', () => {
     expect(getActivationStripBounds('right', { ...bounds, x: -240 }, workArea)).toEqual({
-      x: -8,
+      x: -28,
       y: 312,
-      width: 8,
+      width: 28,
       height: 96,
     });
   });
@@ -28,23 +28,34 @@ describe('edge auto-hide activation strip', () => {
       x: -828,
       y: 0,
       width: 96,
-      height: 8,
+      height: 28,
     });
   });
 
-  it('keeps all activation handles short', () => {
-    expect(getActivationStripBounds('left', bounds, workArea).height).toBe(96);
-    expect(getActivationStripBounds('right', bounds, workArea).height).toBe(96);
-    expect(getActivationStripBounds('top', bounds, workArea).width).toBe(96);
-    expect(getActivationStripBounds('top', bounds, workArea).height).toBe(8);
+  it('uses transparent A2 hit regions around every visible glass pull', () => {
+    expect(getActivationStripBounds('left', bounds, workArea)).toMatchObject({ width: 28, height: 96 });
+    expect(getActivationStripBounds('right', { ...bounds, x: -240 }, workArea)).toMatchObject({ width: 28, height: 96 });
+    expect(getActivationStripBounds('top', { ...bounds, x: -900, y: 0 }, workArea)).toMatchObject({ width: 96, height: 28 });
   });
 
-  it('uses a liquid-glass style activation strip', () => {
+  it('defines A2 glass pulls for every supported edge', () => {
     const page = getActivationStripPageHtml();
+
+    expect(page).toContain('<html data-edge="right">');
+    expect(page).toContain('class="glass-pull"');
+    expect(page).toContain('html[data-edge="left"] .glass-pull');
+    expect(page).toContain('html[data-edge="right"] .glass-pull');
+    expect(page).toContain('html[data-edge="top"] .glass-pull');
+    expect(page).toContain('width: 15px');
+    expect(page).toContain('height: 72px');
+    expect(page).toContain('width: 72px');
+    expect(page).toContain('height: 15px');
+    expect(page).toContain('width 150ms ease');
+    expect(page).toContain('height 150ms ease');
     expect(page).toContain('backdrop-filter');
-    expect(page).toContain('linear-gradient');
-    expect(page).toContain('border-radius: 999px');
-    expect(page).not.toContain('rgba(77, 124, 255');
+    expect(page).toContain('border-right: 0');
+    expect(page).toContain('border-left: 0');
+    expect(page).toContain('border-top: 0');
   });
 
   it('binds explicit mouse enter and press signals inside the activation strip page', () => {

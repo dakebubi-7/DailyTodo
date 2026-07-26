@@ -1,7 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
+  EDGE_AUTO_HIDE_ACTIVATION_HIT_THICKNESS_PX,
   EDGE_AUTO_HIDE_DESKTOP_EDGE_HIT_PX,
-  EDGE_AUTO_HIDE_REVEAL_PX,
   EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX,
   EDGE_AUTO_HIDE_TOP_SNAP_PX,
   getActivationStripBounds,
@@ -64,35 +64,29 @@ describe('edge auto-hide geometry', () => {
       width: 240,
       height: 480,
     });
-    expect(EDGE_AUTO_HIDE_REVEAL_PX).toBe(8);
   });
 
-  it('uses a short centered side activation strip', () => {
+  it('uses wider centered activation hit regions for every supported edge', () => {
     const bounds = { x: 0, y: 120, width: 240, height: 480 };
+    expect(EDGE_AUTO_HIDE_ACTIVATION_HIT_THICKNESS_PX).toBe(28);
     expect(EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX).toBe(96);
     expect(getActivationStripBounds('left', bounds, workArea)).toEqual({
       x: 0,
       y: 312,
-      width: 8,
+      width: 28,
       height: 96,
     });
     expect(getActivationStripBounds('right', { ...bounds, x: 1680 }, workArea)).toEqual({
-      x: 1912,
+      x: 1892,
       y: 312,
-      width: 8,
+      width: 28,
       height: 96,
     });
-    expect(isPointInActivationStrip({ x: 4, y: 350 }, 'left', bounds, workArea)).toBe(true);
-    expect(isPointInActivationStrip({ x: 4, y: 150 }, 'left', bounds, workArea)).toBe(false);
-  });
-
-  it('uses a short centered top activation strip', () => {
-    const bounds = { x: 600, y: 0, width: 240, height: 480 };
-    expect(getActivationStripBounds('top', bounds, workArea)).toEqual({
+    expect(getActivationStripBounds('top', { ...bounds, x: 600, y: 0 }, workArea)).toEqual({
       x: 672,
       y: 0,
       width: 96,
-      height: 8,
+      height: 28,
     });
   });
 
@@ -123,13 +117,23 @@ describe('edge auto-hide geometry', () => {
     });
   });
 
-  it('accepts pointer positions in the visible activation strip only', () => {
+  it('accepts pointer positions throughout each transparent activation hit region only', () => {
     const expanded = { x: 0, y: 120, width: 240, height: 480 };
 
-    expect(isPointInRect({ x: 4, y: 350 }, { x: 0, y: 312, width: 8, height: 96 })).toBe(true);
-    expect(isPointInActivationStrip({ x: 4, y: 350 }, 'left', expanded, workArea)).toBe(true);
-    expect(isPointInActivationStrip({ x: 9, y: 350 }, 'left', expanded, workArea)).toBe(false);
-    expect(isPointInActivationStrip({ x: 4, y: 150 }, 'left', expanded, workArea)).toBe(false);
+    expect(isPointInRect({ x: 27, y: 350 }, { x: 0, y: 312, width: 28, height: 96 })).toBe(true);
+    expect(isPointInActivationStrip({ x: 0, y: 350 }, 'left', expanded, workArea)).toBe(true);
+    expect(isPointInActivationStrip({ x: 27, y: 350 }, 'left', expanded, workArea)).toBe(true);
+    expect(isPointInActivationStrip({ x: 28, y: 350 }, 'left', expanded, workArea)).toBe(false);
+
+    const rightExpanded = { ...expanded, x: 1680 };
+    expect(isPointInActivationStrip({ x: 1892, y: 350 }, 'right', rightExpanded, workArea)).toBe(true);
+    expect(isPointInActivationStrip({ x: 1919, y: 350 }, 'right', rightExpanded, workArea)).toBe(true);
+    expect(isPointInActivationStrip({ x: 1891, y: 350 }, 'right', rightExpanded, workArea)).toBe(false);
+
+    const topExpanded = { ...expanded, x: 600, y: 0 };
+    expect(isPointInActivationStrip({ x: 700, y: 0 }, 'top', topExpanded, workArea)).toBe(true);
+    expect(isPointInActivationStrip({ x: 700, y: 27 }, 'top', topExpanded, workArea)).toBe(true);
+    expect(isPointInActivationStrip({ x: 700, y: 28 }, 'top', topExpanded, workArea)).toBe(false);
   });
 
   it('only treats the absolute desktop edge as hide intent', () => {

@@ -12,8 +12,8 @@ export type Point = {
   y: number;
 };
 
-// Thickness of the independent liquid-glass handle only. The main window fully leaves the screen.
-export const EDGE_AUTO_HIDE_REVEAL_PX = 8;
+// The transparent activation region is deliberately larger than the visible A2 pull.
+export const EDGE_AUTO_HIDE_ACTIVATION_HIT_THICKNESS_PX = 28;
 // Side handles stay short and centered so they do not dominate the screen edge.
 export const EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX = 96;
 // Top only snaps when the window is truly placed at the top.
@@ -71,9 +71,11 @@ export function getActivationStripBounds(edge: EdgeAutoHideEdge, expandedBounds:
       const height = Math.min(EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX, expandedBounds.height);
       const y = expandedBounds.y + Math.round((expandedBounds.height - height) / 2);
       return {
-        x: edge === 'left' ? workArea.x : getRight(workArea) - EDGE_AUTO_HIDE_REVEAL_PX,
+        x: edge === 'left'
+          ? workArea.x
+          : getRight(workArea) - EDGE_AUTO_HIDE_ACTIVATION_HIT_THICKNESS_PX,
         y,
-        width: EDGE_AUTO_HIDE_REVEAL_PX,
+        width: EDGE_AUTO_HIDE_ACTIVATION_HIT_THICKNESS_PX,
         height,
       };
     }
@@ -82,7 +84,7 @@ export function getActivationStripBounds(edge: EdgeAutoHideEdge, expandedBounds:
         x: expandedBounds.x + Math.round((expandedBounds.width - Math.min(EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX, expandedBounds.width)) / 2),
         y: workArea.y,
         width: Math.min(EDGE_AUTO_HIDE_SIDE_STRIP_LENGTH_PX, expandedBounds.width),
-        height: EDGE_AUTO_HIDE_REVEAL_PX,
+        height: EDGE_AUTO_HIDE_ACTIVATION_HIT_THICKNESS_PX,
       };
   }
 }
