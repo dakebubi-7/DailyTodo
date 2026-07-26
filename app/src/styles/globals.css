@@ -12216,8 +12216,163 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   z-index: 2;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   min-height: 1.85rem;
   margin-bottom: 0.46rem;
+}
+
+/* Scoped cleanup controls for the All and Review history views. */
+.history-cleanup-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0 0 0.46rem auto;
+  color: #52525b;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.review-toolbar .history-cleanup-toolbar {
+  margin-bottom: 0;
+}
+
+.history-cleanup-select-visible {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.28rem;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.history-cleanup-select-visible input,
+.history-cleanup-task-selection input,
+.history-cleanup-review-selection {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--personal-accent);
+  cursor: pointer;
+}
+
+.history-cleanup-selected-count {
+  min-width: 4.55rem;
+  color: #71717a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.history-cleanup-cancel,
+.history-cleanup-delete {
+  min-height: 1.85rem;
+  border: 1px solid rgba(76, 91, 112, 0.13);
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 0.22rem 0.48rem;
+  color: #52525b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.1;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.history-cleanup-cancel:hover {
+  border-color: color-mix(in srgb, var(--personal-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--personal-accent) 9%, rgba(255, 255, 255, 0.64));
+  color: var(--personal-accent);
+}
+
+.history-cleanup-delete {
+  border-color: rgba(190, 24, 93, 0.24);
+  color: #be123c;
+}
+
+.history-cleanup-delete:hover:not(:disabled) {
+  border-color: rgba(190, 24, 93, 0.45);
+  background: rgba(190, 24, 93, 0.09);
+}
+
+.history-cleanup-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.history-cleanup-task-card-selected {
+  border-color: color-mix(in srgb, var(--personal-accent) 56%, rgba(76, 91, 112, 0.1)) !important;
+  background: color-mix(in srgb, var(--personal-accent) 10%, rgba(255, 255, 255, 0.74)) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--personal-accent) 16%, transparent) !important;
+}
+
+.history-cleanup-task-selection {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  min-height: 1rem;
+}
+
+.review-record:has(.history-cleanup-review-selection:checked) {
+  background: color-mix(in srgb, var(--personal-accent) 7%, transparent);
+}
+
+.dark .history-cleanup-toolbar {
+  color: #d4d4d8;
+}
+
+.dark .history-cleanup-selected-count {
+  color: #a1a1aa;
+}
+
+.dark .history-cleanup-cancel,
+.dark .history-cleanup-delete {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.dark .history-cleanup-cancel {
+  color: #e4e4e7;
+}
+
+.dark .history-cleanup-cancel:hover {
+  background: color-mix(in srgb, var(--personal-secondary) 14%, rgba(255, 255, 255, 0.07));
+  color: var(--personal-secondary);
+}
+
+.dark .history-cleanup-delete {
+  border-color: rgba(251, 113, 133, 0.3);
+  color: #fda4af;
+}
+
+.dark .history-cleanup-task-card-selected {
+  border-color: color-mix(in srgb, var(--personal-secondary) 55%, rgba(148, 163, 184, 0.14)) !important;
+  background: color-mix(in srgb, var(--personal-secondary) 13%, rgba(255, 255, 255, 0.06)) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--personal-secondary) 16%, transparent) !important;
+}
+
+.dark .review-record:has(.history-cleanup-review-selection:checked) {
+  background: color-mix(in srgb, var(--personal-secondary) 10%, transparent);
+}
+
+@media (max-width: 420px) {
+  .history-cleanup-toolbar {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .review-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .review-toolbar .history-cleanup-toolbar {
+    margin-bottom: 0;
+  }
 }
 
 .task-view-launcher {

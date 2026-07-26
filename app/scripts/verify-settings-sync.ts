@@ -37,7 +37,6 @@ const preloadSource = fs.readFileSync(path.join(process.cwd(), 'electron/preload
 assert.equal(defaultSettings.language, 'zh-CN');
 assert.equal(defaultSettings.rolloverTime, '05:00');
 assert.equal(defaultSettings.autoCarryForward, true);
-assert.equal(defaultSettings.syncDeletedReviewsToObsidian, true);
 assert.equal(defaultSettings.confirmBeforeDeletingReview, false);
 assert.equal(defaultSettings.lockWindowPosition, false);
 

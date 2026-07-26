@@ -69,6 +69,7 @@ export function createAppShellCompositionInputs({
       allTasks: taskState.allTasks,
       editTaskReview: taskState.editTaskReview,
       deleteTaskReview: taskState.deleteTaskReview,
+      deleteTaskReviews: taskState.deleteTaskReviews,
       totalCount: taskState.totalCount,
       completedCount: taskState.completedCount,
       obsidianPath: taskState.obsidianPath,

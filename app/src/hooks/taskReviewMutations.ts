@@ -102,19 +102,14 @@ export function retainDeletedTaskReviewForObsidian(
   retainedReviews: RetainedObsidianReview[],
   task: Task,
   reviewId: string,
-  syncDeletedReviewsToObsidian: boolean,
   deletedAt?: string,
 ): RetainedObsidianReview[] {
-  if (syncDeletedReviewsToObsidian) return retainedReviews;
-
   const deletedReview = findTaskReview(task, reviewId);
   if (!deletedReview) return retainedReviews;
 
   return retainDeletedReview(retainedReviews, task, deletedReview, deletedAt);
 }
 
-export function getDeleteTaskReviewConfirmationMessage(syncDeletedReviewsToObsidian: boolean): string {
-  return syncDeletedReviewsToObsidian
-    ? '将删除本地完成记录。因为已开启删除同步，下一次 Obsidian 同步会从 DailyTodo 管理区块中移除这条记录。继续吗？'
-    : '将删除本地完成记录。继续吗？';
+export function getDeleteTaskReviewConfirmationMessage(): string {
+  return '将删除 DailyTodo 本地完成记录；已有的 Obsidian 历史记录会保留。继续吗？';
 }

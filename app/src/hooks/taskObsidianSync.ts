@@ -1,3 +1,4 @@
+import { ArchivedObsidianTask, mergeArchivedTasksForObsidian } from '../../shared/obsidianTaskArchive';
 import { RetainedObsidianReview, mergeRetainedReviewsForObsidian } from '../../shared/obsidianReviewRetention';
 import { syncTasksToObsidian } from '../store/taskStore';
 import { Task } from '../types/task';
@@ -6,8 +7,8 @@ export type ObsidianSyncStatus = 'idle' | 'synced' | 'needs-path' | 'error';
 
 export interface BuildObsidianSyncTasksInput {
   allTasks: Task[];
+  archivedObsidianTasks: ArchivedObsidianTask[];
   retainedObsidianReviews: RetainedObsidianReview[];
-  syncDeletedReviewsToObsidian: boolean;
 }
 
 export interface SyncSelectedDailyNoteInput {
@@ -28,12 +29,11 @@ export interface BuildSelectedDailyNoteSyncInputArgs {
 
 export function buildObsidianSyncTasks({
   allTasks,
+  archivedObsidianTasks,
   retainedObsidianReviews,
-  syncDeletedReviewsToObsidian,
 }: BuildObsidianSyncTasksInput) {
-  return syncDeletedReviewsToObsidian
-    ? allTasks
-    : mergeRetainedReviewsForObsidian(allTasks, retainedObsidianReviews);
+  const tasksWithArchive = mergeArchivedTasksForObsidian(allTasks, archivedObsidianTasks);
+  return mergeRetainedReviewsForObsidian(tasksWithArchive, retainedObsidianReviews);
 }
 
 export function buildSelectedDailyNoteSyncInput({

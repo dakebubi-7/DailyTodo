@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useEffect } from 'react';
 import { AppBehaviorSettings } from '../../shared/appSettings';
+import { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
 import { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
 import { TabType, Task } from '../types/task';
 import { TaskListOrderByDate } from '../utils/taskOrdering';
@@ -17,6 +18,7 @@ interface UseTaskInitializationEffectsParams {
   primeTaskTreePersistence: (tasks: Task[]) => void;
   setActiveTab: TaskStateSetter<TabType>;
   setAllTasks: TaskStateSetter<Task[]>;
+  setArchivedObsidianTasks: TaskStateSetter<ArchivedObsidianTask[]>;
   setAppSettings: TaskStateSetter<AppBehaviorSettings>;
   setCurrentDate: TaskStateSetter<string>;
   setDailyInspirationNotes: TaskStateSetter<Record<string, string>>;
@@ -33,6 +35,7 @@ export function useTaskInitializationEffects({
   primeTaskTreePersistence,
   setActiveTab,
   setAllTasks,
+  setArchivedObsidianTasks,
   setAppSettings,
   setCurrentDate,
   setDailyInspirationNotes,
@@ -50,6 +53,7 @@ export function useTaskInitializationEffects({
 
       setAppSettings(initialState.settings);
       setAllTasks(initialState.tasks);
+      setArchivedObsidianTasks(initialState.archivedObsidianTasks);
       setDailyWorkNotes(initialState.dailyWorkNotes);
       setDailyInspirationNotes(initialState.dailyInspirationNotes);
       setRetainedObsidianReviews(initialState.retainedObsidianReviews);

@@ -198,22 +198,17 @@ assert.equal(deletedLegacyFallback.completed, false);
 assert.equal(deletedLegacyFallback.completionReview, undefined);
 assert.equal(deletedLegacyFallback.completionReviews, undefined);
 
-const retainedReview = retainDeletedTaskReviewForObsidian([], reviewed, 'review-1', false, '2026-07-05T06:00:00.000Z');
+const retainedReview = retainDeletedTaskReviewForObsidian([], reviewed, 'review-1', '2026-07-05T06:00:00.000Z');
 assert.equal(retainedReview.length, 1);
 assert.equal(retainedReview[0].task.id, 'task-1');
 assert.equal(retainedReview[0].review.id, 'review-1');
 assert.equal(retainedReview[0].deletedAt, '2026-07-05T06:00:00.000Z');
-assert.equal(retainDeletedTaskReviewForObsidian(retainedReview, reviewed, 'review-1', false).length, 1);
-assert.strictEqual(retainDeletedTaskReviewForObsidian(retainedReview, reviewed, 'missing-review', false), retainedReview);
-assert.strictEqual(retainDeletedTaskReviewForObsidian(retainedReview, reviewed, 'review-1', true), retainedReview);
+assert.equal(retainDeletedTaskReviewForObsidian(retainedReview, reviewed, 'review-1').length, 1);
+assert.strictEqual(retainDeletedTaskReviewForObsidian(retainedReview, reviewed, 'missing-review'), retainedReview);
 
 assert.equal(
-  getDeleteTaskReviewConfirmationMessage(false),
-  '将删除本地完成记录。继续吗？',
-);
-assert.equal(
-  getDeleteTaskReviewConfirmationMessage(true),
-  '将删除本地完成记录。因为已开启删除同步，下一次 Obsidian 同步会从 DailyTodo 管理区块中移除这条记录。继续吗？',
+  getDeleteTaskReviewConfirmationMessage(),
+  '将删除 DailyTodo 本地完成记录；已有的 Obsidian 历史记录会保留。继续吗？',
 );
 
 const deletedReview = deleteReviewFromTask(reviewed, 'review-1');

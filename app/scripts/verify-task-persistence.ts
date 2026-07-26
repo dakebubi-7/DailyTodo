@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   parseStoredActiveTab,
+  parseStoredArchivedObsidianTasks,
   parseStoredCarryoverLedger,
   parseStoredDateKey,
   parseStoredRetainedObsidianReviews,
@@ -233,6 +234,22 @@ const retained = parseStoredRetainedObsidianReviews([
 assert.equal(retained.length, 1);
 assert.equal(retained[0]?.task.id, 'task-1');
 assert.equal(retained[0]?.review.status, 'done');
+
+const archivedTasks = parseStoredArchivedObsidianTasks([
+  {
+    task: {
+      id: 'task-archive-1',
+      text: 'Keep task history',
+      completed: false,
+      priority: 'medium',
+      createdAt: '2026-07-06T01:00:00.000Z',
+    },
+    deletedAt: '2026-07-06T10:00:00.000Z',
+  },
+  { task: { id: 'bad' }, deletedAt: '2026-07-06T10:00:00.000Z' },
+]);
+assert.equal(archivedTasks.length, 1);
+assert.equal(archivedTasks[0].task.id, 'task-archive-1');
 
 assert.match(
   taskPersistenceInitialization,

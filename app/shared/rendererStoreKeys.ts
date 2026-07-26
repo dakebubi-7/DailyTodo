@@ -2,6 +2,7 @@
 export const RENDERER_STORE_KEYS = [
   'tasks',
   'taskCarryoverLedger',
+  'archivedObsidianTasks',
   'retainedObsidianReviews',
   'dailyWorkNotes',
   'dailyInspirationNotes',

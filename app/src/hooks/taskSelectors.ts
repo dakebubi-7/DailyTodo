@@ -6,6 +6,8 @@ import {
 } from '../utils/taskOrdering';
 import { isDateKey } from '../../shared/taskRollover';
 import { getTaskDate } from './taskTransforms';
+import type { AppBehaviorSettings } from '../../shared/appSettings';
+import { taskIsInHistoryRange } from './taskHistoryRange';
 
 export type PriorityFilter = 'all' | Task['priority'];
 
@@ -18,6 +20,7 @@ const taskCommandPriorityOrder: Record<Task['priority'], number> = {
 export interface TaskViewStateInput {
   allTasks: Task[];
   activeTab: TabType;
+  appSettings: AppBehaviorSettings;
   priorityFilter: PriorityFilter;
   currentDate: string;
   selectedDate: string;
@@ -27,6 +30,7 @@ export interface TaskViewStateInput {
 export function selectTaskViewState({
   allTasks,
   activeTab,
+  appSettings,
   priorityFilter,
   currentDate,
   selectedDate,
@@ -67,6 +71,7 @@ export function selectTaskViewState({
     if (matchesCurrentDate) todayCount += 1;
 
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) continue;
+    if (activeTab === 'all' && !taskIsInHistoryRange({ taskDate }, appSettings, currentDate)) continue;
     if (
       activeTab === 'all' ||
       (activeTab === 'today' && matchesSelectedDate) ||

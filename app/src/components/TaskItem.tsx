@@ -37,6 +37,10 @@ interface TaskItemProps {
   onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   allTags?: string[];
   editTrigger?: number;
+  isCleanupMode?: boolean;
+  isCleanupSelected?: boolean;
+  onToggleCleanupSelection?: () => void;
+  cleanupSelectionLabel?: string;
 }
 
 export function TaskItem({
@@ -56,6 +60,10 @@ export function TaskItem({
   onChangeSubtaskPriority,
   allTags = [],
   editTrigger,
+  isCleanupMode = false,
+  isCleanupSelected = false,
+  onToggleCleanupSelection,
+  cleanupSelectionLabel,
 }: TaskItemProps) {
   const {
     editText,
@@ -115,8 +123,8 @@ export function TaskItem({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, x: 48 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          onClick={toggleCluster}
-          onKeyDown={handleClusterKeyDown}
+          onClick={isCleanupMode ? undefined : toggleCluster}
+          onKeyDown={isCleanupMode ? undefined : handleClusterKeyDown}
           onContextMenu={(e) => {
             e.preventDefault();
             const viewport = document.querySelector('.app-viewport');
@@ -135,31 +143,41 @@ export function TaskItem({
               viewportStyle,
             }));
           }}
-          className={getTaskCardClassName({
+          className={`${getTaskCardClassName({
             hasChildren,
             hasTags,
             canOpenReviewAction,
             completed: task.completed,
-          })}
+          })}${isCleanupMode ? ' history-cleanup-task-card' : ''}${isCleanupSelected ? ' history-cleanup-task-card-selected' : ''}`}
           data-priority={task.priority}
           role={hasChildren ? 'button' : undefined}
           tabIndex={hasChildren ? 0 : undefined}
           aria-expanded={hasChildren ? !task.collapsed : undefined}
           aria-controls={hasChildren ? `task-subtasks-${task.id}` : undefined}
         >
-          <DragHandleButton dragHandleProps={dragHandleProps} />
-
-          <span className="task-cluster-main-spacer task-cluster-leading-spacer" aria-hidden="true" />
-
-          <CompleteActionButton
-            completed={task.completed}
-            label={completeActionLabel}
-            onClick={onToggle}
-          />
-
-          <span className="task-priority-stop" onClick={stopClusterToggle} onPointerDown={stopClusterToggle}>
-            <PriorityPicker value={task.priority} onChange={onPriorityChange} />
-          </span>
+          {isCleanupMode ? (
+            <span className="history-cleanup-task-selection" onClick={stopClusterToggle} onPointerDown={stopClusterToggle}>
+              <input
+                type="checkbox"
+                checked={isCleanupSelected}
+                onChange={onToggleCleanupSelection}
+                aria-label={cleanupSelectionLabel}
+              />
+            </span>
+          ) : (
+            <>
+              <DragHandleButton dragHandleProps={dragHandleProps} />
+              <span className="task-cluster-main-spacer task-cluster-leading-spacer" aria-hidden="true" />
+              <CompleteActionButton
+                completed={task.completed}
+                label={completeActionLabel}
+                onClick={onToggle}
+              />
+              <span className="task-priority-stop" onClick={stopClusterToggle} onPointerDown={stopClusterToggle}>
+                <PriorityPicker value={task.priority} onChange={onPriorityChange} />
+              </span>
+            </>
+          )}
 
           <TaskMainContent
             task={task}
@@ -172,24 +190,26 @@ export function TaskItem({
             onEditTextChange={setEditText}
             onSubmitEdit={submitEdit}
             onEditKeyDown={handleEditKeyDown}
-            onStartEdit={(event) => {
+            onStartEdit={isCleanupMode ? undefined : (event) => {
               stopClusterToggle(event);
               startEditing();
             }}
           />
 
-          <TaskActionLayer
-            canOpenReviewAction={canOpenReviewAction}
-            hasReview={hasReview}
-            reviewActionLabel={reviewActionLabel}
-            onViewReview={onViewReview}
-            onDelete={onDelete}
-          />
+          {!isCleanupMode && (
+            <TaskActionLayer
+              canOpenReviewAction={canOpenReviewAction}
+              hasReview={hasReview}
+              reviewActionLabel={reviewActionLabel}
+              onViewReview={onViewReview}
+              onDelete={onDelete}
+            />
+          )}
         </motion.div>
       </span>
 
       <AnimatePresence initial={false}>
-        {isExpanded && (
+        {!isCleanupMode && isExpanded && (
           <Suspense fallback={null}>
             <TaskSubtasksViewport
               taskId={task.id}

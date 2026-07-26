@@ -54,8 +54,9 @@ export function areAppBehaviorSettingsEqual(
   return left.language === right.language
     && left.rolloverTime === right.rolloverTime
     && left.autoCarryForward === right.autoCarryForward
-    && left.syncDeletedReviewsToObsidian === right.syncDeletedReviewsToObsidian
     && left.confirmBeforeDeletingReview === right.confirmBeforeDeletingReview
+    && left.taskHistoryRange === right.taskHistoryRange
+    && left.taskHistoryStartDate === right.taskHistoryStartDate
     && left.mainTaskCompletionReviewEnabled === right.mainTaskCompletionReviewEnabled
     && left.subtaskCompletionReviewEnabled === right.subtaskCompletionReviewEnabled
     && left.lockWindowPosition === right.lockWindowPosition
@@ -63,8 +64,4 @@ export function areAppBehaviorSettingsEqual(
     && left.edgeAutoHide === right.edgeAutoHide
     && left.inputKeybindings.preset === right.inputKeybindings.preset
     && areTaskValuesEqual(left.inputKeybindings.overrides, right.inputKeybindings.overrides);
-}
-
-export function shouldClearRetainedReviewsOnSettingsUpdate(nextSettings: AppBehaviorSettings): boolean {
-  return nextSettings.syncDeletedReviewsToObsidian;
 }

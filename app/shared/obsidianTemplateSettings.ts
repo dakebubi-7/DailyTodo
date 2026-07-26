@@ -22,8 +22,6 @@ export interface ObsidianTemplateSettings {
   monthlyTemplate: ReportTemplate;
   externalWeeklyTemplate: ReportTemplate;
   externalMonthlyTemplate: ReportTemplate;
-  syncDeletedReviewsToObsidian: boolean;
-  confirmBeforeDeletingReview: boolean;
 }
 
 export function createDefaultObsidianTemplateSettings(): ObsidianTemplateSettings {
@@ -39,8 +37,6 @@ export function createDefaultObsidianTemplateSettings(): ObsidianTemplateSetting
     monthlyTemplate: createDefaultReportTemplate('personalMonthly'),
     externalWeeklyTemplate: createDefaultReportTemplate('externalWeekly'),
     externalMonthlyTemplate: createDefaultReportTemplate('externalMonthly'),
-    syncDeletedReviewsToObsidian: true,
-    confirmBeforeDeletingReview: true,
   };
 }
 
@@ -93,11 +89,5 @@ export function normalizeObsidianTemplateSettings(value: unknown): ObsidianTempl
     externalMonthlyTemplate: value.externalMonthlyTemplate
       ? normalizeReportTemplate(value.externalMonthlyTemplate, 'externalMonthly')
       : defaults.externalMonthlyTemplate,
-    syncDeletedReviewsToObsidian: typeof value.syncDeletedReviewsToObsidian === 'boolean'
-      ? value.syncDeletedReviewsToObsidian
-      : true,
-    confirmBeforeDeletingReview: typeof value.confirmBeforeDeletingReview === 'boolean'
-      ? value.confirmBeforeDeletingReview
-      : true,
   };
 }

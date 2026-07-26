@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { AppBehaviorSettings, createDefaultAppSettings } from '../../shared/appSettings';
+import { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
 import { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
 import { getBusinessDateKey } from '../../shared/taskRollover';
 import { chooseObsidianPath, openDailyNote } from '../store/taskStore';
@@ -14,6 +15,7 @@ const DEFAULT_APP_SETTINGS = createDefaultAppSettings();
 
 export function useTasks() {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [archivedObsidianTasks, setArchivedObsidianTasks] = useState<ArchivedObsidianTask[]>([]);
   const [dailyWorkNotes, setDailyWorkNotes] = useState<Record<string, string>>({});
   const [dailyInspirationNotes, setDailyInspirationNotes] = useState<Record<string, string>>({});
   const [retainedObsidianReviews, setRetainedObsidianReviews] = useState<RetainedObsidianReview[]>([]);
@@ -30,6 +32,7 @@ export function useTasks() {
   const { obsidianSyncTasks, syncCurrentDailyNote } = useTaskLifecycleEffects({
     activeTab,
     allTasks,
+    archivedObsidianTasks,
     appSettings,
     currentDate,
     dailyInspirationNotes,
@@ -41,6 +44,7 @@ export function useTasks() {
     taskListOrderByDate,
     setActiveTab,
     setAllTasks,
+    setArchivedObsidianTasks,
     setAppSettings: setAppSettingsState,
     setCurrentDate,
     setDailyInspirationNotes,
@@ -59,6 +63,7 @@ export function useTasks() {
     currentDate,
     selectedDate,
     setAllTasks,
+    setArchivedObsidianTasks,
     setAppSettings: setAppSettingsState,
     setDailyInspirationNotes,
     setDailyWorkNotes,
@@ -67,8 +72,8 @@ export function useTasks() {
   });
 
   const { sortedTasks, selectedDateTaskCommands, completedCount, totalCount, todayCount, allDates, sourceOrderForSelectedDate } = useMemo(() => selectTaskViewState({
-    allTasks, activeTab, priorityFilter, currentDate, selectedDate, taskListOrderByDate,
-  }), [activeTab, allTasks, currentDate, priorityFilter, selectedDate, taskListOrderByDate]);
+    allTasks, activeTab, appSettings, priorityFilter, currentDate, selectedDate, taskListOrderByDate,
+  }), [activeTab, allTasks, appSettings, currentDate, priorityFilter, selectedDate, taskListOrderByDate]);
   const toggleDarkMode = useCallback(() => setIsDark((previous) => !previous), []);
   const setDarkMode = useCallback((value: boolean) => setIsDark(value), []);
   const chooseObsidianFolder = useCallback(async () => {

@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useEffect } from 'react';
 import { AppBehaviorSettings } from '../../shared/appSettings';
+import { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
 import { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
 import { TabType, Task } from '../types/task';
 import { TaskListOrderByDate } from '../utils/taskOrdering';
@@ -19,6 +20,7 @@ type TaskStateSetter<T> = Dispatch<SetStateAction<T>>;
 interface UseTaskLifecycleEffectsParams {
   activeTab: TabType;
   allTasks: Task[];
+  archivedObsidianTasks: ArchivedObsidianTask[];
   appSettings: AppBehaviorSettings;
   currentDate: string;
   dailyInspirationNotes: Record<string, string>;
@@ -30,6 +32,7 @@ interface UseTaskLifecycleEffectsParams {
   taskListOrderByDate: TaskListOrderByDate;
   setActiveTab: TaskStateSetter<TabType>;
   setAllTasks: TaskStateSetter<Task[]>;
+  setArchivedObsidianTasks: TaskStateSetter<ArchivedObsidianTask[]>;
   setAppSettings: TaskStateSetter<AppBehaviorSettings>;
   setCurrentDate: TaskStateSetter<string>;
   setDailyInspirationNotes: TaskStateSetter<Record<string, string>>;
@@ -45,6 +48,7 @@ interface UseTaskLifecycleEffectsParams {
 export function useTaskLifecycleEffects({
   activeTab,
   allTasks,
+  archivedObsidianTasks,
   appSettings,
   currentDate,
   dailyInspirationNotes,
@@ -56,6 +60,7 @@ export function useTaskLifecycleEffects({
   taskListOrderByDate,
   setActiveTab,
   setAllTasks,
+  setArchivedObsidianTasks,
   setAppSettings,
   setCurrentDate,
   setDailyInspirationNotes,
@@ -75,7 +80,7 @@ export function useTaskLifecycleEffects({
   });
   const { obsidianSyncTasks, syncCurrentDailyNote } = useTaskObsidianSyncEffects({
     allTasks,
-    appSettings,
+    archivedObsidianTasks,
     dailyInspirationNotes,
     dailyWorkNotes,
     isLoaded,
@@ -89,6 +94,7 @@ export function useTaskLifecycleEffects({
     primeTaskTreePersistence,
     setActiveTab,
     setAllTasks,
+    setArchivedObsidianTasks,
     setAppSettings,
     setCurrentDate,
     setDailyInspirationNotes,

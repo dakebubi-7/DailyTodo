@@ -4,31 +4,21 @@ import { createTaskAppStateActionHandlers } from '../src/hooks/taskAppStateActio
 
 const settings: AppBehaviorSettings = {
   ...createDefaultAppSettings(),
-  syncDeletedReviewsToObsidian: false,
 };
 let appliedSettings: AppBehaviorSettings | undefined;
 let persistedSettings: AppBehaviorSettings | undefined;
-let persistedRetainedReviews: unknown;
-let retainedReviews = ['retained-review'];
 let dailyWork: Record<string, string> = {};
 let dailyInspiration: Record<string, string> = {};
 
 const actions = createTaskAppStateActionHandlers({
   appSettings: settings,
   selectedDate: '2026-07-13',
-  areSettingsEqual: (left, right) => left.rolloverTime === right.rolloverTime && left.syncDeletedReviewsToObsidian === right.syncDeletedReviewsToObsidian,
-  shouldClearRetainedReviews: (next) => next.syncDeletedReviewsToObsidian,
+  areSettingsEqual: (left, right) => left.rolloverTime === right.rolloverTime,
   setAppSettings(value) {
     appliedSettings = value;
   },
   persistAppSettings(value) {
     persistedSettings = value;
-  },
-  setRetainedReviews(updater) {
-    retainedReviews = updater(retainedReviews);
-  },
-  persistRetainedReviews(value) {
-    persistedRetainedReviews = value;
   },
   setDailyWork(updater) {
     dailyWork = updater(dailyWork);
@@ -40,12 +30,9 @@ const actions = createTaskAppStateActionHandlers({
 
 const nextSettings = {
   ...settings,
-  syncDeletedReviewsToObsidian: true,
   rolloverTime: '06:00',
 };
 actions.updateAppSettings(nextSettings);
-assert.deepEqual(retainedReviews, [], 'enabling retained-review sync should clear retained reviews.');
-assert.deepEqual(persistedRetainedReviews, [], 'cleared retained reviews should be persisted.');
 assert.deepEqual(appliedSettings, nextSettings);
 assert.deepEqual(persistedSettings, nextSettings);
 

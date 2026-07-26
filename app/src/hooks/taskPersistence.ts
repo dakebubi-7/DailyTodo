@@ -1,7 +1,9 @@
 export {
+  ARCHIVED_OBSIDIAN_TASKS_KEY,
   areTaskCarryoverLedgersEqual,
   loadInitialTaskState,
   parseStoredActiveTab,
+  parseStoredArchivedObsidianTasks,
   parseStoredCarryoverLedger,
   parseStoredDateKey,
   parseStoredRetainedObsidianReviews,

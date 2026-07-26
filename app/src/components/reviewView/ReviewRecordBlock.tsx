@@ -9,6 +9,10 @@ export interface ReviewRecordBlockProps {
   showDivider: boolean;
   onEditReview?: (taskId: string, reviewId: string, updates: Partial<Pick<TaskCompletionReview, 'status' | 'percent' | 'summary' | 'unknowns' | 'nextStep'>>) => void;
   onDeleteReview?: (taskId: string, reviewId: string) => void;
+  isCleanupMode?: boolean;
+  isCleanupSelected?: boolean;
+  cleanupSelectionLabel?: string;
+  onToggleCleanupSelection?: () => void;
 }
 
 const statusLabel: Record<TaskCompletionReview['status'], string> = {
@@ -28,6 +32,10 @@ export function ReviewRecordBlock({
   showDivider,
   onEditReview,
   onDeleteReview,
+  isCleanupMode = false,
+  isCleanupSelected = false,
+  cleanupSelectionLabel,
+  onToggleCleanupSelection,
 }: ReviewRecordBlockProps) {
   const review = record.review;
   const [isEditing, setIsEditing] = useState(false);
@@ -68,7 +76,7 @@ export function ReviewRecordBlock({
   };
 
   const handleContextMenu = (event: MouseEvent) => {
-    if (!review || !onDeleteReview) return;
+    if (isCleanupMode || !review || !onDeleteReview) return;
     event.preventDefault();
     onDeleteReview(record.task.id, getReviewIdentity(review));
   };
@@ -76,14 +84,23 @@ export function ReviewRecordBlock({
   return (
     <div className={`review-record ${showDivider ? 'review-record-divided' : ''}`} onContextMenu={handleContextMenu}>
       <div className="review-record-head">
+        {isCleanupMode && review && (
+          <input
+            type="checkbox"
+            className="history-cleanup-review-selection"
+            checked={isCleanupSelected}
+            onChange={onToggleCleanupSelection}
+            aria-label={cleanupSelectionLabel}
+          />
+        )}
         <span className="review-record-time">{formatTime(record.timestamp)}</span>
         <span className="review-record-head-actions">
-          {review && !isEditing && onEditReview && (
+          {review && !isCleanupMode && !isEditing && onEditReview && (
             <button type="button" onClick={handleStartEdit} className="review-edit-btn" title="编辑这条记录（保留原时间）">
               编辑
             </button>
           )}
-          {review && !isEditing && onDeleteReview && (
+          {review && !isCleanupMode && !isEditing && onDeleteReview && (
             <button
               type="button"
               onClick={() => onDeleteReview(record.task.id, getReviewIdentity(review))}
@@ -97,7 +114,7 @@ export function ReviewRecordBlock({
         </span>
       </div>
 
-      {isEditing && review ? (
+      {isEditing && !isCleanupMode && review ? (
         <div className="review-edit-form">
           <div className="review-edit-row">
             <label className="review-edit-label">完成情况</label>

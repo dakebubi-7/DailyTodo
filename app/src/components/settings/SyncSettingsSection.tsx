@@ -1,7 +1,6 @@
 import type { ObsidianTemplateSettings } from '../../../shared/appSettings';
 import type { SyncPreview } from '../../../shared/obsidianTemplates';
 import type { getShellText } from '../../i18n';
-import { ToggleRow } from './SettingsControls';
 
 type SettingsText = ReturnType<typeof getShellText>['settings'];
 type SyncTemplatePathField = 'dailyPath' | 'weeklyPath' | 'monthlyPath' | 'externalWeeklyPath' | 'externalMonthlyPath';
@@ -69,22 +68,6 @@ export function SyncSettingsSection({
             <p>{zh ? `将处理 ${syncPreview.files.length} 个文件，${syncPreview.taskCount} 个任务。` : `Will process ${syncPreview.files.length} files and ${syncPreview.taskCount} tasks.`}</p>
           </div>
         )}
-      </section>
-
-      <section className="settings-zone">
-        <h3>{text.syncDeleted}</h3>
-        <ToggleRow
-          title={text.syncDeleted}
-          description={text.syncDeletedHint}
-          checked={obsidianTemplates.syncDeletedReviewsToObsidian}
-          onChange={(value) => onObsidianTemplatesChange({ ...obsidianTemplates, syncDeletedReviewsToObsidian: value })}
-        />
-        <ToggleRow
-          title={text.confirmDelete}
-          description={text.confirmDeleteHint}
-          checked={obsidianTemplates.confirmBeforeDeletingReview}
-          onChange={(value) => onObsidianTemplatesChange({ ...obsidianTemplates, confirmBeforeDeletingReview: value })}
-        />
       </section>
     </div>
   );

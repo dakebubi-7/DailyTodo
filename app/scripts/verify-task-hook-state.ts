@@ -9,7 +9,6 @@ import {
   getInitialObsidianSyncStatus,
   getSelectedDateAfterBusinessDateChange,
   normalizeIncomingTasks,
-  shouldClearRetainedReviewsOnSettingsUpdate,
 } from '../src/hooks/taskHookState';
 import { normalizeTask, parseStoredTasks } from '../src/hooks/taskTransforms';
 
@@ -422,23 +421,22 @@ assert.equal(
   'app-settings equality should detect each persisted behavior setting.',
 );
 assert.equal(
-  shouldClearRetainedReviewsOnSettingsUpdate({
-    ...defaultSettings,
-    syncDeletedReviewsToObsidian: false,
-  }),
-  false,
-);
-assert.equal(
-  shouldClearRetainedReviewsOnSettingsUpdate({
+  areAppBehaviorSettingsEqual(defaultSettings, {
     ...defaultSettings,
     syncDeletedReviewsToObsidian: true,
   }),
   true,
+  'legacy delete-sync data should not change current app behavior.',
 );
 assert.match(
   taskAppStateActions,
-  /if \(!previous\.length\) return previous;[\s\S]*?persistRetainedReviews\(\[\]\);[\s\S]*?return \[\];/,
-  'app-state actions should avoid rewriting an already empty retained-review list.',
+  /export function createTaskAppStateActionHandlers\(/,
+  'app-state actions should continue exposing the settings action factory.',
+);
+assert.doesNotMatch(
+  taskAppStateActions,
+  /setRetainedReviews|persistRetainedReviews|shouldClearRetainedReviews/,
+  'changing settings must never clear retained Obsidian review history.',
 );
 assert.match(
   taskAppStateActions,

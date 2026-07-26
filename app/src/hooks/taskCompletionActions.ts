@@ -11,7 +11,7 @@ import {
 
 type CompletionActionSettings = Pick<
   import('../../shared/appSettings').AppBehaviorSettings,
-  'confirmBeforeDeletingReview' | 'syncDeletedReviewsToObsidian'
+  'confirmBeforeDeletingReview'
 >;
 
 type CreateTaskCompletionActionHandlersOptions = {
@@ -50,16 +50,28 @@ export function createTaskCompletionActionHandlers({
     deleteTaskReview(taskId: string, reviewId: string) {
       if (appSettings.confirmBeforeDeletingReview && !confirmDeleteReview()) return;
       setAllTasks((previous) => mapTaskTree(previous, taskId, (task) => {
-        if (!appSettings.syncDeletedReviewsToObsidian) {
+        setRetainedReviews((retained) => {
+          const next = retainDeletedTaskReviewForObsidian(retained, task, reviewId);
+          if (next === retained) return retained;
+          persistRetainedReviews(next);
+          return next;
+        });
+        return deleteReviewFromTask(task, reviewId);
+      }));
+    },
+    deleteTaskReviews(records: Array<{ taskId: string; reviewId: string }>) {
+      if (!records.length) return;
+      setAllTasks((previous) => records.reduce((tasks, { taskId, reviewId }) => (
+        mapTaskTree(tasks, taskId, (task) => {
           setRetainedReviews((retained) => {
-            const next = retainDeletedTaskReviewForObsidian(retained, task, reviewId, appSettings.syncDeletedReviewsToObsidian);
+            const next = retainDeletedTaskReviewForObsidian(retained, task, reviewId);
             if (next === retained) return retained;
             persistRetainedReviews(next);
             return next;
           });
-        }
-        return deleteReviewFromTask(task, reviewId);
-      }));
+          return deleteReviewFromTask(task, reviewId);
+        })
+      ), previous));
     },
     updateSubtaskReview(subtaskId: string, review: Omit<TaskCompletionReview, 'reviewedAt' | 'id'>) {
       appendReview(subtaskId, review);

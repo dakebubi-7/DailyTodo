@@ -20,9 +20,9 @@ assert.match(section, /value=\{obsidianTemplates\[field\] \|\| defaultVal\}/, 'S
 assert.match(section, /onObsidianTemplatesChange\(\{ \.\.\.obsidianTemplates, \[field\]: e\.target\.value \}\)/, 'SyncSettingsSection should preserve path update merging.');
 assert.match(section, /onPreviewSync/, 'SyncSettingsSection should preserve sync preview trigger.');
 assert.match(section, /syncPreview\.files\.length/, 'SyncSettingsSection should preserve preview file count display.');
-assert.match(section, /syncDeletedReviewsToObsidian/, 'SyncSettingsSection should preserve deleted-review sync toggle.');
-assert.match(section, /confirmBeforeDeletingReview/, 'SyncSettingsSection should preserve delete confirmation toggle.');
-assert.match(section, /ToggleRow/, 'SyncSettingsSection should use shared ToggleRow control.');
+assert.doesNotMatch(section, /syncDeletedReviewsToObsidian/, 'SyncSettingsSection should not expose the obsolete deleted-review sync toggle.');
+assert.doesNotMatch(section, /confirmBeforeDeletingReview/, 'SyncSettingsSection should not keep a duplicate review-delete confirmation toggle.');
+assert.doesNotMatch(section, /ToggleRow/, 'SyncSettingsSection should not include delete-review setting controls.');
 
 assert.match(settingsPanel, /from '\.\/settings\/SyncSettingsSection'/, 'SettingsPanel should import SyncSettingsSection.');
 assert.match(settingsPanel, /<SyncSettingsSection\b/, 'SettingsPanel should render SyncSettingsSection.');

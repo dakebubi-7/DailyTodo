@@ -42,7 +42,10 @@ export function formatTime(timestamp: string) {
   return date.toLocaleString('zh-CN');
 }
 
-export function buildReviewDateGroups(allTasks: Task[]): ReviewDateGroup[] {
+export function buildReviewDateGroups(
+  allTasks: Task[],
+  recordMatches: (timestamp: string, task: Task, review?: TaskCompletionReview) => boolean = () => true,
+): ReviewDateGroup[] {
   const dateTaskGroups = new Map<string, Map<string, ReviewRecord[]>>();
   const appendRecordToDate = (record: ReviewRecord) => {
     const key = dateKeyOf(record.timestamp);
@@ -61,10 +64,11 @@ export function buildReviewDateGroups(allTasks: Task[]): ReviewDateGroup[] {
     const reviews = getCompletionReviews(task);
     if (reviews.length) {
       reviews.forEach((review) => {
-        appendRecordToDate({ task, review, timestamp: review.reviewedAt || task.completedAt || task.createdAt });
+        const timestamp = review.reviewedAt || task.completedAt || task.createdAt;
+        if (recordMatches(timestamp, task, review)) appendRecordToDate({ task, review, timestamp });
       });
     } else if (task.completed && task.completedAt) {
-      appendRecordToDate({ task, timestamp: task.completedAt });
+      if (recordMatches(task.completedAt, task)) appendRecordToDate({ task, timestamp: task.completedAt });
     }
   });
 

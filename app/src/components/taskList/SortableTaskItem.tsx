@@ -25,6 +25,10 @@ interface SortableTaskItemProps {
   onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   allTags: string[];
   editTrigger?: number;
+  isCleanupMode?: boolean;
+  isCleanupSelected?: boolean;
+  onToggleCleanupSelection?: (id: string) => void;
+  cleanupSelectionLabel?: string;
 }
 
 function haveSameTags(previous: string[], next: string[]) {
@@ -52,6 +56,10 @@ function areTaskItemPropsEqual(previous: SortableTaskItemProps, next: SortableTa
     previous.onEditSubtask === next.onEditSubtask &&
     previous.onChangeSubtaskPriority === next.onChangeSubtaskPriority &&
     previous.editTrigger === next.editTrigger &&
+    previous.isCleanupMode === next.isCleanupMode &&
+    previous.isCleanupSelected === next.isCleanupSelected &&
+    previous.onToggleCleanupSelection === next.onToggleCleanupSelection &&
+    previous.cleanupSelectionLabel === next.cleanupSelectionLabel &&
     haveSameTags(previous.allTags, next.allTags)
   );
 }
@@ -75,6 +83,10 @@ export const SortableTaskItem = memo(function SortableTaskItem({
   onChangeSubtaskPriority,
   allTags,
   editTrigger,
+  isCleanupMode,
+  isCleanupSelected,
+  onToggleCleanupSelection,
+  cleanupSelectionLabel,
 }: SortableTaskItemProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useSortable({
     id: getTaskSortableId(task),
@@ -153,6 +165,10 @@ export const SortableTaskItem = memo(function SortableTaskItem({
           onChangeSubtaskPriority={onChangeSubtaskPriority}
           allTags={allTags}
           editTrigger={editTrigger}
+          isCleanupMode={isCleanupMode}
+          isCleanupSelected={isCleanupSelected}
+          onToggleCleanupSelection={onToggleCleanupSelection ? () => onToggleCleanupSelection(task.id) : undefined}
+          cleanupSelectionLabel={cleanupSelectionLabel}
         />
       </motion.div>
     </motion.div>

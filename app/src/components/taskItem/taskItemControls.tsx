@@ -26,7 +26,7 @@ export interface TaskMainContentProps {
   onEditTextChange: (value: string) => void;
   onSubmitEdit: () => void;
   onEditKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  onStartEdit: (event: MouseEvent<HTMLSpanElement>) => void;
+  onStartEdit?: (event: MouseEvent<HTMLSpanElement>) => void;
 }
 
 export interface TaskDragHandleProps {

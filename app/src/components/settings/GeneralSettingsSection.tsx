@@ -1,4 +1,4 @@
-import { isAppLanguage, type AppBehaviorSettings } from '../../../shared/appSettings';
+import { isAppLanguage, isTaskHistoryRange, type AppBehaviorSettings } from '../../../shared/appSettings';
 import type { getShellText } from '../../i18n';
 import type { PersonalizationSettings } from '../../types/personalization';
 import { InputKeybindingsSettingsSection } from './InputKeybindingsSettingsSection';
@@ -49,6 +49,42 @@ export function GeneralSettingsSection({
       </section>
 
       <section className="settings-section">
+        <h3>{text.historyRange}</h3>
+        <label className="settings-field">
+          <span>
+            <strong>{text.historyRange}</strong>
+            <small>{text.historyRangeHint}</small>
+          </span>
+          <select
+            value={appSettings.taskHistoryRange}
+            onChange={(event) => {
+              if (!isTaskHistoryRange(event.target.value)) return;
+              updateApp('taskHistoryRange', event.target.value);
+            }}
+          >
+            <option value="two-months">{text.historyRangeTwoMonths}</option>
+            <option value="three-months">{text.historyRangeThreeMonths}</option>
+            <option value="six-months">{text.historyRangeSixMonths}</option>
+            <option value="all">{text.historyRangeAll}</option>
+            <option value="custom">{text.historyRangeCustom}</option>
+          </select>
+        </label>
+        {appSettings.taskHistoryRange === 'custom' && (
+          <label className="settings-field">
+            <span>
+              <strong>{text.historyRangeStartDate}</strong>
+              <small>{text.historyRangeStartDateHint}</small>
+            </span>
+            <input
+              type="date"
+              value={appSettings.taskHistoryStartDate || ''}
+              onChange={(event) => updateApp('taskHistoryStartDate', event.target.value || undefined)}
+            />
+          </label>
+        )}
+      </section>
+
+      <section className="settings-section">
         <h3>{zh ? '完成记录' : 'Completion Records'}</h3>
         <ToggleRow
           title={zh ? '主任务完成时填写完成记录' : 'Ask for main task completion record'}
@@ -61,6 +97,12 @@ export function GeneralSettingsSection({
           description={zh ? '开启后，点击完成子任务时会先填写完成情况；关闭后直接完成。' : 'When enabled, completing a subtask opens the completion record dialog.'}
           checked={appSettings.subtaskCompletionReviewEnabled}
           onChange={(value) => updateApp('subtaskCompletionReviewEnabled', value)}
+        />
+        <ToggleRow
+          title={text.confirmDelete}
+          description={zh ? '删除 DailyTodo 本地完成记录前进行确认；已有的 Obsidian 历史记录会保留。' : 'Confirm before removing a local completion record; existing Obsidian history is kept.'}
+          checked={appSettings.confirmBeforeDeletingReview}
+          onChange={(value) => updateApp('confirmBeforeDeletingReview', value)}
         />
       </section>
 

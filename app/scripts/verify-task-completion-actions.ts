@@ -20,7 +20,6 @@ let confirmationCount = 0;
 const actions = createTaskCompletionActionHandlers({
   appSettings: {
     confirmBeforeDeletingReview: true,
-    syncDeletedReviewsToObsidian: false,
   },
   setAllTasks(updater) {
     tasks = updater(tasks);
@@ -63,5 +62,37 @@ assert.equal(confirmationCount, 1, 'deleting a review should retain the existing
 assert.equal(tasks[0].completionReview, undefined);
 assert.equal(retainedReviews.length, 1, 'locally deleted reviews should be retained for Obsidian sync.');
 assert.deepEqual(persistedRetainedReviews, retainedReviews);
+
+tasks = [{
+  ...task,
+  id: 'task-2',
+  completionReviews: [
+    {
+      id: 'review-2',
+      status: 'done',
+      percent: 100,
+      summary: 'First review',
+      unknowns: '',
+      nextStep: '',
+      reviewedAt: '2026-07-13T10:00:00.000Z',
+    },
+    {
+      id: 'review-3',
+      status: 'partial',
+      percent: 80,
+      summary: 'Second review',
+      unknowns: '',
+      nextStep: '',
+      reviewedAt: '2026-07-13T11:00:00.000Z',
+    },
+  ],
+}];
+actions.deleteTaskReviews([
+  { taskId: 'task-2', reviewId: 'review-2' },
+  { taskId: 'task-2', reviewId: 'review-3' },
+]);
+assert.equal(confirmationCount, 1, 'batch review deletion should leave confirmation to the single outer cleanup prompt.');
+assert.equal(tasks[0].completionReviews, undefined, 'batch review deletion should remove every selected local review.');
+assert.equal(retainedReviews.length, 3, 'batch-deleted reviews should still be retained for Obsidian sync.');
 
 console.log('Task completion actions verification passed');

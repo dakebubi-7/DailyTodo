@@ -1,4 +1,7 @@
 import type { Task, TaskSource } from '../types/task';
+import type { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
+import { retainDeletedTask } from '../../shared/obsidianTaskArchive';
+import { findTaskInTree } from '../utils/taskTree';
 import { removeTaskFromTree, mapTaskTree } from './taskTree';
 import {
   addSubtaskToTask,
@@ -15,6 +18,8 @@ type CreateTaskTreeActionHandlersOptions = {
   currentDate: string;
   selectedDate: string;
   setAllTasks(updater: (previous: Task[]) => Task[]): void;
+  setArchivedObsidianTasks(updater: (previous: ArchivedObsidianTask[]) => ArchivedObsidianTask[]): void;
+  persistArchivedObsidianTasks(value: ArchivedObsidianTask[]): void;
   createId(): string;
   getTimestamp(): string;
 };
@@ -23,6 +28,8 @@ export function createTaskTreeActionHandlers({
   currentDate,
   selectedDate,
   setAllTasks,
+  setArchivedObsidianTasks,
+  persistArchivedObsidianTasks,
   createId,
   getTimestamp,
 }: CreateTaskTreeActionHandlersOptions) {
@@ -37,7 +44,16 @@ export function createTaskTreeActionHandlers({
       setAllTasks((previous) => mapTaskTree(previous, id, (task) => toggleTaskCompletion(task, getTimestamp())));
     },
     deleteTask(id: string) {
-      setAllTasks((previous) => removeTaskFromTree(previous, id));
+      setAllTasks((previous) => {
+        const task = findTaskInTree(previous, id);
+        if (!task) return previous;
+        setArchivedObsidianTasks((archived) => {
+          const next = retainDeletedTask(archived, task, getTimestamp());
+          if (next !== archived) persistArchivedObsidianTasks(next);
+          return next;
+        });
+        return removeTaskFromTree(previous, id);
+      });
     },
     editTask(id: string, text: string) {
       setAllTasks((previous) => mapTaskTree(previous, id, (task) => editTaskText(task, text)));
@@ -56,7 +72,16 @@ export function createTaskTreeActionHandlers({
       setAllTasks((previous) => mapTaskTree(previous, subtaskId, (task) => toggleTaskCompletion(task, getTimestamp())));
     },
     deleteSubtask(subtaskId: string) {
-      setAllTasks((previous) => removeTaskFromTree(previous, subtaskId));
+      setAllTasks((previous) => {
+        const task = findTaskInTree(previous, subtaskId);
+        if (!task) return previous;
+        setArchivedObsidianTasks((archived) => {
+          const next = retainDeletedTask(archived, task, getTimestamp());
+          if (next !== archived) persistArchivedObsidianTasks(next);
+          return next;
+        });
+        return removeTaskFromTree(previous, subtaskId);
+      });
     },
     toggleTaskCollapse(taskId: string) {
       setAllTasks((previous) => mapTaskTree(previous, taskId, toggleTaskCollapseState));

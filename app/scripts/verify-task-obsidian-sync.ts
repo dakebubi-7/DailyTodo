@@ -141,10 +141,14 @@ const retainedReviewTasks = buildObsidianSyncTasks({
       deletedAt: '2026-07-05T03:00:00.000Z',
     },
   ],
-  syncDeletedReviewsToObsidian: false,
+  archivedObsidianTasks: [{
+    task: { ...task, id: 'archived-task-1', text: 'Deleted locally' },
+    deletedAt: '2026-07-05T03:00:00.000Z',
+  }],
 });
 
 assert.equal(retainedReviewTasks[0].completionReviews?.[0].id, 'review-1');
+assert.equal(retainedReviewTasks[1].id, 'archived-task-1', 'locally deleted tasks should remain in the Obsidian sync projection.');
 assert.match(
   useTasks,
   /useTaskLifecycleEffects\(/,
@@ -167,7 +171,7 @@ assert.match(
 );
 assert.match(
   syncEffects,
-  /const obsidianSyncTasks = useMemo\(\(\) => buildObsidianSyncTasks\(\{[\s\S]*?\}\), \[allTasks, retainedObsidianReviews, appSettings\.syncDeletedReviewsToObsidian\]\);/,
+  /const obsidianSyncTasks = useMemo\(\(\) => buildObsidianSyncTasks\(\{[\s\S]*?archivedObsidianTasks,[\s\S]*?\}\), \[allTasks, archivedObsidianTasks, retainedObsidianReviews\]\);/,
   'Obsidian synchronization hook should memoize derived sync tasks across unrelated UI renders.',
 );
 assert.match(

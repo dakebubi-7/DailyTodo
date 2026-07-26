@@ -9,6 +9,7 @@ import {
   type InputKeybindingSettings,
 } from './inputKeybindings';
 import { isScheduleTime } from './aiReview/scheduleTimeParsing';
+import { isDateKey } from './taskRollover';
 import { isObjectRecord } from './unknownValueGuards';
 
 export {
@@ -20,12 +21,15 @@ export {
 
 export type AppLanguage = 'zh-CN' | 'en-US';
 
+export type TaskHistoryRange = 'two-months' | 'three-months' | 'six-months' | 'all' | 'custom';
+
 export interface AppBehaviorSettings {
   language: AppLanguage;
   rolloverTime: string;
   autoCarryForward: boolean;
-  syncDeletedReviewsToObsidian: boolean;
   confirmBeforeDeletingReview: boolean;
+  taskHistoryRange: TaskHistoryRange;
+  taskHistoryStartDate?: string;
   mainTaskCompletionReviewEnabled: boolean;
   subtaskCompletionReviewEnabled: boolean;
   lockWindowPosition: boolean;
@@ -47,8 +51,9 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
     language: 'zh-CN',
     rolloverTime: '05:00',
     autoCarryForward: true,
-    syncDeletedReviewsToObsidian: true,
     confirmBeforeDeletingReview: false,
+    taskHistoryRange: 'three-months',
+    taskHistoryStartDate: undefined,
     mainTaskCompletionReviewEnabled: true,
     subtaskCompletionReviewEnabled: true,
     lockWindowPosition: false,
@@ -62,6 +67,14 @@ export function isAppLanguage(value: unknown): value is AppLanguage {
   return value === 'zh-CN' || value === 'en-US';
 }
 
+export function isTaskHistoryRange(value: unknown): value is TaskHistoryRange {
+  return value === 'two-months'
+    || value === 'three-months'
+    || value === 'six-months'
+    || value === 'all'
+    || value === 'custom';
+}
+
 export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
   const defaults = createDefaultAppSettings();
   if (!isObjectRecord(value)) return defaults;
@@ -70,14 +83,14 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
     language: isAppLanguage(value.language) ? value.language : defaults.language,
     rolloverTime: isScheduleTime(value.rolloverTime) ? value.rolloverTime : defaults.rolloverTime,
     autoCarryForward: typeof value.autoCarryForward === 'boolean' ? value.autoCarryForward : defaults.autoCarryForward,
-    syncDeletedReviewsToObsidian:
-      typeof value.syncDeletedReviewsToObsidian === 'boolean'
-        ? value.syncDeletedReviewsToObsidian
-        : defaults.syncDeletedReviewsToObsidian,
     confirmBeforeDeletingReview:
       typeof value.confirmBeforeDeletingReview === 'boolean'
         ? value.confirmBeforeDeletingReview
         : defaults.confirmBeforeDeletingReview,
+    taskHistoryRange: isTaskHistoryRange(value.taskHistoryRange)
+      ? value.taskHistoryRange
+      : defaults.taskHistoryRange,
+    taskHistoryStartDate: isDateKey(value.taskHistoryStartDate) ? value.taskHistoryStartDate : undefined,
     mainTaskCompletionReviewEnabled:
       typeof value.mainTaskCompletionReviewEnabled === 'boolean'
         ? value.mainTaskCompletionReviewEnabled

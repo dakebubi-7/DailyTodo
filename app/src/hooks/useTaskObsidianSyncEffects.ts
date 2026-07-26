@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef } from 'react';
-import { AppBehaviorSettings } from '../../shared/appSettings';
+import { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
 import { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
 import { Task } from '../types/task';
 import {
@@ -13,7 +13,7 @@ import {
 
 interface UseTaskObsidianSyncEffectsParams {
   allTasks: Task[];
-  appSettings: AppBehaviorSettings;
+  archivedObsidianTasks: ArchivedObsidianTask[];
   dailyInspirationNotes: Record<string, string>;
   dailyWorkNotes: Record<string, string>;
   isLoaded: boolean;
@@ -25,7 +25,7 @@ interface UseTaskObsidianSyncEffectsParams {
 
 export function useTaskObsidianSyncEffects({
   allTasks,
-  appSettings,
+  archivedObsidianTasks,
   dailyInspirationNotes,
   dailyWorkNotes,
   isLoaded,
@@ -38,9 +38,9 @@ export function useTaskObsidianSyncEffects({
   const lastSyncedDailyNoteInputRef = useRef<SyncSelectedDailyNoteInput>();
   const obsidianSyncTasks = useMemo(() => buildObsidianSyncTasks({
     allTasks,
+    archivedObsidianTasks,
     retainedObsidianReviews,
-    syncDeletedReviewsToObsidian: appSettings.syncDeletedReviewsToObsidian,
-  }), [allTasks, retainedObsidianReviews, appSettings.syncDeletedReviewsToObsidian]);
+  }), [allTasks, archivedObsidianTasks, retainedObsidianReviews]);
 
   const syncDailyNote = useCallback(async () => {
     const beforeSyncTasks = lastSyncedObsidianTasksRef.current || obsidianSyncTasks;

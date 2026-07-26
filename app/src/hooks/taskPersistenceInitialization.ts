@@ -1,4 +1,5 @@
 import { createDefaultAppSettings, type AppBehaviorSettings } from '../../shared/appSettings';
+import type { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
 import type { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
 import { getBusinessDateKey } from '../../shared/taskRollover';
 import { isObjectRecord } from '../../shared/unknownValueGuards';
@@ -21,6 +22,7 @@ import {
 } from './taskUiStatePersistence';
 
 export const TASK_CARRYOVER_LEDGER_KEY = 'taskCarryoverLedger';
+export const ARCHIVED_OBSIDIAN_TASKS_KEY = 'archivedObsidianTasks';
 export const RETAINED_OBSIDIAN_REVIEWS_KEY = 'retainedObsidianReviews';
 
 export interface InitialTaskState {
@@ -29,6 +31,7 @@ export interface InitialTaskState {
   tasks: Task[];
   dailyWorkNotes: Record<string, string>;
   dailyInspirationNotes: Record<string, string>;
+  archivedObsidianTasks: ArchivedObsidianTask[];
   retainedObsidianReviews: RetainedObsidianReview[];
   taskListOrderByDate: TaskListOrderByDate;
   selectedDate: string;
@@ -46,6 +49,11 @@ function isRetainedObsidianReview(value: unknown): value is RetainedObsidianRevi
     && isTaskCompletionReview(value.review)
     && typeof value.deletedAt === 'string'
   );
+}
+
+function isArchivedObsidianTask(value: unknown): value is ArchivedObsidianTask {
+  if (!isObjectRecord(value)) return false;
+  return isTaskLike(value.task) && typeof value.deletedAt === 'string';
 }
 
 export function parseStoredDateKey(value: unknown): string | undefined {
@@ -111,6 +119,11 @@ export function parseStoredRetainedObsidianReviews(value: unknown): RetainedObsi
   return value.filter(isRetainedObsidianReview);
 }
 
+export function parseStoredArchivedObsidianTasks(value: unknown): ArchivedObsidianTask[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isArchivedObsidianTask);
+}
+
 export async function loadInitialTaskState(): Promise<InitialTaskState> {
   const [storedSettings, savedTasks, savedState, obsidianPath] = await Promise.all([
     getAppSettings(),
@@ -122,6 +135,7 @@ export async function loadInitialTaskState(): Promise<InitialTaskState> {
       LAST_ACTIVE_DAY_KEY,
       ACTIVE_TAB_KEY,
       TASK_CARRYOVER_LEDGER_KEY,
+      ARCHIVED_OBSIDIAN_TASKS_KEY,
       RETAINED_OBSIDIAN_REVIEWS_KEY,
       TASK_LIST_ORDER_KEY,
     ]),
@@ -136,6 +150,7 @@ export async function loadInitialTaskState(): Promise<InitialTaskState> {
   const savedLastActiveDay = parseStoredDateKey(storedState[LAST_ACTIVE_DAY_KEY]);
   const savedActiveTab = parseStoredActiveTab(storedState[ACTIVE_TAB_KEY]);
   const savedCarryoverLedger = parseStoredCarryoverLedger(storedState[TASK_CARRYOVER_LEDGER_KEY]);
+  const savedArchivedTasks = parseStoredArchivedObsidianTasks(storedState[ARCHIVED_OBSIDIAN_TASKS_KEY]);
   const savedRetainedReviews = parseStoredRetainedObsidianReviews(storedState[RETAINED_OBSIDIAN_REVIEWS_KEY]);
   const savedTaskListOrder = storedState[TASK_LIST_ORDER_KEY];
   const shouldStartToday = !savedSelectedDate || savedLastActiveDay !== today;
@@ -152,6 +167,7 @@ export async function loadInitialTaskState(): Promise<InitialTaskState> {
     tasks: carryoverResult.tasks,
     dailyWorkNotes: parseStoredStringRecord(savedWorkNotes),
     dailyInspirationNotes: parseStoredStringRecord(savedInspirationNotes),
+    archivedObsidianTasks: savedArchivedTasks,
     retainedObsidianReviews: savedRetainedReviews,
     taskListOrderByDate: parseStoredTaskListOrder(savedTaskListOrder),
     selectedDate: shouldStartToday ? today : savedSelectedDate || today,

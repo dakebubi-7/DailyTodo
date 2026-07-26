@@ -81,6 +81,18 @@ Focused tests will verify:
 8. Existing sync behavior for non-deletion edits, completions, and manually removed Obsidian entries remains intact: a current DT record is written again on a subsequent sync.
 9. The sync settings UI no longer exposes the removed deleted-review synchronization toggle, while the review deletion confirmation preference remains available.
 
+## History Visibility and Cleanup
+
+The All and Review views are working surfaces, not the complete long-term archive. By default, each view shows records from the preceding three calendar months, inclusive of the current day.
+
+The range is configurable in settings and applies independently to both views. The available choices are two months, three months, six months, all history, and a custom start date. The custom range includes records on or after the chosen local date. The setting is persisted locally and has no Obsidian effect.
+
+All-task range filtering uses a task's effective task date. Review range filtering uses each review's review timestamp, so a task can remain visible in All while an older review is hidden from Review, or vice versa.
+
+Each history view exposes a cleanup mode. When it is active, the user can select individual visible entries or select every currently filtered entry, then delete the selection after a clear local-only confirmation. Cleanup never includes records outside the active view, date range, search query, status filter, priority filter, or source filter.
+
+Batch deletion uses the same local archive behavior as single deletion: it removes active records from DT and preserves their snapshots for later Obsidian synchronization. In the Review view, deleting a selected review removes that review only. In the All view, deleting a selected task removes that task tree. The controls show the selected count and remain disabled until at least one visible item is selected.
+
 ## Scope Boundaries
 
-This change does not add a DT recycle bin, restore command, bulk delete UI, bidirectional Obsidian import, or synchronization of user edits outside DailyTodo-managed markers. Those are separate product decisions.
+This change does not add a DT recycle bin, restore command, bidirectional Obsidian import, or synchronization of user edits outside DailyTodo-managed markers. Those are separate product decisions.

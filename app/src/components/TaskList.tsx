@@ -1,10 +1,17 @@
-import { lazy, memo, Suspense, type ComponentProps, useCallback, useMemo, useRef, useState } from 'react';
+import { lazy, memo, Suspense, type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { getShellText } from '../i18n';
 import { useFloatingScrollbar } from '../hooks/useFloatingScrollbar';
 import type { Task, TaskSource } from '../types/task';
 import type { TabType } from '../types/task';
 import type { InputKeybindingSettings } from '../../shared/inputKeybindings';
 import type { DailyWorkPanel as DailyWorkPanelComponent } from './DailyWorkPanel';
+import { HistoryCleanupToolbar } from './historyCleanup/HistoryCleanupToolbar';
+import {
+  isEveryVisibleHistoryItemSelected,
+  keepVisibleSelection,
+  selectVisibleHistoryItems,
+  toggleHistorySelection,
+} from './historyCleanup/historyCleanupSelection';
 import { TaskListStaticContent } from './taskList/TaskListStaticContent';
 import { TaskListToolbar, type PriorityFilter } from './taskList/TaskListToolbar';
 import { getTaskListDerivations } from './taskList/taskListDerivations';
@@ -50,6 +57,7 @@ interface TaskListProps {
   onCloseInspirationPanel: () => void;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onDeleteTasks: (ids: string[]) => void;
   onEdit: (id: string, text: string) => void;
   onPriorityChange: (id: string, priority: Task['priority']) => void;
   onViewReview: (task: Task) => void;
@@ -97,6 +105,7 @@ export const TaskList = memo(function TaskList({
   onCloseInspirationPanel,
   onToggle,
   onDelete,
+  onDeleteTasks,
   onEdit,
   onPriorityChange,
   onViewReview,
@@ -112,7 +121,24 @@ export const TaskList = memo(function TaskList({
   const filtersActive = Boolean(searchQuery.trim() || showOpenOnly || priorityFilter !== 'all');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [dndRequested, setDndRequested] = useState(false);
+  const [isCleanupMode, setIsCleanupMode] = useState(false);
+  const [selectedCleanupTaskIds, setSelectedCleanupTaskIds] = useState<string[]>([]);
   useFloatingScrollbar(scrollRef);
+
+  const canCleanHistory = activeTab === 'all';
+  const visibleTaskIds = useMemo(() => tasks.map((task) => task.id), [tasks]);
+  const allVisibleTasksSelected = isEveryVisibleHistoryItemSelected(selectedCleanupTaskIds, visibleTaskIds);
+
+  useEffect(() => {
+    setSelectedCleanupTaskIds((previous) => keepVisibleSelection(previous, visibleTaskIds));
+  }, [visibleTaskIds]);
+
+  useEffect(() => {
+    if (!canCleanHistory) {
+      setIsCleanupMode(false);
+      setSelectedCleanupTaskIds([]);
+    }
+  }, [canCleanHistory]);
 
   const { allTags, sourceGroups, shouldGroupBySource } = useMemo(
     () => getTaskListDerivations(tasks, sourceOrder),
@@ -124,6 +150,25 @@ export const TaskList = memo(function TaskList({
     onPriorityFilterChange('all');
   }, [onPriorityFilterChange, onSearchChange, onToggleOpenOnly, showOpenOnly]);
   const requestDndSurface = useCallback(() => setDndRequested(true), []);
+  const toggleTaskCleanupSelection = useCallback((id: string) => {
+    setSelectedCleanupTaskIds((previous) => toggleHistorySelection(previous, id));
+  }, []);
+  const cancelCleanup = useCallback(() => {
+    setIsCleanupMode(false);
+    setSelectedCleanupTaskIds([]);
+  }, []);
+  const toggleVisibleCleanupSelection = useCallback(() => {
+    setSelectedCleanupTaskIds((previous) => (
+      isEveryVisibleHistoryItemSelected(previous, visibleTaskIds) ? [] : selectVisibleHistoryItems(visibleTaskIds)
+    ));
+  }, [visibleTaskIds]);
+  const deleteSelectedTasks = useCallback(() => {
+    if (!selectedCleanupTaskIds.length) return;
+    const message = text.cleanupTasksConfirmation.replace('{count}', String(selectedCleanupTaskIds.length));
+    if (!window.confirm(message)) return;
+    onDeleteTasks(selectedCleanupTaskIds);
+    cancelCleanup();
+  }, [cancelCleanup, onDeleteTasks, selectedCleanupTaskIds, text.cleanupTasksConfirmation]);
 
   const contentProps = {
     tasks,
@@ -143,11 +188,15 @@ export const TaskList = memo(function TaskList({
     onEditSubtask,
     onChangeSubtaskPriority,
     editRequest,
+    isCleanupMode,
+    selectedCleanupTaskIds,
+    onToggleCleanupSelection: toggleTaskCleanupSelection,
+    cleanupSelectionLabel: text.selectHistoryItem,
   };
 
   return (
     <div className="task-list flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">
-      <TaskListToolbar
+        <TaskListToolbar
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
         searchOpen={searchOpen}
@@ -167,7 +216,21 @@ export const TaskList = memo(function TaskList({
         isInspirationOpen={isInspirationOpen}
         onToggleDailyWorkPanel={onToggleDailyWorkPanel}
         onToggleInspirationPanel={onToggleInspirationPanel}
-      />
+        />
+
+      {canCleanHistory && (
+        <HistoryCleanupToolbar
+          isActive={isCleanupMode}
+          visibleItemCount={visibleTaskIds.length}
+          selectedItemCount={selectedCleanupTaskIds.length}
+          isEveryVisibleItemSelected={allVisibleTasksSelected}
+          text={text}
+          onStart={() => setIsCleanupMode(true)}
+          onCancel={cancelCleanup}
+          onToggleVisibleItems={toggleVisibleCleanupSelection}
+          onDeleteSelected={deleteSelectedTasks}
+        />
+      )}
 
       <div className="task-daily-panels">
         {isDailyWorkOpen && (
@@ -215,7 +278,7 @@ export const TaskList = memo(function TaskList({
             <TaskListDndSurface
               {...contentProps}
               selectedDate={selectedDate}
-              dragDisabled={dragDisabled}
+              dragDisabled={dragDisabled || isCleanupMode}
               onReorderSources={onReorderSources}
               onReorderTasks={onReorderTasks}
             />

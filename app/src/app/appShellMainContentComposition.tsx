@@ -12,7 +12,7 @@ import type { createAppCompletionActions } from './appCompletionActions';
 import type { createAppUiActions } from './appUiActions';
 
 export interface AppShellMainContentCompositionOptions {
-  appSettings: Pick<AppBehaviorSettings, 'language' | 'inputKeybindings'>;
+  appSettings: Pick<AppBehaviorSettings, 'language' | 'inputKeybindings' | 'taskHistoryRange' | 'taskHistoryStartDate'>;
   appUiActions: ReturnType<typeof createAppUiActions>;
   completionActions: ReturnType<typeof createAppCompletionActions>;
   mainScrollRef: ComponentProps<typeof AppMainContent>['mainScrollRef'];
@@ -23,6 +23,7 @@ export interface AppShellMainContentCompositionOptions {
   allTasks: ComponentProps<typeof ReviewView>['allTasks'];
   editTaskReview: ComponentProps<typeof ReviewView>['onEditReview'];
   deleteTaskReview: ComponentProps<typeof ReviewView>['onDeleteReview'];
+  deleteTaskReviews: ComponentProps<typeof ReviewView>['onDeleteReviews'];
   totalCount: ComponentProps<typeof Header>['totalCount'];
   completedCount: ComponentProps<typeof Header>['completedCount'];
   obsidianPath: ComponentProps<typeof Header>['obsidianPath'];
@@ -73,6 +74,7 @@ export function createAppShellMainContentComposition({
   allTasks,
   editTaskReview,
   deleteTaskReview,
+  deleteTaskReviews,
   totalCount,
   completedCount,
   obsidianPath,
@@ -136,11 +138,13 @@ export function createAppShellMainContentComposition({
   };
   const reviewViewProps = {
     allTasks,
+    appSettings,
     text: shellText.app,
     activeTab,
     onTabChange: setActiveTab,
     onEditReview: editTaskReview,
     onDeleteReview: deleteTaskReview,
+    onDeleteReviews: deleteTaskReviews,
   };
   const taskListProps = {
     tasks: visibleTasks,
@@ -176,6 +180,7 @@ export function createAppShellMainContentComposition({
     onCloseInspirationPanel: appUiActions.closeInspirationPanel,
     onToggle: completionActions.toggleTask,
     onDelete: deleteTask,
+    onDeleteTasks: (ids: string[]) => ids.forEach(deleteTask),
     onEdit: editTask,
     onPriorityChange: changePriority,
     onViewReview: completionActions.viewCompletion,

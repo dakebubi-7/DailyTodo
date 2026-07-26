@@ -25,6 +25,10 @@ export interface TaskListItemContentProps {
   onEditSubtask: (id: string, text: string) => void;
   onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   editRequest?: { id: string; nonce: number } | null;
+  isCleanupMode?: boolean;
+  selectedCleanupTaskIds?: string[];
+  onToggleCleanupSelection?: (id: string) => void;
+  cleanupSelectionLabel?: string;
 }
 
 export interface TaskListContentProps extends TaskListItemContentProps {
@@ -54,6 +58,10 @@ export const TaskListContent = memo(function TaskListContent({
   onEditSubtask,
   onChangeSubtaskPriority,
   editRequest,
+  isCleanupMode,
+  selectedCleanupTaskIds,
+  onToggleCleanupSelection,
+  cleanupSelectionLabel,
 }: TaskListContentProps) {
   const renderTask = (task: Task, index: number) => (
     <SortableTaskItem
@@ -76,6 +84,10 @@ export const TaskListContent = memo(function TaskListContent({
       onChangeSubtaskPriority={onChangeSubtaskPriority}
       allTags={allTags}
       editTrigger={editRequest && editRequest.id === task.id ? editRequest.nonce : undefined}
+      isCleanupMode={isCleanupMode}
+      isCleanupSelected={selectedCleanupTaskIds?.includes(task.id)}
+      onToggleCleanupSelection={onToggleCleanupSelection}
+      cleanupSelectionLabel={cleanupSelectionLabel}
     />
   );
 

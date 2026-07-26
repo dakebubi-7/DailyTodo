@@ -41,6 +41,10 @@ const StaticTaskItem = memo(function StaticTaskItem({
   onEditSubtask,
   onChangeSubtaskPriority,
   editTrigger,
+  isCleanupMode,
+  selectedCleanupTaskIds,
+  onToggleCleanupSelection,
+  cleanupSelectionLabel,
 }: StaticTaskItemProps) {
   return (
     <div style={STATIC_TASK_CONTENT_VISIBILITY}>
@@ -60,6 +64,10 @@ const StaticTaskItem = memo(function StaticTaskItem({
         onChangeSubtaskPriority={onChangeSubtaskPriority}
         allTags={allTags}
         editTrigger={editTrigger}
+        isCleanupMode={isCleanupMode}
+        isCleanupSelected={selectedCleanupTaskIds?.includes(task.id)}
+        onToggleCleanupSelection={onToggleCleanupSelection ? () => onToggleCleanupSelection(task.id) : undefined}
+        cleanupSelectionLabel={cleanupSelectionLabel}
       />
     </div>
   );
@@ -83,6 +91,10 @@ export const TaskListStaticContent = memo(function TaskListStaticContent({
   onEditSubtask,
   onChangeSubtaskPriority,
   editRequest,
+  isCleanupMode,
+  selectedCleanupTaskIds,
+  onToggleCleanupSelection,
+  cleanupSelectionLabel,
 }: TaskListStaticContentProps) {
   const renderTask = (task: Task) => (
     <StaticTaskItem
@@ -102,6 +114,10 @@ export const TaskListStaticContent = memo(function TaskListStaticContent({
       onEditSubtask={onEditSubtask}
       onChangeSubtaskPriority={onChangeSubtaskPriority}
       editTrigger={editRequest && editRequest.id === task.id ? editRequest.nonce : undefined}
+      isCleanupMode={isCleanupMode}
+      selectedCleanupTaskIds={selectedCleanupTaskIds}
+      onToggleCleanupSelection={onToggleCleanupSelection}
+      cleanupSelectionLabel={cleanupSelectionLabel}
     />
   );
 

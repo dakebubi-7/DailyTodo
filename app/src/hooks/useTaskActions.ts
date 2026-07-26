@@ -1,5 +1,6 @@
 import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 import type { AppBehaviorSettings } from '../../shared/appSettings';
+import type { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
 import type { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
 import { setAppSettings as persistAppSettings } from '../store/taskStore';
 import type { Task, TaskCompletionReview, TaskSource } from '../types/task';
@@ -7,8 +8,8 @@ import type { TaskListOrderByDate } from '../utils/taskOrdering';
 import {
   getDeleteTaskReviewConfirmationMessage,
 } from './taskMutations';
-import { RETAINED_OBSIDIAN_REVIEWS_KEY } from './taskPersistence';
-import { areAppBehaviorSettingsEqual, shouldClearRetainedReviewsOnSettingsUpdate } from './taskHookState';
+import { ARCHIVED_OBSIDIAN_TASKS_KEY, RETAINED_OBSIDIAN_REVIEWS_KEY } from './taskPersistence';
+import { areAppBehaviorSettingsEqual } from './taskHookState';
 import { createTaskAppStateActionHandlers } from './taskAppStateActions';
 import { createTaskCompletionActionHandlers } from './taskCompletionActions';
 import { createTaskTreeActionHandlers } from './taskTreeActions';
@@ -20,6 +21,7 @@ export interface UseTaskActionsInput {
   currentDate: string;
   selectedDate: string;
   setAllTasks: Dispatch<SetStateAction<Task[]>>;
+  setArchivedObsidianTasks: Dispatch<SetStateAction<ArchivedObsidianTask[]>>;
   setAppSettings: Dispatch<SetStateAction<AppBehaviorSettings>>;
   setDailyInspirationNotes: Dispatch<SetStateAction<Record<string, string>>>;
   setDailyWorkNotes: Dispatch<SetStateAction<Record<string, string>>>;
@@ -35,6 +37,7 @@ export interface TaskActions {
   toggleTask: (id: string) => void;
   completeTaskWithReview: (id: string, review: Omit<TaskCompletionReview, 'reviewedAt'>) => void;
   deleteTaskReview: (taskId: string, reviewId: string) => void;
+  deleteTaskReviews: (records: Array<{ taskId: string; reviewId: string }>) => void;
   deleteTask: (id: string) => void;
   editTask: (id: string, text: string) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
@@ -57,6 +60,7 @@ export function useTaskActions({
   currentDate,
   selectedDate,
   setAllTasks,
+  setArchivedObsidianTasks,
   setAppSettings,
   setDailyInspirationNotes,
   setDailyWorkNotes,
@@ -67,28 +71,30 @@ export function useTaskActions({
     (value: RetainedObsidianReview[]) => window.electronAPI?.setStore(RETAINED_OBSIDIAN_REVIEWS_KEY, value),
     [],
   );
+  const persistArchivedObsidianTasks = useCallback(
+    (value: ArchivedObsidianTask[]) => window.electronAPI?.setStore(ARCHIVED_OBSIDIAN_TASKS_KEY, value),
+    [],
+  );
   const { updateAppSettings, updateDailyWork, updateDailyInspiration } = useMemo(
     () => createTaskAppStateActionHandlers({
       appSettings,
       selectedDate,
       areSettingsEqual: areAppBehaviorSettingsEqual,
-      shouldClearRetainedReviews: shouldClearRetainedReviewsOnSettingsUpdate,
       setAppSettings,
       persistAppSettings,
-      setRetainedReviews: setRetainedObsidianReviews,
-      persistRetainedReviews,
       setDailyWork: setDailyWorkNotes,
       setDailyInspiration: setDailyInspirationNotes,
     }),
-    [appSettings, persistRetainedReviews, selectedDate, setAppSettings, setDailyInspirationNotes, setDailyWorkNotes, setRetainedObsidianReviews],
+    [appSettings, selectedDate, setAppSettings, setDailyInspirationNotes, setDailyWorkNotes],
   );
   const confirmDeleteReview = useCallback(
-    () => window.confirm(getDeleteTaskReviewConfirmationMessage(appSettings.syncDeletedReviewsToObsidian)),
-    [appSettings.syncDeletedReviewsToObsidian],
+    () => window.confirm(getDeleteTaskReviewConfirmationMessage()),
+    [],
   );
   const {
     completeTaskWithReview,
     deleteTaskReview,
+    deleteTaskReviews,
     updateSubtaskReview,
     markSubtaskDoneWithoutReview,
     editTaskReview,
@@ -121,10 +127,12 @@ export function useTaskActions({
       currentDate,
       selectedDate,
       setAllTasks,
+      setArchivedObsidianTasks,
+      persistArchivedObsidianTasks,
       createId: () => crypto.randomUUID(),
       getTimestamp: () => new Date().toISOString(),
     }),
-    [currentDate, selectedDate, setAllTasks],
+    [currentDate, persistArchivedObsidianTasks, selectedDate, setAllTasks, setArchivedObsidianTasks],
   );
   const { deleteTask, reorderSourceGroups, reorderTasksWithinSource } = useMemo(
     () => createTaskOrderingActionHandlers({
@@ -138,7 +146,7 @@ export function useTaskActions({
 
   return {
     updateAppSettings, updateDailyWork, updateDailyInspiration, addTask, toggleTask, completeTaskWithReview,
-    deleteTaskReview, deleteTask, editTask, updateTask, addSubtask, toggleSubtask, deleteSubtask, toggleTaskCollapse,
+    deleteTaskReview, deleteTaskReviews, deleteTask, editTask, updateTask, addSubtask, toggleSubtask, deleteSubtask, toggleTaskCollapse,
     updateSubtaskReview, markSubtaskDoneWithoutReview, editTaskReview, changePriority, reorderSourceGroups,
     reorderTasksWithinSource, clearCompleted,
   };
