@@ -162,6 +162,7 @@
     "verify:task-item-subtasks-viewport": "tsx scripts/verify-task-item-subtasks-viewport.ts",
     "verify:task-item-subtask-card-module": "tsx scripts/verify-task-item-subtask-card-module.ts",
     "verify:task-item-action-controls-module": "tsx scripts/verify-task-item-action-controls-module.ts",
+    "verify:task-row-title-retraction": "tsx scripts/verify-task-row-title-retraction.ts",
     "verify:task-item-stack-helper": "tsx scripts/verify-task-item-stack-helper.ts",
     "verify:app-task-view-module": "tsx scripts/verify-app-task-view-module.ts",
     "verify:app-personalization-module": "tsx scripts/verify-app-personalization-module.ts",

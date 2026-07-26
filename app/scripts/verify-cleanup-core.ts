@@ -69,6 +69,7 @@ export const cleanupCoreCommands = [
   "verify:task-item-subtasks-viewport",
   "verify:task-item-subtask-card-module",
   "verify:task-item-action-controls-module",
+  "verify:task-row-title-retraction",
   "verify:task-item-stack-helper",
   "verify:task-item-interactions-helper",
   "verify:task-item-editing-helper",
