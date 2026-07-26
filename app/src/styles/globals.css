@@ -12810,6 +12810,11 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-text-wrap > .task-text-row {
     height: 1.25em;
   }
+
+  .task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-action-layer .task-delete-action {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
