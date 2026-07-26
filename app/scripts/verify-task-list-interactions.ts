@@ -323,7 +323,7 @@ assert(!taskListContent.includes('const doneTasks = groupTasks.filter'), 'TaskLi
 assert(taskListContent.includes('editRequest && editRequest.id === task.id ? editRequest.nonce : undefined'), 'TaskListContent should preserve edit-trigger routing for individual tasks.');
 assert(sortableSourceSection.includes('source-drag-handle') && taskItem.includes('DragHandleButton') && taskItemControls.includes('task-drag-handle'), 'TaskList/TaskItem should expose drag handles for tasks and source groups.');
 assert(taskOrderingState.includes('taskMatchesDate(task, date, currentDate)'), 'Manual reorder should include tasks visible via scheduledDates on the selected date.');
-assert(taskItem.includes('<TaskActionLayer') && taskItemActionControls.includes('task-delete-zone') && taskItemActionControls.includes('task-action-layer'), 'TaskItem should use the controls action layer with a stable right-side delete hot zone.');
+assert(taskItem.includes('<TaskActionLayer') && taskItem.includes("from './taskItem/taskItemActionControls'") && taskItem.includes('!isCleanupMode && (') && taskItemActionControls.includes('task-delete-zone') && taskItemActionControls.includes('task-action-layer'), 'TaskItem should retain extracted TaskActionLayer ownership with a stable right-side delete hot zone outside history cleanup mode.');
 assert(!taskItem.includes('initial={{ opacity: 0 }}\n              whileHover={{ scale: 1.06 }}\n              whileTap={{ scale: 0.94 }}\n              onClick={onDelete}'), 'Delete button visibility should be controlled by CSS hot-zone hover, not a permanent inline opacity of 0.');
 assert(!taskItem.includes('setIsHovered') && !taskItem.includes('isHovered'), 'TaskItem delete visibility should not depend on whole-card hover state.');
 assert(taskListDnd.includes("active.type === 'source'") && taskListDnd.includes("candidate.type === 'source'") && !taskListDnd.includes("candidate.type === 'source' || candidate.type === 'task'"), 'Source group dragging should only collide with source containers, not nested task cards.');
@@ -353,7 +353,6 @@ assert(globals.includes('.task-subtask-row:hover .task-subtask-delete') && globa
 assert(globals.includes('.task-delete-zone') && globals.includes('height: 40px'), 'CSS should keep a tall delete hot zone while using a compact width so task text has room.');
 assert(!globals.includes('.task-card:hover .task-delete-action'), 'Delete visibility should be controlled by the right-side hot zone, not whole-card hover.');
 assert(globals.includes('position: absolute') && globals.includes('.task-action-layer'), 'Action buttons should be absolutely positioned outside text layout.');
-assert(globals.includes('padding-right') && globals.includes('--task-action-safe-space'), 'Task card text layout should reserve a stable right-side safe space.');
 
 assert(
   globals.includes('height: 1.22rem !important;') &&
@@ -364,7 +363,8 @@ assert(
 assert(taskItemActionControls.includes('<svg width="9" height="9" viewBox="0 0 12 12" fill="none">'), 'Completion check icon should scale down with the smaller completion circle.');
 
 assert(taskItem.includes('getTaskCardClassName({') && taskItemPresentation.includes('task-cluster-main-card') && taskItem.includes('aria-expanded={hasChildren ? !task.collapsed : undefined}'), 'Parent task card should be the accessible task-cluster toggle surface.');
-assert(taskItem.includes('task-cluster-main-spacer') && taskItem.includes('aria-hidden="true"'), 'Main task rows should keep a leading spacer so completion/priority/text columns align without the old tree arrow.');
+assert(!taskItem.includes('task-cluster-main-spacer'), 'Main task rows should remove the obsolete cluster spacer.');
+assert(taskItemControls.includes('task-drag-slot') && taskItemControls.includes('task-text-browse') && taskItemControls.includes('task-text-active'), 'Task controls should keep the drag slot plus browse and active title layers.');
 assert(taskItem.includes('stopClusterToggle') && taskItem.includes('onPointerDown={stopClusterToggle}'), 'Task card controls should isolate pointer/click events from parent cluster toggling.');
 assert(taskItem.includes('<TaskSubtasksViewport') && taskItem.includes('onEditSubtask={onEditSubtask}') && taskItem.includes('onChangeSubtaskPriority={onChangeSubtaskPriority}'), 'TaskItem should pass expanded subtask interactions into TaskSubtasksViewport.');
 assert(subtasksViewport.includes('<SubtaskCard') && subtasksViewport.includes('onToggleSubtask={onToggleSubtask}') && subtasksViewport.includes('onDeleteSubtask={onDeleteSubtask}') && subtasksViewport.includes('onViewSubtaskReview={onViewSubtaskReview}') && subtasksViewport.includes('onEditSubtask={onEditSubtask}') && subtasksViewport.includes('onChangeSubtaskPriority={onChangeSubtaskPriority}'), 'Expanded subtasks should keep complete, edit, priority, review, and delete interactions.');
@@ -380,12 +380,14 @@ assert(!taskItem.includes('renderSubtaskTree'), 'TaskItem should no longer rende
 assert(!taskItem.includes('task-subtask-check'), 'Subtasks should reuse compact task completion controls instead of the old circular subtask check class.');
 assert(globals.includes('.task-cluster') && globals.includes('.task-cluster-main-card'), 'CSS should define the task cluster wrapper and main-card layer.');
 const taskClusterMainCardBlock = getCssBlock(globals, '.task-cluster-main-card');
-const taskClusterMainCardSafeSpaceRule = getCssBlock(globals, '.task-cluster-main-card.task-cluster-main-card');
 assert(!taskItem.includes('task-subtask-count-badge'), 'Collapsed cluster cards should not render a subtask count badge.');
 assert(!globals.includes('.task-subtask-count-badge'), 'CSS should no longer define the removed subtask count badge block.');
 assert(!taskClusterMainCardBlock.includes('--task-subtask-badge-safe-space'), 'The cluster main card should not reserve badge-only safe space once the count badge is removed.');
-assert(taskClusterMainCardSafeSpaceRule.includes('padding-right: var(--task-action-safe-space'), 'Task text layout should reserve only the action-layer safe space once the count badge is removed.');
-assert(globals.includes('.task-card-no-children {\n  grid-template-columns: auto auto auto auto minmax(0, 1fr) !important;'), 'No-child task rows should keep the same leading column structure as rows with children.');
+assert(globals.includes('.task-card-has-children {\n  grid-template-columns: auto auto auto minmax(0, 1fr) !important;') && globals.includes('.task-card-no-children {\n  grid-template-columns: auto auto auto minmax(0, 1fr) !important;'), 'Main task cards should use the four-column drag, completion, priority, and text grid.');
+assert(globals.includes('.task-card > .task-text-wrap,\n.task-card > .task-edit-input {\n  grid-column: 4 !important;'), 'Task content and editing should occupy grid column 4.');
+assert(globals.includes('@media (hover: hover) and (pointer: fine) {'), 'Title retraction should be limited to precise hover pointers.');
+assert(globals.includes('.task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) {\n    --task-row-action-space: var(--task-action-safe-space);') && globals.includes('.task-card:not(.history-cleanup-task-card) > .task-action-layer {\n    opacity: 0;\n    pointer-events: none;') && globals.includes('.task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-action-layer {\n    opacity: 1;\n    pointer-events: auto;') && globals.includes('.task-card:not(.history-cleanup-task-card):is(:hover, :focus-within) > .task-text-wrap > .task-text-row {\n    height: 1.25em;'), 'Fine-pointer hover/focus should reserve action space, reveal controls, and retract the title row.');
+assert(globals.includes('.task-card.history-cleanup-task-card {\n  grid-template-columns: auto minmax(0, 1fr) !important;\n  padding-right: 0.5rem !important;'), 'History cleanup cards should keep a two-column layout without the normal action lane.');
 assert(globals.includes('.task-subtask-action-layer {\n  top: 50% !important;\n  transform: translateY(-50%) !important;') && globals.includes('grid-template-columns: 1.38rem 1.38rem !important;'), 'Subtask review/delete controls should be vertically centered and aligned in equal slots.');
 assert(globals.includes('.task-complete-action,\n.task-tree-toggle,\n.task-tree-spacer {\n  height: 1.12rem !important;') || globals.includes('.task-subtask-complete'), 'Completion controls should stay compact across themes.');
 assert(sortableTaskItem.includes("import { memo, useEffect, useLayoutEffect } from 'react';"), 'Sortable task rows should import React memoization for unchanged task cards.');
