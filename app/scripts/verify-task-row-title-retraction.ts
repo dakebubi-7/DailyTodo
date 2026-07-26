@@ -16,11 +16,16 @@ const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const normalCardSelector = '.task-card:not(.history-cleanup-task-card)';
 const normalCardInteractiveSelector = `${normalCardSelector}:is(:hover, :focus-within)`;
 
-function readCssBlock(css: string, selector: string): string {
-  const selectorStart = css.lastIndexOf(selector);
-  assert.notEqual(selectorStart, -1, `CSS should define ${selector}.`);
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-  const blockStart = css.indexOf('{', selectorStart + selector.length);
+function readCssBlock(css: string, selector: string): string {
+  const selectorMatch = new RegExp(`^[ \\t]*${escapeRegExp(selector)}[ \\t]*\\{`, 'm').exec(css);
+  assert.ok(selectorMatch?.index !== undefined, `CSS should define ${selector}.`);
+  const selectorStart = selectorMatch.index;
+
+  const blockStart = css.indexOf('{', selectorStart + selectorMatch[0].length - 1);
   assert.notEqual(blockStart, -1, `CSS rule for ${selector} should open a declaration block.`);
 
   let depth = 1;
@@ -36,7 +41,7 @@ function readCssBlock(css: string, selector: string): string {
 function assertRuleIncludes(selector: string, declarations: string[], message: string, css = globals): void {
   const block = readCssBlock(css, selector);
   for (const declaration of declarations) {
-    assert.match(block, new RegExp(`^|\\n\\s*${declaration.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `${message}: ${declaration}`);
+    assert.match(block, new RegExp(`(?:^|\\n)\\s*${escapeRegExp(declaration)}`), `${message}: ${declaration}`);
   }
 }
 
@@ -56,16 +61,18 @@ assert.match(actionControls, /export function TaskActionLayer\b/, 'The focused a
 assertRuleIncludes('.task-card-no-children', ['grid-template-columns: auto auto auto minmax(0, 1fr) !important;'], 'No-child task cards should use the four-column row grid.');
 assertRuleIncludes('.task-card-has-children', ['grid-template-columns: auto auto auto minmax(0, 1fr) !important;'], 'Task cards with children should use the four-column row grid.');
 assertRuleIncludes('.task-card > .task-text-wrap,\n.task-card > .task-edit-input', ['grid-column: 4 !important;'], 'Task content and editing should occupy grid column 4.');
-assertRuleIncludes(`${normalCardSelector} > .task-action-layer`, ['opacity: 0;', 'pointer-events: none;'], 'Idle task action space should be hidden and non-interactive.');
-assertRuleIncludes(`${normalCardSelector} > .task-drag-slot`, ['width: 0;'], 'Idle normal task cards should retract the drag slot.');
-assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-browse`, ['display: -webkit-box;', 'overflow: hidden;', '-webkit-box-orient: vertical;', '-webkit-line-clamp: 2;'], 'Normal task cards should render browse titles as two-line clamps.');
-assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-active`, ['display: block;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;'], 'Normal task cards should render active titles as one-line ellipses.');
-assertRuleIncludes(normalCardInteractiveSelector, ['--task-row-action-space: var(--task-action-safe-space);'], 'Normal hover/focus cards should reserve action space.');
-assertRuleIncludes(`${normalCardInteractiveSelector} > .task-action-layer`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal hover/focus cards should reveal their exact action layer.');
-assertRuleIncludes(`${normalCardInteractiveSelector} > .task-drag-slot:has(.task-drag-handle:not(:disabled))`, ['width: 0.95rem;'], 'Normal hover/focus cards should reveal the enabled drag slot.');
-assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap .task-text-browse`, ['opacity: 0;'], 'Normal hover/focus cards should hide browse titles.');
-assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap .task-text-active`, ['opacity: 1;'], 'Normal hover/focus cards should reveal active titles.');
-assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap > .task-text-row`, ['height: 1.25em;'], 'Normal hover/focus cards should retract the title row to one line.');
+const preciseHover = readCssBlock(globals, '@media (hover: hover) and (pointer: fine)');
+assertRuleIncludes(normalCardSelector, ['--task-row-action-space: 0rem;', 'padding-right: calc(0.5rem + var(--task-row-action-space)) !important;'], 'Idle normal task cards should reserve trailing space through the action-space variable.', preciseHover);
+assertRuleIncludes(`${normalCardSelector} > .task-action-layer`, ['opacity: 0;', 'pointer-events: none;'], 'Idle task action space should be hidden and non-interactive.', preciseHover);
+assertRuleIncludes(`${normalCardSelector} > .task-drag-slot`, ['width: 0;'], 'Idle normal task cards should retract the drag slot.', preciseHover);
+assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-browse`, ['display: -webkit-box;', 'overflow: hidden;', '-webkit-box-orient: vertical;', '-webkit-line-clamp: 2;'], 'Normal task cards should render browse titles as two-line clamps.', preciseHover);
+assertRuleIncludes(`${normalCardSelector} > .task-text-wrap .task-text-active`, ['display: block;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;'], 'Normal task cards should render active titles as one-line ellipses.', preciseHover);
+assertRuleIncludes(normalCardInteractiveSelector, ['--task-row-action-space: var(--task-action-safe-space);'], 'Normal hover/focus cards should reserve action space.', preciseHover);
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-action-layer`, ['opacity: 1;', 'pointer-events: auto;'], 'Normal hover/focus cards should reveal their exact action layer.', preciseHover);
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-drag-slot:has(.task-drag-handle:not(:disabled))`, ['width: 0.95rem;'], 'Normal hover/focus cards should reveal the enabled drag slot.', preciseHover);
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap .task-text-browse`, ['opacity: 0;'], 'Normal hover/focus cards should hide browse titles.', preciseHover);
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap .task-text-active`, ['opacity: 1;'], 'Normal hover/focus cards should reveal active titles.', preciseHover);
+assertRuleIncludes(`${normalCardInteractiveSelector} > .task-text-wrap > .task-text-row`, ['height: 1.25em;'], 'Normal hover/focus cards should retract the title row to one line.', preciseHover);
 assert.match(globals, /\.task-card\.history-cleanup-task-card \{/, 'History cleanup styling should target the exact cleanup task-card selector.');
 const reducedMotion = readCssBlock(globals, '@media (prefers-reduced-motion: reduce)');
 assertRuleIncludes('.task-text-row', ['transition: none !important;'], 'Reduced motion should disable title-row transitions.', reducedMotion);
