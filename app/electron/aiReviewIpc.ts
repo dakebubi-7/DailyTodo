@@ -1,5 +1,6 @@
 import { registerAiReviewBackfillIpcHandlers } from './aiReviewBackfillIpc';
 import { registerAiReviewDailyRunInspectIpcHandlers } from './aiReviewDailyRunInspectIpc';
+import { registerAiReviewDailyBatchIpcHandlers } from './aiReviewDailyBatchIpc';
 import { registerAiReviewExternalReportIpcHandlers } from './aiReviewExternalReportIpc';
 import type { RegisterAiReviewIpcHandlersOptions } from './aiReviewIpcRegistrationTypes';
 import { registerAiReviewMonthlyReportIpcHandlers } from './aiReviewMonthlyReportIpc';
@@ -18,6 +19,8 @@ export function registerAiReviewIpcHandlers({
   setReviewSections,
   scheduleAiTimers,
   runReviewForDate,
+  getDailyReviewBatch,
+  runDailyReviewBatch,
   inspectDailyAiContent,
   getDateKey,
   getVaultPath,
@@ -44,6 +47,11 @@ export function registerAiReviewIpcHandlers({
     getDateKey,
     runReviewForDate,
     inspectDailyAiContent,
+  });
+  registerAiReviewDailyBatchIpcHandlers({
+    getDateKey,
+    getDailyReviewBatch,
+    runDailyReviewBatch,
   });
   registerAiReviewBackfillIpcHandlers({
     getAppSettings,

@@ -99,6 +99,12 @@ for (const channel of [
   assert.doesNotMatch(main, new RegExp(`ipcMain\\.handle\\('${channel.replace(':', ':')}'`), `main should not register ${channel} inline.`);
 }
 
+assert.match(
+  windowIpc,
+  /ipcMain\.handle\('window:close', \(\) => win\.close\(\)\)/,
+  'window:close should use BrowserWindow.close so the native close policy decides between tray and exit.',
+);
+
 assert.match(composition, /from '\.\/mainWindowBootstrap'/, 'main-window composition should import the bootstrap helper that wires window IPC.');
 assert.match(bootstrap, /from '\.\/mainWindowIpcRegistration'/, 'mainWindowBootstrap should delegate window IPC registration through the focused IPC composition helper.');
 assert.match(ipcRegistration, /from '\.\/windowIpc'/, 'mainWindowIpcRegistration should import window IPC registration from windowIpc.');

@@ -12,6 +12,7 @@ export type TaskContextMenuTheme = {
 export type TaskContextMenuPayload = {
   task: Task;
   allTags: string[];
+  currentDate: string;
   screenX: number;
   screenY: number;
   isDark: boolean;
@@ -54,6 +55,7 @@ export function createTaskContextMenuTheme(options: {
 export function createTaskContextMenuPayload(options: {
   task: Task;
   allTags: string[];
+  currentDate: string;
   screenX: number;
   screenY: number;
   isDark: boolean;
@@ -62,6 +64,7 @@ export function createTaskContextMenuPayload(options: {
   return {
     task: options.task,
     allTags: options.allTags,
+    currentDate: options.currentDate,
     screenX: normalizeScreenCoordinate(options.screenX),
     screenY: normalizeScreenCoordinate(options.screenY),
     isDark: options.isDark,
@@ -72,6 +75,7 @@ export function createTaskContextMenuPayload(options: {
 export function createTaskContextMenuOpenPayload(options: {
   task: Task;
   allTags: string[];
+  currentDate: string;
   screenX: number;
   screenY: number;
   isDark: boolean;
@@ -88,6 +92,7 @@ export function createTaskContextMenuOpenPayload(options: {
   return createTaskContextMenuPayload({
     task: options.task,
     allTags: options.allTags,
+    currentDate: options.currentDate,
     screenX: normalizeScreenCoordinate(options.screenX),
     screenY: normalizeScreenCoordinate(options.screenY),
     isDark: options.isDark,

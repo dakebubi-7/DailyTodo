@@ -2,6 +2,11 @@
 import { registerCompanionIpcHandlers } from './companionIpc';
 import { registerObsidianIpcHandlers } from './obsidianIpc';
 import { registerSettingsIpcHandlers } from './settingsIpc';
+import { registerBackupIpcHandlers } from './backupIpc';
+import { registerProductPathsIpcHandlers } from './productPathsIpc';
+import { getDiagnosticLogPath } from './diagnostics';
+import { app, dialog, shell } from 'electron';
+import path from 'node:path';
 import { registerTaskContextMenuIpcHandlers, type TaskMenuPayload } from './taskContextMenuIpc';
 import { TASK_MENU_HEIGHT } from './taskMenuWindow';
 import type {
@@ -50,6 +55,8 @@ export function createMainWindowIpcRegistrations({
   getReviewSections,
   setReviewSections,
   runReviewForDate,
+  getDailyReviewBatch,
+  runDailyReviewBatch,
   inspectDailyAiContent,
   getDateKey,
   getVaultPath,
@@ -70,6 +77,8 @@ export function createMainWindowIpcRegistrations({
   previewTasksToObsidian,
   buildDailyTemplate,
   triggerOverviewUpdate,
+  backup,
+  productPaths,
 }: MainWindowIpcRegistrationOptions): MainWindowIpcRegistrations {
   return {
     registerWindowIpc: () => registerWindowIpcHandlers({
@@ -100,6 +109,41 @@ export function createMainWindowIpcRegistrations({
       getObsidianTemplateSettings,
       setObsidianTemplateSettings,
     }),
+    registerBackupIpc: () => registerBackupIpcHandlers({
+      backup,
+      chooseRestoreFile: async () => {
+        const result = await dialog.showOpenDialog(win, {
+          title: 'Restore DailyTodo backup',
+          properties: ['openFile'],
+          filters: [{ name: 'DailyTodo backups', extensions: ['json'] }],
+        });
+        return result.canceled ? undefined : result.filePaths[0];
+      },
+      chooseExportFile: async () => {
+        const result = await dialog.showSaveDialog(win, {
+          title: 'Export DailyTodo backup',
+          defaultPath: 'dailytodo-backup.dailytodo-backup.json',
+          filters: [{ name: 'DailyTodo backups', extensions: ['json'] }],
+        });
+        return result.canceled ? undefined : result.filePath;
+      },
+      openBackupDirectory: () => shell.openPath(backup.backupDirectory),
+      relaunch: () => app.relaunch(),
+      quit: () => app.quit(),
+      createToken: () => `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }),
+    registerProductPathsIpc: () => registerProductPathsIpcHandlers({
+      productPaths,
+      chooseSupportBundleFile: async () => {
+        const result = await dialog.showSaveDialog(win, {
+          title: 'Export DailyTodo support bundle',
+          defaultPath: 'dailytodo-support-bundle.json',
+          filters: [{ name: 'JSON files', extensions: ['json'] }],
+        });
+        return result.canceled ? undefined : result.filePath;
+      },
+      openDiagnosticsDirectory: () => shell.openPath(path.dirname(getDiagnosticLogPath())),
+    }),
     registerTaskContextMenuIpc: () => registerTaskContextMenuIpcHandlers({
       defaultTaskMenuHeight: TASK_MENU_HEIGHT,
       openTaskMenuWindow,
@@ -123,6 +167,8 @@ export function createMainWindowIpcRegistrations({
       setReviewSections,
       scheduleAiTimers,
       runReviewForDate,
+      getDailyReviewBatch,
+      runDailyReviewBatch,
       inspectDailyAiContent,
       getDateKey,
       getVaultPath,

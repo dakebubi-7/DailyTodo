@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import path from 'node:path';
 import {
   WINDOW_MODE_KEY,
   LEGACY_ALWAYS_ON_TOP_KEY,
@@ -25,6 +26,8 @@ import { createSettingsModeState } from './settingsModeState';
 import { createTrayRefreshBridge } from './trayRefreshBridge';
 import { createUserHiddenState } from './userHiddenState';
 import { createWindowModeState } from './windowModeState';
+import { createBackupService } from './backupService';
+import { createProductPathsService } from './productPaths';
 import {
   OBSIDIAN_PATH_KEY,
   WINDOW_STATE_KEY,
@@ -113,8 +116,11 @@ const {
   buildDailyTemplate,
   inspectDailyAiContent,
   runReviewForDate,
+  getDailyReviewBatch,
+  runDailyReviewBatch,
   scheduleAiTimers,
 } = createMainAiReviewServices({
+  store,
   getAiReviewSettings,
   getObsidianTemplateSettings,
   getReviewSections,
@@ -137,6 +143,29 @@ const desktopWindowMode = createDesktopWindowModeController({
   setWindowModeState: windowModeState.setMode,
   getWin32: () => win32,
   setNativeWindowMinimizeProtection,
+});
+
+const backup = createBackupService({
+  store,
+  backupDirectory: path.join(app.getPath('userData'), 'backups'),
+  getAppSettings,
+  setAppSettings,
+  getObsidianTemplateSettings,
+  setObsidianTemplateSettings,
+  getCompanionSettings,
+  setCompanionSettings,
+  getAiReviewSettings,
+  setAiReviewSettings,
+  getReviewSections,
+  setReviewSections,
+});
+
+const productPaths = createProductPathsService({
+  getAppVersion: () => app.getVersion(),
+  getAppSettings,
+  getAiReviewSettings,
+  getCompanionSettings,
+  getObsidianTemplateSettings,
 });
 
 const trayRefreshBridge = createTrayRefreshBridge();
@@ -184,6 +213,8 @@ const { createWindow } = createMainWindowComposition({
   getReviewSections,
   setReviewSections,
   runReviewForDate,
+  getDailyReviewBatch,
+  runDailyReviewBatch,
   inspectDailyAiContent,
   getDateKey,
   getVaultPath,
@@ -202,10 +233,15 @@ const { createWindow } = createMainWindowComposition({
   previewTasksToObsidian,
   buildDailyTemplate,
   triggerOverviewUpdate,
+  backup,
+  productPaths,
 });
 
 registerAppLifecycleHandlers({
   diag,
+  createRecoveryPoint: () => {
+    backup.createAutomaticRecoveryPoint();
+  },
   createWindow,
   markQuitting: appQuitState.markQuitting,
   isQuitting: appQuitState.isQuitting,

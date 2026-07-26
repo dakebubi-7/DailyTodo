@@ -15,6 +15,17 @@ import {
 import { TaskListStaticContent } from './taskList/TaskListStaticContent';
 import { TaskListToolbar, type PriorityFilter } from './taskList/TaskListToolbar';
 import { getTaskListDerivations } from './taskList/taskListDerivations';
+import { DailyReviewPanel } from './taskList/DailyReviewPanel';
+import { TodayFocusPanel } from './taskList/TodayFocusPanel';
+import { TodayFocusExecutionZone } from './taskList/TodayFocusExecutionZone';
+import {
+  getTodayFocusCandidates,
+  getTodayFocusExecution,
+  getTodayFocusRequestDraft,
+  getTodayFocusTasks,
+  type TodayFocusState,
+} from '../../shared/todayFocus';
+import type { DailyReviewSuggestionAdoption } from '../hooks/taskTreeActions';
 
 const TaskListDndSurface = lazy(() => import('./taskList/TaskListDndSurface').then((module) => ({
   default: module.TaskListDndSurface,
@@ -25,7 +36,9 @@ const DailyWorkPanel = lazy(() => import('./DailyWorkPanel').then((module) => ({
 
 interface TaskListProps {
   tasks: Task[];
+  allTasks: Task[];
   selectedDate: string;
+  currentDate: string;
   sourceOrder: TaskSource[];
   dragDisabled: boolean;
   onReorderSources: (date: string, activeSource: TaskSource, overSource: TaskSource) => void;
@@ -47,6 +60,9 @@ interface TaskListProps {
   isInspirationOpen: boolean;
   onToggleDailyWorkPanel: () => void;
   onToggleInspirationPanel: () => void;
+  setTodayFocus: (selectedTaskIds: string[]) => void;
+  setTodayFocusState: (taskId: string, state: TodayFocusState, reason?: string) => void;
+  onAdoptDailyReviewSuggestion: (adoption: DailyReviewSuggestionAdoption) => void;
   selectedDateTasksForCommands: Task[];
   language: ComponentProps<typeof DailyWorkPanelComponent>['language'];
   dailyWork: string;
@@ -68,12 +84,15 @@ interface TaskListProps {
   onEditSubtask: (id: string, text: string) => void;
   onChangeSubtaskPriority: (id: string, priority: Task['priority']) => void;
   editRequest?: { id: string; nonce: number } | null;
+  todayFocusRequest?: { id: string; nonce: number } | null;
   inputKeybindings: InputKeybindingSettings;
 }
 
 export const TaskList = memo(function TaskList({
   tasks,
+  allTasks,
   selectedDate,
+  currentDate,
   sourceOrder,
   dragDisabled,
   onReorderSources,
@@ -95,6 +114,9 @@ export const TaskList = memo(function TaskList({
   isInspirationOpen,
   onToggleDailyWorkPanel,
   onToggleInspirationPanel,
+  setTodayFocus,
+  setTodayFocusState,
+  onAdoptDailyReviewSuggestion,
   selectedDateTasksForCommands,
   language,
   dailyWork,
@@ -116,11 +138,14 @@ export const TaskList = memo(function TaskList({
   onEditSubtask,
   onChangeSubtaskPriority,
   editRequest,
+  todayFocusRequest,
   inputKeybindings,
 }: TaskListProps) {
   const filtersActive = Boolean(searchQuery.trim() || showOpenOnly || priorityFilter !== 'all');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [dndRequested, setDndRequested] = useState(false);
+  const [isTodayFocusAdjusting, setIsTodayFocusAdjusting] = useState(false);
+  const [todayFocusDraftIds, setTodayFocusDraftIds] = useState<string[]>([]);
   const [isCleanupMode, setIsCleanupMode] = useState(false);
   const [selectedCleanupTaskIds, setSelectedCleanupTaskIds] = useState<string[]>([]);
   useFloatingScrollbar(scrollRef);
@@ -150,6 +175,33 @@ export const TaskList = memo(function TaskList({
     onPriorityFilterChange('all');
   }, [onPriorityFilterChange, onSearchChange, onToggleOpenOnly, showOpenOnly]);
   const requestDndSurface = useCallback(() => setDndRequested(true), []);
+  const todayFocusCandidates = useMemo(
+    () => getTodayFocusCandidates(allTasks, currentDate),
+    [allTasks, currentDate],
+  );
+  const todayFocusExecution = useMemo(
+    () => getTodayFocusExecution(allTasks, currentDate),
+    [allTasks, currentDate],
+  );
+  const openTodayFocusAdjustment = useCallback(() => {
+    if (selectedDate !== currentDate) return;
+    setTodayFocusDraftIds(getTodayFocusTasks(allTasks, currentDate).map((task) => task.id));
+    setIsTodayFocusAdjusting(true);
+  }, [allTasks, currentDate, selectedDate]);
+  useEffect(() => {
+    if (!todayFocusRequest || selectedDate !== currentDate) return;
+    setTodayFocusDraftIds(getTodayFocusRequestDraft(allTasks, currentDate, todayFocusRequest.id));
+    setIsTodayFocusAdjusting(true);
+  }, [allTasks, currentDate, selectedDate, todayFocusRequest]);
+  const cancelTodayFocus = useCallback(() => {
+    setIsTodayFocusAdjusting(false);
+    setTodayFocusDraftIds([]);
+  }, []);
+  const confirmTodayFocus = useCallback(() => {
+    setTodayFocus(todayFocusDraftIds);
+    setIsTodayFocusAdjusting(false);
+    setTodayFocusDraftIds([]);
+  }, [setTodayFocus, todayFocusDraftIds]);
   const toggleTaskCleanupSelection = useCallback((id: string) => {
     setSelectedCleanupTaskIds((previous) => toggleHistorySelection(previous, id));
   }, []);
@@ -172,6 +224,7 @@ export const TaskList = memo(function TaskList({
 
   const contentProps = {
     tasks,
+    currentDate,
     language,
     sourceGroups,
     shouldGroupBySource,
@@ -233,6 +286,34 @@ export const TaskList = memo(function TaskList({
       )}
 
       <div className="task-daily-panels">
+        {selectedDate === currentDate && (
+          <>
+            <TodayFocusExecutionZone
+              focusTasks={todayFocusExecution.tasks}
+              activeTaskId={todayFocusExecution.activeTaskId}
+              nextTaskId={todayFocusExecution.nextTaskId}
+              completedCount={todayFocusExecution.completedCount}
+              text={text}
+              onAdjust={openTodayFocusAdjustment}
+              onStateChange={setTodayFocusState}
+            />
+            <DailyReviewPanel
+              currentDate={currentDate}
+              text={text}
+              onAdoptDailyReviewSuggestion={onAdoptDailyReviewSuggestion}
+            />
+          </>
+        )}
+        {isTodayFocusAdjusting && (
+          <TodayFocusPanel
+            candidates={todayFocusCandidates}
+            selectedTaskIds={todayFocusDraftIds}
+            onSelectionChange={setTodayFocusDraftIds}
+            onConfirm={confirmTodayFocus}
+            onCancel={cancelTodayFocus}
+            text={text}
+          />
+        )}
         {isDailyWorkOpen && (
           <Suspense fallback={null}>
             <DailyWorkPanel

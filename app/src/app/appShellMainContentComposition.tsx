@@ -17,10 +17,14 @@ export interface AppShellMainContentCompositionOptions {
   completionActions: ReturnType<typeof createAppCompletionActions>;
   mainScrollRef: ComponentProps<typeof AppMainContent>['mainScrollRef'];
   isDark: ComponentProps<typeof Header>['isDark'];
+  currentDate: ComponentProps<typeof TaskList>['currentDate'];
   selectedDate: ComponentProps<typeof Header>['selectedDate'];
   setSelectedDate: ComponentProps<typeof DateNavigator>['onDateChange'];
   calendarTasks: ComponentProps<typeof DateNavigator>['tasks'];
   allTasks: ComponentProps<typeof ReviewView>['allTasks'];
+  setTodayFocus: ComponentProps<typeof TaskList>['setTodayFocus'];
+  setTodayFocusState: ComponentProps<typeof TaskList>['setTodayFocusState'];
+  adoptDailyReviewSuggestion: ComponentProps<typeof TaskList>['onAdoptDailyReviewSuggestion'];
   editTaskReview: ComponentProps<typeof ReviewView>['onEditReview'];
   deleteTaskReview: ComponentProps<typeof ReviewView>['onDeleteReview'];
   deleteTaskReviews: ComponentProps<typeof ReviewView>['onDeleteReviews'];
@@ -58,6 +62,7 @@ export interface AppShellMainContentCompositionOptions {
   toggleTaskCollapse: ComponentProps<typeof TaskList>['onToggleCollapse'];
   changePriority: ComponentProps<typeof TaskList>['onPriorityChange'];
   editRequest: ComponentProps<typeof TaskList>['editRequest'];
+  todayFocusRequest: ComponentProps<typeof TaskList>['todayFocusRequest'];
   addTask: ComponentProps<typeof AddTaskInput>['onAdd'];
   toggleDarkModeAction: ComponentProps<typeof Header>['onToggleDark'];
 }
@@ -68,10 +73,14 @@ export function createAppShellMainContentComposition({
   completionActions,
   mainScrollRef,
   isDark,
+  currentDate,
   selectedDate,
   setSelectedDate,
   calendarTasks,
   allTasks,
+  setTodayFocus,
+  setTodayFocusState,
+  adoptDailyReviewSuggestion,
   editTaskReview,
   deleteTaskReview,
   deleteTaskReviews,
@@ -109,6 +118,7 @@ export function createAppShellMainContentComposition({
   toggleTaskCollapse,
   changePriority,
   editRequest,
+  todayFocusRequest,
   addTask,
   toggleDarkModeAction,
 }: AppShellMainContentCompositionOptions): ComponentProps<typeof AppMainContent> {
@@ -148,7 +158,9 @@ export function createAppShellMainContentComposition({
   };
   const taskListProps = {
     tasks: visibleTasks,
+    allTasks,
     selectedDate,
+    currentDate,
     sourceOrder: sourceOrderForSelectedDate,
     dragDisabled,
     onReorderSources: reorderSourceGroups,
@@ -170,6 +182,9 @@ export function createAppShellMainContentComposition({
     isInspirationOpen,
     onToggleDailyWorkPanel: appUiActions.toggleDailyWorkPanel,
     onToggleInspirationPanel: appUiActions.toggleInspirationPanel,
+    setTodayFocus,
+    setTodayFocusState,
+    onAdoptDailyReviewSuggestion: adoptDailyReviewSuggestion,
     selectedDateTasksForCommands,
     language: appSettings.language,
     dailyWork,
@@ -191,6 +206,7 @@ export function createAppShellMainContentComposition({
     onEditSubtask: editTask,
     onChangeSubtaskPriority: completionActions.changeSubtaskPriority,
     editRequest,
+    todayFocusRequest,
     inputKeybindings: appSettings.inputKeybindings,
   };
   const addTaskInputProps = {

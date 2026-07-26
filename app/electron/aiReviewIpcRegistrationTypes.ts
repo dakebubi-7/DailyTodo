@@ -14,6 +14,7 @@ import type {
   AiReviewReportStageFactory,
 } from './aiReviewReportIpcTypes';
 import type { ElectronTask, InspectDailyResult, VaultStatus } from './sharedTypes';
+import type { DailyReviewBatch } from '../shared/dailyReview';
 
 export type RegisterAiReviewIpcHandlersOptions = {
   win: BrowserWindow;
@@ -25,6 +26,8 @@ export type RegisterAiReviewIpcHandlersOptions = {
   setReviewSections(value: unknown): SectionConfig[];
   scheduleAiTimers(): void;
   runReviewForDate(date: string, tasks: ElectronTask[], force?: boolean): unknown;
+  getDailyReviewBatch(sourceDate: string): DailyReviewBatch | undefined;
+  runDailyReviewBatch(sourceDate: string): Promise<unknown>;
   inspectDailyAiContent(date: string): InspectDailyResult;
   getDateKey(date?: unknown): string;
   getVaultPath(): string | undefined;

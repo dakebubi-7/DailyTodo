@@ -7,6 +7,34 @@ import { getShellText } from '../src/i18n';
 afterEach(cleanup);
 
 describe('TaskListToolbar', () => {
+  it('does not expose Today Focus as a disconnected toolbar command', () => {
+    render(
+      <TaskListToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        searchOpen={false}
+        onToggleSearch={vi.fn()}
+        showOpenOnly={false}
+        onToggleOpenOnly={vi.fn()}
+        priorityFilter="all"
+        onPriorityFilterChange={vi.fn()}
+        filtersActive={false}
+        onClearFilters={vi.fn()}
+        text={getShellText('en-US').app}
+        activeTab="today"
+        onTabChange={vi.fn()}
+        hasDailyWorkContent={false}
+        hasDailyInspirationContent={false}
+        isDailyWorkOpen={false}
+        isInspirationOpen={false}
+        onToggleDailyWorkPanel={vi.fn()}
+        onToggleInspirationPanel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: /today focus/i })).toBeNull();
+  });
+
   it('changes task views from one toolbar menu instead of a separate tab row', () => {
     const onTabChange = vi.fn();
     render(

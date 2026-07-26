@@ -5,7 +5,7 @@ import { TaskMenuPopupPaneHeader } from './TaskMenuPopupPaneHeader';
 export type TaskMenuPopupPane = 'menu' | 'date' | 'tag' | 'subtask' | 'source';
 
 export type TaskMenuPopupActionUpdate = {
-  __action: 'edit' | 'delete' | 'addSubtask';
+  __action: 'edit' | 'delete' | 'addSubtask' | 'selectTodayFocus';
   text?: string;
 };
 
@@ -28,7 +28,15 @@ function EditIcon() { return <Icon path="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 1
 function TrashIcon() { return <Icon path="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m1 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />; }
 function ChevronRight() { return <svg className="tm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>; }
 
-export function MenuPane({ task, onPick }: { task: Task; onPick: (pane: TaskMenuPopupPane | 'edit' | 'delete') => void }) {
+export function MenuPane({
+  task,
+  canSelectTodayFocus = false,
+  onPick,
+}: {
+  task: Task;
+  canSelectTodayFocus?: boolean;
+  onPick: (pane: TaskMenuPopupPane | 'edit' | 'delete' | 'selectTodayFocus') => void;
+}) {
   const activeDateCount = task.scheduledDates?.length || 0;
   const tagCount = task.tags?.length || 0;
   const subtaskCount = task.subtasks?.length || 0;
@@ -62,6 +70,16 @@ export function MenuPane({ task, onPick }: { task: Task; onPick: (pane: TaskMenu
           <ChevronRight />
         </button>
         <div className="tm-divider" />
+        {canSelectTodayFocus && (
+          <button
+            type="button"
+            className="tm-item"
+            aria-label="Today Focus"
+            onClick={() => onPick('selectTodayFocus')}
+          >
+            <span className="tm-item-label">Today Focus</span>
+          </button>
+        )}
         <button type="button" className="tm-item" onClick={() => onPick('edit')}>
           <span className="tm-item-icon"><EditIcon /></span>
           <span className="tm-item-label">编辑任务</span>

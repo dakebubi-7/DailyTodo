@@ -43,6 +43,8 @@ export interface AppLocalState {
   setPersonalization: StateSetter<PersonalizationSettings>;
   editRequest: { id: string; nonce: number } | null;
   setEditRequest: StateSetter<{ id: string; nonce: number } | null>;
+  todayFocusRequest: { id: string; nonce: number } | null;
+  setTodayFocusRequest: StateSetter<{ id: string; nonce: number } | null>;
   themeOverrides: Record<string, ThemeOpacityOverride>;
   setThemeOverrides: StateSetter<Record<string, ThemeOpacityOverride>>;
   personalizationReady: boolean;
@@ -79,6 +81,7 @@ export function useAppLocalState(): AppLocalState {
   const [completionTarget, setCompletionTarget] = useState<CompletionTarget | null>(null);
   const [personalization, setPersonalization] = useState<PersonalizationSettings>(DEFAULT_PERSONALIZATION);
   const [editRequest, setEditRequest] = useState<{ id: string; nonce: number } | null>(null);
+  const [todayFocusRequest, setTodayFocusRequest] = useState<{ id: string; nonce: number } | null>(null);
   const [themeOverrides, setThemeOverrides] = useState<Record<string, ThemeOpacityOverride>>({});
   const [personalizationReady, setPersonalizationReady] = useState(false);
   const [companionOpen, setCompanionOpen] = useState(false);
@@ -95,7 +98,7 @@ export function useAppLocalState(): AppLocalState {
     showOpenOnly, setShowOpenOnly, priorityFilter, setPriorityFilter, settingsOpen, setSettingsOpen,
     editingTemplateKind, setEditingTemplateKind, aiOnboarding, setAiOnboarding,
     completionTask, setCompletionTask, reviewTask, setReviewTask, completionTarget, setCompletionTarget,
-    personalization, setPersonalization, editRequest, setEditRequest, themeOverrides, setThemeOverrides,
+    personalization, setPersonalization, editRequest, setEditRequest, todayFocusRequest, setTodayFocusRequest, themeOverrides, setThemeOverrides,
     personalizationReady, setPersonalizationReady, companionOpen, setCompanionOpen,
     companionSettings, setCompanionSettingsState, companionPlan, setCompanionPlan,
     companionStatus, setCompanionStatus, mobileCaptureItems, setMobileCaptureItems,

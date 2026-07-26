@@ -34,6 +34,7 @@ export interface AppBehaviorSettings {
   subtaskCompletionReviewEnabled: boolean;
   lockWindowPosition: boolean;
   minimizeToTrayOnClose: boolean;
+  closeToExit: boolean;
   edgeAutoHide: boolean;
   inputKeybindings: InputKeybindingSettings;
 }
@@ -58,6 +59,7 @@ export function createDefaultAppSettings(): AppBehaviorSettings {
     subtaskCompletionReviewEnabled: true,
     lockWindowPosition: false,
     minimizeToTrayOnClose: true,
+    closeToExit: false,
     edgeAutoHide: true,
     inputKeybindings: createDefaultInputKeybindingSettings(),
   };
@@ -78,6 +80,12 @@ export function isTaskHistoryRange(value: unknown): value is TaskHistoryRange {
 export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
   const defaults = createDefaultAppSettings();
   if (!isObjectRecord(value)) return defaults;
+
+  const closeToExit = typeof value.closeToExit === 'boolean'
+    ? value.closeToExit
+    : typeof value.minimizeToTrayOnClose === 'boolean'
+      ? !value.minimizeToTrayOnClose
+      : defaults.closeToExit;
 
   return {
     language: isAppLanguage(value.language) ? value.language : defaults.language,
@@ -101,8 +109,8 @@ export function normalizeAppSettings(value: unknown): AppBehaviorSettings {
         : defaults.subtaskCompletionReviewEnabled,
     lockWindowPosition:
       typeof value.lockWindowPosition === 'boolean' ? value.lockWindowPosition : defaults.lockWindowPosition,
-    minimizeToTrayOnClose:
-      typeof value.minimizeToTrayOnClose === 'boolean' ? value.minimizeToTrayOnClose : defaults.minimizeToTrayOnClose,
+    minimizeToTrayOnClose: !closeToExit,
+    closeToExit,
     edgeAutoHide: typeof value.edgeAutoHide === 'boolean' ? value.edgeAutoHide : defaults.edgeAutoHide,
     inputKeybindings: value.inputKeybindings !== undefined
       ? normalizeInputKeybindingSettings(value.inputKeybindings)

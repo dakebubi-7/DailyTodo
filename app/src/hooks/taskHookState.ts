@@ -61,6 +61,7 @@ export function areAppBehaviorSettingsEqual(
     && left.subtaskCompletionReviewEnabled === right.subtaskCompletionReviewEnabled
     && left.lockWindowPosition === right.lockWindowPosition
     && left.minimizeToTrayOnClose === right.minimizeToTrayOnClose
+    && left.closeToExit === right.closeToExit
     && left.edgeAutoHide === right.edgeAutoHide
     && left.inputKeybindings.preset === right.inputKeybindings.preset
     && areTaskValuesEqual(left.inputKeybindings.overrides, right.inputKeybindings.overrides);

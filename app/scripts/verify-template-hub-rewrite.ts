@@ -171,8 +171,6 @@ const oldFormat = {
   monthlyDir: 'logs/old/monthly',
   externalWeeklyDir: 'logs/old/external-weekly',
   externalMonthlyDir: 'logs/old/external-monthly',
-  syncDeletedReviewsToObsidian: true,
-  confirmBeforeDeletingReview: false,
 };
 const normalized = asm.normalizeObsidianTemplateSettings(oldFormat);
 assert(normalized.dailyPath === 'logs/old/{{date}}.md', `dailyPath migration failed: got ${normalized.dailyPath}`);
@@ -183,8 +181,6 @@ assert(/^logs\/old\/external-monthly\/.+\.md$/.test(normalized.externalMonthlyPa
 // dailyTemplate migrated from old markdown template
 assert(normalized.dailyTemplate.fixedBlocks.length === 3, 'dailyTemplate.fixedBlocks should have 3');
 assert(normalized.dailyTemplate.customBlocks.length >= 1, `dailyTemplate.customBlocks should have at least the {{review}} block, got ${normalized.dailyTemplate.customBlocks.length}`);
-assert(normalized.confirmBeforeDeletingReview === false, 'confirmBeforeDeletingReview migration failed');
-assert(normalized.syncDeletedReviewsToObsidian === true, 'syncDeletedReviewsToObsidian migration failed');
 
 console.log('T5: 5 paths + 5 templates settings model ✓');
 

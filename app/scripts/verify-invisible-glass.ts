@@ -222,7 +222,7 @@ for (const [selector, color] of [
 }
 
 for (const selector of [
-  ".app-shell[data-theme='invisible'] .task-card-completed .task-text",
+  ".app-shell[data-theme='invisible'] .task-card-completed .task-text-browse",
   ".app-shell[data-theme='invisible'] .task-subtask-row-completed .task-subtask-text",
   ".app-shell[data-theme='invisible'] .task-subtask-completed",
 ]) {
@@ -238,9 +238,15 @@ for (const selector of [
   assert.match(
     declaration,
     /opacity:\s*1\s*!important/,
-    `Invisible completed text must not be faded by a generic completion opacity: ${selector}.`,
+    `Invisible completed text must not be faded by a completion opacity: ${selector}.`,
   );
 }
+
+assert.doesNotMatch(
+  convergence,
+  /\.app-shell\[data-theme='invisible'\] \.task-card-completed \.task-text\s*\{[\s\S]*?opacity:\s*1\s*!important/,
+  'Invisible completed-task styles must not reveal the aria-hidden active title layer.',
+);
 
 assert.match(
   invisibleGlass,

@@ -177,6 +177,10 @@ export function useAppRuntimeEffects({
     const off = registerTaskMenuActionListener(window.electronAPI, {
       addSubtask: taskEffects.addSubtask,
       deleteTask: taskEffects.deleteTask,
+      requestTodayFocus: (id) => appState.setTodayFocusRequest((previous) => ({
+        id,
+        nonce: (previous?.nonce || 0) + 1,
+      })),
       setEditRequest: appState.setEditRequest,
       updateTask: taskEffects.updateTask,
     });

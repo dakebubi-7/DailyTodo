@@ -11,6 +11,7 @@ import { getSourceSortableId, getTaskSortableId } from './taskListDnd';
 
 export interface TaskListItemContentProps {
   tasks: Task[];
+  currentDate: string;
   language: AppLanguage;
   allTags: string[];
   onToggle: (id: string) => void;
@@ -40,6 +41,7 @@ export interface TaskListContentProps extends TaskListItemContentProps {
 
 export const TaskListContent = memo(function TaskListContent({
   tasks,
+  currentDate,
   language,
   sourceGroups,
   shouldGroupBySource,
@@ -67,6 +69,7 @@ export const TaskListContent = memo(function TaskListContent({
     <SortableTaskItem
       key={task.id}
       task={task}
+      currentDate={currentDate}
       language={language}
       index={index}
       dragDisabled={dragDisabled}

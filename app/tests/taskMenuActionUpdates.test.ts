@@ -31,6 +31,16 @@ describe('task menu action updates', () => {
     });
   });
 
+  it('keeps the Today Focus selection command', () => {
+    expect(normalizeTaskMenuActionPayload({
+      taskId: '1',
+      updates: { __action: 'selectTodayFocus' },
+    })).toEqual({
+      taskId: '1',
+      updates: { __action: 'selectTodayFocus' },
+    });
+  });
+
   it('rejects malformed payloads', () => {
     expect(normalizeTaskMenuActionPayload(null)).toBeNull();
     expect(normalizeTaskMenuActionPayload({ taskId: '', updates: {} })).toBeNull();

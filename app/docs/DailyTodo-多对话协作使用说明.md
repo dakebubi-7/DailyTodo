@@ -2,8 +2,8 @@
 
 ## 相关文件
 
-- 快速上手：`G:\Personal-AI\DailyTodo\app\docs\DailyTodo-多对话快速上手.md`
-- 提示词合集：`G:\Personal-AI\DailyTodo\app\docs\DailyTodo-各部门提示词合集.md`
+- 快速上手：`docs/DailyTodo-多对话快速上手.md`
+- 提示词合集：`docs/DailyTodo-各部门提示词合集.md`
 
 ## 1. 这套对话是干什么的
 
@@ -11,7 +11,7 @@
 
 它们共用同一个项目目录：
 
-- `G:\Personal-AI\DailyTodo\app`
+- repository root
 
 所以正确用法是：
 

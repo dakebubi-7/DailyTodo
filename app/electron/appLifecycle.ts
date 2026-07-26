@@ -3,6 +3,7 @@ import type { WindowMode } from '../shared/windowMode';
 
 export type RegisterAppLifecycleHandlersOptions = {
   diag(message: string): void;
+  createRecoveryPoint(): void | Promise<void>;
   createWindow(): void;
   markQuitting(): void;
   isQuitting(): boolean;
@@ -14,6 +15,7 @@ export type RegisterAppLifecycleHandlersOptions = {
 
 export function registerAppLifecycleHandlers({
   diag,
+  createRecoveryPoint,
   createWindow,
   markQuitting,
   isQuitting,
@@ -23,9 +25,30 @@ export function registerAppLifecycleHandlers({
   clearDesktopOwner,
 }: RegisterAppLifecycleHandlersOptions): void {
   app.whenReady().then(() => {
-    diag('whenReady -> createWindow');
-    createWindow();
-    diag('createWindow returned');
+    diag('whenReady -> createRecoveryPoint');
+    let recoveryResult: void | Promise<void>;
+    try {
+      recoveryResult = createRecoveryPoint();
+    } catch (error) {
+      diag(`createRecoveryPoint error: ${String(error)}`);
+      diag('whenReady -> createWindow');
+      createWindow();
+      diag('createWindow returned');
+      return;
+    }
+
+    const createFirstWindow = () => {
+      diag('whenReady -> createWindow');
+      createWindow();
+      diag('createWindow returned');
+    };
+    if (!recoveryResult || typeof (recoveryResult as Promise<void>).then !== 'function') {
+      createFirstWindow();
+      return;
+    }
+    Promise.resolve(recoveryResult).catch((error) => {
+      diag(`createRecoveryPoint error: ${String(error)}`);
+    }).then(createFirstWindow);
   }).catch((error) => diag(`whenReady error: ${String(error)}`));
 
   app.on('child-process-gone', (_event, details) => {

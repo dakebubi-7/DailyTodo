@@ -22,6 +22,16 @@ export type ValidatedTaskHandoff = {
   source: 'manual' | 'ai';
 };
 
+export type ValidatedTaskFocusAdoption = {
+  sourceDate: string;
+  sourceReviewId: string;
+  sourceReviewRevision: string;
+  suggestedAction: string;
+  finalAction: string;
+  adoptedAt: string;
+  mode: 'unchanged' | 'edited';
+};
+
 export type ValidatedSubtaskCarryoverProgress = {
   total: number;
   remaining: number;
@@ -49,6 +59,8 @@ export type ValidatedTask = {
   focusOrder?: number;
   focusState?: 'not-started' | 'in-progress' | 'blocked' | 'completed';
   focusReason?: string;
+  focusAction?: string;
+  focusAdoption?: ValidatedTaskFocusAdoption;
   nextStep?: string;
   handoff?: ValidatedTaskHandoff;
   carryoverContext?: ValidatedTaskHandoff;
@@ -96,6 +108,19 @@ export function isTaskHandoff(value: unknown): value is ValidatedTaskHandoff {
   );
 }
 
+export function isTaskFocusAdoption(value: unknown): value is ValidatedTaskFocusAdoption {
+  if (!isObjectRecord(value)) return false;
+  return (
+    typeof value.sourceDate === 'string' &&
+    typeof value.sourceReviewId === 'string' &&
+    typeof value.sourceReviewRevision === 'string' &&
+    typeof value.suggestedAction === 'string' &&
+    typeof value.finalAction === 'string' &&
+    typeof value.adoptedAt === 'string' &&
+    (value.mode === 'unchanged' || value.mode === 'edited')
+  );
+}
+
 export function isTaskLike(value: unknown): value is ValidatedTask {
   if (!isObjectRecord(value)) return false;
   const subtasks = value.subtasks;
@@ -132,6 +157,8 @@ export function isStrictTaskLike(value: unknown): value is ValidatedTask {
     (value.focusOrder === undefined || (typeof value.focusOrder === 'number' && Number.isInteger(value.focusOrder) && value.focusOrder >= 0)) &&
     (value.focusState === undefined || value.focusState === 'not-started' || value.focusState === 'in-progress' || value.focusState === 'blocked' || value.focusState === 'completed') &&
     isOptionalString(value.focusReason) &&
+    isOptionalString(value.focusAction) &&
+    (value.focusAdoption === undefined || isTaskFocusAdoption(value.focusAdoption)) &&
     isOptionalString(value.nextStep) &&
     (value.handoff === undefined || isTaskHandoff(value.handoff)) &&
     (value.carryoverContext === undefined || isTaskHandoff(value.carryoverContext)) &&

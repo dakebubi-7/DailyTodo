@@ -36,6 +36,8 @@ export type MainWindowIpcRegistrationOptions = Pick<
   | 'getReviewSections'
   | 'setReviewSections'
   | 'runReviewForDate'
+  | 'getDailyReviewBatch'
+  | 'runDailyReviewBatch'
   | 'inspectDailyAiContent'
   | 'getDateKey'
   | 'getVaultPath'
@@ -56,6 +58,8 @@ export type MainWindowIpcRegistrationOptions = Pick<
   | 'previewTasksToObsidian'
   | 'buildDailyTemplate'
   | 'triggerOverviewUpdate'
+  | 'backup'
+  | 'productPaths'
 > & {
   performanceFrost: Pick<PerformanceFrostController, 'setConfiguredGlass'>;
   edgeAutoHide: Pick<EdgeAutoHideController, 'noteResizeOrReset' | 'noteSettingsMode' | 'noteWindowModeChanged' | 'reconcileSettings'>;
@@ -65,6 +69,8 @@ export type MainWindowIpcRegistrations = Pick<
   SetupMainBrowserWindowOptions,
   | 'registerWindowIpc'
   | 'registerSettingsIpc'
+  | 'registerBackupIpc'
+  | 'registerProductPathsIpc'
   | 'registerTaskContextMenuIpc'
   | 'registerCompanionIpc'
   | 'registerAiReviewIpc'

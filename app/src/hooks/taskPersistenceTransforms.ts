@@ -3,6 +3,7 @@ import type { FocusState, SubtaskCarryoverProgress, Task, TaskCompletionReview, 
 import {
   isTaskCompletionReview as isSharedTaskCompletionReview,
   isTaskHandoff as isSharedTaskHandoff,
+  isTaskFocusAdoption as isSharedTaskFocusAdoption,
   isTaskLike as isSharedTaskLike,
 } from '../../shared/taskValidation';
 
@@ -57,6 +58,10 @@ export function isTaskHandoff(value: unknown): value is TaskHandoff {
   return isSharedTaskHandoff(value);
 }
 
+export function isTaskFocusAdoption(value: unknown): boolean {
+  return isSharedTaskFocusAdoption(value);
+}
+
 export function isSubtaskCarryoverProgress(value: unknown): value is SubtaskCarryoverProgress {
   if (!value || typeof value !== 'object') return false;
   const progress = value as Record<string, unknown>;
@@ -102,6 +107,8 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     ? task.focusOrder
     : undefined;
   const focusReason = typeof task.focusReason === 'string' ? task.focusReason : undefined;
+  const focusAction = typeof task.focusAction === 'string' ? task.focusAction : undefined;
+  const focusAdoption = isTaskFocusAdoption(task.focusAdoption) ? task.focusAdoption : undefined;
   const nextStep = typeof task.nextStep === 'string' ? task.nextStep : undefined;
   const handoff = isTaskHandoff(task.handoff) ? task.handoff : undefined;
   const carryoverContext = isTaskHandoff(task.carryoverContext) ? task.carryoverContext : undefined;
@@ -120,6 +127,8 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     && focusOrder === task.focusOrder
     && focusState === task.focusState
     && focusReason === task.focusReason
+    && focusAction === task.focusAction
+    && focusAdoption === task.focusAdoption
     && nextStep === task.nextStep
     && handoff === task.handoff
     && carryoverContext === task.carryoverContext
@@ -140,6 +149,8 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     focusOrder: _storedFocusOrder,
     focusState: _storedFocusState,
     focusReason: _storedFocusReason,
+    focusAction: _storedFocusAction,
+    focusAdoption: _storedFocusAdoption,
     nextStep: _storedNextStep,
     handoff: _storedHandoff,
     carryoverContext: _storedCarryoverContext,
@@ -159,6 +170,8 @@ export function normalizeTask(task: Task, currentBusinessDate: string): Task {
     ...(focusOrder !== undefined ? { focusOrder } : {}),
     ...(focusState ? { focusState } : {}),
     ...(focusReason !== undefined ? { focusReason } : {}),
+    ...(focusAction !== undefined ? { focusAction } : {}),
+    ...(focusAdoption !== undefined ? { focusAdoption } : {}),
     ...(nextStep !== undefined ? { nextStep } : {}),
     ...(handoff ? { handoff } : {}),
     ...(carryoverContext ? { carryoverContext } : {}),

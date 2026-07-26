@@ -13,6 +13,7 @@ import type {
 } from '../shared/aiReview/runDiagnostics';
 import type { SectionConfig } from '../shared/aiReview/sectionConfig';
 import type { DailySourceRule } from '../shared/aiReview/sourceMaterials';
+import type { DailyReviewBatch } from '../shared/dailyReview';
 import type { ChatMessage, LlmResult } from '../shared/llm/openaiClient';
 import type { CompanionSettings } from '../shared/obsidianCompanion';
 import type { RendererRoute } from '../shared/rendererRoute';
@@ -20,6 +21,8 @@ import type { WindowMode } from '../shared/windowMode';
 import type { PersistWindowStateOptions } from './mainWindowPersistence';
 import type { SettingsModeState } from './settingsModeState';
 import type { UserHiddenState } from './userHiddenState';
+import type { createBackupService } from './backupService';
+import type { createProductPathsService } from './productPaths';
 import type {
   ElectronStoreLike,
   ElectronTask,
@@ -79,6 +82,8 @@ export type CreateMainWindowBootstrapOptions = {
   getReviewSections(): SectionConfig[];
   setReviewSections(value: unknown): SectionConfig[];
   runReviewForDate(date: string, tasks: ElectronTask[], force?: boolean): unknown;
+  getDailyReviewBatch(sourceDate: string): DailyReviewBatch | undefined;
+  runDailyReviewBatch(sourceDate: string): Promise<unknown>;
   inspectDailyAiContent(date: string): InspectDailyResult;
   getDateKey(date?: unknown): string;
   getVaultPath(): string | undefined;
@@ -120,4 +125,6 @@ export type CreateMainWindowBootstrapOptions = {
   previewTasksToObsidian(tasks: unknown, date?: unknown, dailyWork?: unknown, inspiration?: unknown, beforeTasks?: unknown): unknown;
   buildDailyTemplate(date: string): string;
   triggerOverviewUpdate(filePath: string): void;
+  backup: ReturnType<typeof createBackupService>;
+  productPaths: ReturnType<typeof createProductPathsService>;
 };

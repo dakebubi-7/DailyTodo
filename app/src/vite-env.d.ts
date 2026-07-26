@@ -73,6 +73,12 @@ interface Window {
     getWindowCompactMode: () => Promise<unknown>;
     getAutoStart: () => Promise<unknown>;
     setAutoStart: (enabled: unknown) => Promise<unknown>;
+    chooseRestoreBackup: () => Promise<unknown>;
+    restoreBackup: (request: unknown) => Promise<unknown>;
+    exportBackup: () => Promise<unknown>;
+    openBackupFolder: () => Promise<unknown>;
+    openDiagnosticsFolder: () => Promise<unknown>;
+    exportSupportBundle: () => Promise<unknown>;
     obsidianTemplate: {
       recognize: (rawTemplate: unknown) => Promise<unknown>;
       pickTemplateFile: () => Promise<unknown>;
@@ -83,6 +89,8 @@ interface Window {
       getSections: () => Promise<unknown>;
       setSections: (sections: unknown) => Promise<unknown>;
       runForDate: (date: unknown, tasks: unknown, force?: unknown) => Promise<unknown>;
+      getDailyReviewBatch: (sourceDate: unknown) => Promise<unknown>;
+      runDailyReviewBatch: (sourceDate: unknown) => Promise<unknown>;
       inspectDaily: (date: unknown) => Promise<AiReviewDailyInspectionResult>;
       backfill: (tasks: unknown) => Promise<unknown>;
       generateWeekly: (date: unknown, tasks: unknown) => Promise<unknown>;

@@ -4,6 +4,7 @@ import {
   retainDeletedReview,
 } from '../../shared/obsidianReviewRetention';
 import type { Task, TaskCompletionReview } from '../types/task';
+import { resolveCompletionState } from '../../shared/taskCompletionSemantics';
 
 export interface AppendCompletionReviewInput {
   review: Omit<TaskCompletionReview, 'reviewedAt'>;
@@ -38,8 +39,7 @@ export function appendCompletionReviewToTask(task: Task, { review, id, reviewedA
 
   return {
     ...task,
-    completed: true,
-    completedAt: task.completedAt || reviewedAt,
+    ...resolveCompletionState(nextReview),
     completionReview: nextReview,
     completionReviews,
   };
@@ -69,6 +69,7 @@ export function deleteReviewFromTask(task: Task, reviewId: string): Task {
 
   return {
     ...task,
+    ...resolveCompletionState(latestReview),
     completionReviews: reviews,
     completionReview: latestReview,
   };
@@ -88,6 +89,7 @@ export function updateTaskReview(task: Task, reviewId: string, updates: TaskRevi
   reviews[index] = { ...existingReview, ...updates };
   return {
     ...task,
+    ...resolveCompletionState(getLatestTaskReview(reviews)),
     completionReviews: reviews,
     completionReview: getLatestTaskReview(reviews),
   };

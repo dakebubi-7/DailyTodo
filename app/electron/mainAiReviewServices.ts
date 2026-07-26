@@ -3,13 +3,16 @@ import type { ObsidianTemplateSettings } from '../shared/appSettings';
 import type { AiReviewSettings } from '../shared/aiReview/aiReviewSettings';
 import type { SectionConfig } from '../shared/aiReview/sectionConfig';
 import { createAiReviewDailyRunner } from './aiReviewDailyRunner';
+import { createAiReviewDailyBatchService } from './aiReviewDailyBatchService';
 import { createAiReviewRunnerBridge } from './aiReviewRunnerBridge';
 import { createAiReviewRuntimeHelpers } from './aiReviewRuntime';
 import { createAiReviewTimerScheduler } from './aiReviewTimers';
 import { createMainObsidianServices } from './mainObsidianServices';
 import type { VaultStatus } from './sharedTypes';
+import type { ElectronStoreLike } from './sharedTypes';
 
 type CreateMainAiReviewServicesOptions = {
+  store: ElectronStoreLike;
   getAiReviewSettings(): AiReviewSettings;
   getObsidianTemplateSettings(): ObsidianTemplateSettings;
   getReviewSections(): SectionConfig[];
@@ -21,6 +24,7 @@ type CreateMainAiReviewServicesOptions = {
 };
 
 export function createMainAiReviewServices({
+  store,
   getAiReviewSettings,
   getObsidianTemplateSettings,
   getReviewSections,
@@ -38,6 +42,15 @@ export function createMainAiReviewServices({
     extractDocxText,
   } = createAiReviewRuntimeHelpers({
     getAiReviewSettings,
+  });
+
+  const {
+    getDailyReviewBatch,
+    runDailyReviewBatch,
+  } = createAiReviewDailyBatchService({
+    store,
+    getAiReviewSettings,
+    ensureDailyReviewLlmAvailable: () => ensureReportLlmAvailable('daily'),
   });
 
   // The bridge preserves the deliberate delayed binding between sync and daily review services.
@@ -93,6 +106,8 @@ export function createMainAiReviewServices({
     buildDailyTemplate,
     inspectDailyAiContent,
     runReviewForDate,
+    getDailyReviewBatch,
+    runDailyReviewBatch,
     scheduleAiTimers,
   };
 }

@@ -82,7 +82,7 @@ export function registerWindowIpcHandlers({
   win.on('resize', () => applyNativeWindowShape('resize'));
 
   ipcMain.handle('window:minimize', hideMainWindow);
-  ipcMain.handle('window:close', hideMainWindow);
+  ipcMain.handle('window:close', () => win.close());
 
   ipcMain.handle('window:getWindowMode', () => getWindowMode());
   ipcMain.handle('window:setWindowMode', (_event, mode: unknown) => {

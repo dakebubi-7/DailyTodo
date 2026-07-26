@@ -6,7 +6,7 @@ We are continuing the DailyTodo compact day strip header work. Read this handoff
 
 ## Project
 
-- Project: `G:\Personal-AI\DailyTodo\app`
+- Project: repository root
 - Goal: Implement the approved compact day-strip header and task workspace layout.
 - Status: Design and implementation plan are complete. Application source code has not been changed yet.
 

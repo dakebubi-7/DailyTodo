@@ -1,10 +1,12 @@
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import { isObjectRecord } from './unknownValueGuards';
 import { normalizeTaskMenuActionPayload } from '../shared/taskMenuActionUpdates';
+import { isDateKey } from '../shared/taskRollover';
 
 export type TaskMenuPayload = {
   task: unknown;
   allTags: string[];
+  currentDate: string;
   isDark?: boolean;
   theme?: {
     themeId?: string;
@@ -40,6 +42,8 @@ function isTaskMenuPayload(value: unknown): value is TaskMenuPayload {
     'task' in record &&
     Array.isArray(record.allTags) &&
     record.allTags.every((tag) => typeof tag === 'string') &&
+    typeof record.currentDate === 'string' &&
+    isDateKey(record.currentDate) &&
     typeof record.screenX === 'number' &&
     Number.isFinite(record.screenX) &&
     typeof record.screenY === 'number' &&

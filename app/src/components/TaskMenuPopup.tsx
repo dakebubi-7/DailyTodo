@@ -7,6 +7,8 @@ import { TagPane } from './taskMenuPopup/TaskMenuPopupTagPane';
 import { TaskMenuPopupSourcePane } from './taskMenuPopup/TaskMenuPopupSourcePane';
 import { useTaskMenuPopupLifecycle } from './taskMenuPopup/useTaskMenuPopupLifecycle';
 import { isObjectRecord } from '../../shared/unknownValueGuards';
+import { isDateKey } from '../../shared/taskRollover';
+import { isTodayFocusCandidate } from '../../shared/todayFocus';
 
 export { getTagSuggestions } from './taskMenuPopup/TaskMenuPopupTagPane';
 
@@ -22,17 +24,18 @@ type ThemeInfo = {
 type MenuPayload = {
   task: Task;
   allTags: string[];
+  currentDate: string;
   isDark: boolean;
   theme: ThemeInfo;
 };
 
 type TaskMenuPopupActionUpdate = {
-  __action: 'edit' | 'delete' | 'addSubtask';
+  __action: 'edit' | 'delete' | 'addSubtask' | 'selectTodayFocus';
   text?: string;
 };
 
 export function parseTaskMenuPopupPayload(value: unknown): MenuPayload | null {
-  if (!isObjectRecord(value) || !isTaskLike(value.task)) return null;
+  if (!isObjectRecord(value) || !isTaskLike(value.task) || !isDateKey(value.currentDate)) return null;
 
   const themeRecord = isObjectRecord(value.theme) ? value.theme : {};
   const allTags = Array.isArray(value.allTags)
@@ -42,6 +45,7 @@ export function parseTaskMenuPopupPayload(value: unknown): MenuPayload | null {
   return {
     task: value.task,
     allTags,
+    currentDate: value.currentDate,
     isDark: typeof value.isDark === 'boolean' ? value.isDark : false,
     theme: {
       themeId: typeof themeRecord.themeId === 'string' ? themeRecord.themeId : '',
@@ -107,14 +111,14 @@ export function TaskMenuPopup() {
 
   if (!payload) return <div className="tm-popup" />;
 
-  const { task, allTags, theme } = payload;
+  const { task, allTags, currentDate, theme } = payload;
   const themeClass = theme.themeId ? `theme-${theme.themeId}` : '';
 
   return (
     <div className={`tm-popup ${themeClass}`}>
       <div className="tm-card-shell" ref={cardRef}>
         <div className="tm-card" role="menu" aria-label="任务操作">
-          {pane === 'menu' && <MenuPane task={task} onPick={(p) => (p === 'edit' || p === 'delete' ? handleTopAction(task, p) : setPane(p))} />}
+          {pane === 'menu' && <MenuPane task={task} canSelectTodayFocus={isTodayFocusCandidate(task, currentDate)} onPick={(p) => (p === 'edit' || p === 'delete' || p === 'selectTodayFocus' ? handleTopAction(task, p) : setPane(p))} />}
           {pane === 'date' && <DatePane task={task} onBack={() => setPane('menu')} onDispatch={dispatch} onClose={close} />}
           {pane === 'tag' && <TagPane task={task} allTags={allTags} onBack={() => setPane('menu')} onDispatch={dispatch} onClose={close} />}
           {pane === 'subtask' && <SubtaskPane task={task} onBack={() => setPane('menu')} onDispatch={dispatch} />}
@@ -125,6 +129,6 @@ export function TaskMenuPopup() {
   );
 }
 
-function handleTopAction(task: Task, action: 'edit' | 'delete') {
+function handleTopAction(task: Task, action: 'edit' | 'delete' | 'selectTodayFocus') {
   dispatch(task.id, { __action: action });
 }

@@ -353,7 +353,6 @@ assert(globals.includes('.task-subtask-row:hover .task-subtask-delete') && globa
 assert(globals.includes('.task-delete-zone') && globals.includes('height: 40px'), 'CSS should keep a tall delete hot zone while using a compact width so task text has room.');
 assert(!globals.includes('.task-card:hover .task-delete-action'), 'Delete visibility should be controlled by the right-side hot zone, not whole-card hover.');
 assert(globals.includes('position: absolute') && globals.includes('.task-action-layer'), 'Action buttons should be absolutely positioned outside text layout.');
-
 assert(
   globals.includes('height: 1.22rem !important;') &&
     globals.includes('width: 1.22rem !important;') &&

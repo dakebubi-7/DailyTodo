@@ -1,3 +1,5 @@
+import type { TodayFocusAdoption } from '../../shared/todayFocus';
+
 export type TaskSource = 'personal' | 'external';
 
 export type FocusState = 'not-started' | 'in-progress' | 'blocked' | 'completed';
@@ -44,6 +46,8 @@ export interface Task {
   focusOrder?: number;
   focusState?: FocusState;
   focusReason?: string;
+  focusAction?: string;
+  focusAdoption?: TodayFocusAdoption;
   nextStep?: string;
   handoff?: TaskHandoff;
   carryoverContext?: TaskHandoff;

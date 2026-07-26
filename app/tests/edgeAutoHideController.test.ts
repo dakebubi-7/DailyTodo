@@ -114,7 +114,7 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: -24, y: 120, width: 240, height: 480 });
   });
 
-  it('re-hides a restored side window after a new deliberate push-in', () => {
+  it('retracts a restored side window after the cursor leaves its expanded bounds', () => {
     attachLeftByPushIn();
     expect(bounds.x).toBe(-240);
 
@@ -125,19 +125,14 @@ describe('edge auto-hide controller', () => {
     expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
     expect(hideActivationStrip).toHaveBeenCalled();
 
-    // Leaving the window body alone keeps the attached window expanded.
+    // It stays open while the pointer is still inside the restored window.
     showActivationStrip.mockClear();
-    cursor = { x: 500, y: 700 };
-    vi.advanceTimersByTime(64);
     vi.advanceTimersByTime(1000);
     expect(showActivationStrip).not.toHaveBeenCalled();
-    expect(bounds).toEqual({ x: 0, y: 120, width: 240, height: 480 });
 
-    // Push it past the edge again to request another retraction.
-    controller.noteMoveStarted();
-    bounds = { x: -24, y: 120, width: 240, height: 480 };
-    cursor = { x: 2, y: 350 };
-    settle();
+    // Once the pointer leaves the restored window, re-arm the same edge handle.
+    cursor = { x: 500, y: 700 };
+    vi.advanceTimersByTime(64);
     vi.advanceTimersByTime(450);
     vi.advanceTimersByTime(200);
     expect(showActivationStrip).toHaveBeenCalledWith('left', { x: 0, y: 120, width: 240, height: 480 }, workArea);

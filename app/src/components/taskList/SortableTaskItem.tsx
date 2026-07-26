@@ -8,6 +8,7 @@ import { REDUCED_SORTABLE_MOTION, TASK_SORTABLE_MOTION, getTaskSortableId } from
 
 interface SortableTaskItemProps {
   task: Task;
+  currentDate: string;
   language: AppLanguage;
   index: number;
   dragDisabled: boolean;
@@ -40,6 +41,7 @@ function haveSameTags(previous: string[], next: string[]) {
 function areTaskItemPropsEqual(previous: SortableTaskItemProps, next: SortableTaskItemProps) {
   return (
     previous.task === next.task &&
+    previous.currentDate === next.currentDate &&
     previous.language === next.language &&
     previous.index === next.index &&
     previous.dragDisabled === next.dragDisabled &&
@@ -66,6 +68,7 @@ function areTaskItemPropsEqual(previous: SortableTaskItemProps, next: SortableTa
 
 export const SortableTaskItem = memo(function SortableTaskItem({
   task,
+  currentDate,
   language,
   index,
   dragDisabled,
@@ -150,6 +153,7 @@ export const SortableTaskItem = memo(function SortableTaskItem({
       >
         <TaskItem
           task={task}
+          currentDate={currentDate}
           language={language}
           dragHandleProps={dragHandleProps}
           onToggle={() => onToggle(task.id)}

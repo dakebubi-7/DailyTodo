@@ -35,6 +35,16 @@ export type TaskHandoff = {
   source: 'manual' | 'ai';
 };
 
+export type TaskFocusAdoption = {
+  sourceDate: string;
+  sourceReviewId: string;
+  sourceReviewRevision: string;
+  suggestedAction: string;
+  finalAction: string;
+  adoptedAt: string;
+  mode: 'unchanged' | 'edited';
+};
+
 export type SubtaskCarryoverProgress = {
   total: number;
   remaining: number;
@@ -59,6 +69,8 @@ export type ElectronTask = {
   focusOrder?: number;
   focusState?: 'not-started' | 'in-progress' | 'blocked' | 'completed';
   focusReason?: string;
+  focusAction?: string;
+  focusAdoption?: TaskFocusAdoption;
   nextStep?: string;
   handoff?: TaskHandoff;
   carryoverContext?: TaskHandoff;

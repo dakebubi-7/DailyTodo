@@ -1,4 +1,5 @@
 import type { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
+import { reconcileTodayFocusCompletion } from '../../shared/todayFocus';
 import type { Task, TaskCompletionReview } from '../types/task';
 import { mapTaskTree } from './taskTree';
 import {
@@ -16,6 +17,7 @@ type CompletionActionSettings = Pick<
 
 type CreateTaskCompletionActionHandlersOptions = {
   appSettings: CompletionActionSettings;
+  currentDate: string;
   setAllTasks(updater: (previous: Task[]) => Task[]): void;
   setRetainedReviews(updater: (previous: RetainedObsidianReview[]) => RetainedObsidianReview[]): void;
   persistRetainedReviews(value: RetainedObsidianReview[]): void;
@@ -24,8 +26,27 @@ type CreateTaskCompletionActionHandlersOptions = {
   getTimestamp(): string;
 };
 
+function mapTaskAndReconcileFocus(
+  previous: Task[],
+  taskId: string,
+  currentDate: string,
+  updater: (task: Task) => Task,
+): Task[] {
+  let completed: boolean | undefined;
+  const nextTasks = mapTaskTree(previous, taskId, (task) => {
+    const nextTask = updater(task);
+    completed = nextTask.completed;
+    return nextTask;
+  });
+
+  return completed === undefined
+    ? previous
+    : reconcileTodayFocusCompletion(nextTasks, currentDate, taskId, completed);
+}
+
 export function createTaskCompletionActionHandlers({
   appSettings,
+  currentDate,
   setAllTasks,
   setRetainedReviews,
   persistRetainedReviews,
@@ -36,11 +57,13 @@ export function createTaskCompletionActionHandlers({
   function appendReview(taskId: string, review: Omit<TaskCompletionReview, 'reviewedAt'>) {
     const reviewedAt = getTimestamp();
     const id = createId();
-    setAllTasks((previous) => mapTaskTree(previous, taskId, (task) => appendCompletionReviewToTask(task, {
-      review,
-      id,
-      reviewedAt,
-    })));
+    setAllTasks((previous) => mapTaskAndReconcileFocus(previous, taskId, currentDate, (task) => (
+      appendCompletionReviewToTask(task, {
+        review,
+        id,
+        reviewedAt,
+      })
+    )));
   }
 
   return {
@@ -49,7 +72,7 @@ export function createTaskCompletionActionHandlers({
     },
     deleteTaskReview(taskId: string, reviewId: string) {
       if (appSettings.confirmBeforeDeletingReview && !confirmDeleteReview()) return;
-      setAllTasks((previous) => mapTaskTree(previous, taskId, (task) => {
+      setAllTasks((previous) => mapTaskAndReconcileFocus(previous, taskId, currentDate, (task) => {
         setRetainedReviews((retained) => {
           const next = retainDeletedTaskReviewForObsidian(retained, task, reviewId);
           if (next === retained) return retained;
@@ -62,7 +85,7 @@ export function createTaskCompletionActionHandlers({
     deleteTaskReviews(records: Array<{ taskId: string; reviewId: string }>) {
       if (!records.length) return;
       setAllTasks((previous) => records.reduce((tasks, { taskId, reviewId }) => (
-        mapTaskTree(tasks, taskId, (task) => {
+        mapTaskAndReconcileFocus(tasks, taskId, currentDate, (task) => {
           setRetainedReviews((retained) => {
             const next = retainDeletedTaskReviewForObsidian(retained, task, reviewId);
             if (next === retained) return retained;
@@ -78,14 +101,18 @@ export function createTaskCompletionActionHandlers({
     },
     markSubtaskDoneWithoutReview(subtaskId: string) {
       const completedAt = getTimestamp();
-      setAllTasks((previous) => mapTaskTree(previous, subtaskId, (task) => markTaskDoneWithoutReview(task, completedAt)));
+      setAllTasks((previous) => mapTaskAndReconcileFocus(previous, subtaskId, currentDate, (task) => (
+        markTaskDoneWithoutReview(task, completedAt)
+      )));
     },
     editTaskReview(
       taskId: string,
       reviewId: string,
       updates: Partial<Pick<TaskCompletionReview, 'status' | 'percent' | 'summary' | 'unknowns' | 'nextStep'>>,
     ) {
-      setAllTasks((previous) => mapTaskTree(previous, taskId, (task) => updateTaskReview(task, reviewId, updates)));
+      setAllTasks((previous) => mapTaskAndReconcileFocus(previous, taskId, currentDate, (task) => (
+        updateTaskReview(task, reviewId, updates)
+      )));
     },
   };
 }

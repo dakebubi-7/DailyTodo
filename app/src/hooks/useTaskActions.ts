@@ -4,6 +4,7 @@ import type { ArchivedObsidianTask } from '../../shared/obsidianTaskArchive';
 import type { RetainedObsidianReview } from '../../shared/obsidianReviewRetention';
 import { setAppSettings as persistAppSettings } from '../store/taskStore';
 import type { Task, TaskCompletionReview, TaskSource } from '../types/task';
+import type { TodayFocusState } from '../../shared/todayFocus';
 import type { TaskListOrderByDate } from '../utils/taskOrdering';
 import {
   getDeleteTaskReviewConfirmationMessage,
@@ -13,6 +14,7 @@ import { areAppBehaviorSettingsEqual } from './taskHookState';
 import { createTaskAppStateActionHandlers } from './taskAppStateActions';
 import { createTaskCompletionActionHandlers } from './taskCompletionActions';
 import { createTaskTreeActionHandlers } from './taskTreeActions';
+import type { DailyReviewSuggestionAdoption } from './taskTreeActions';
 import { createTaskOrderingActionHandlers } from './taskOrderingActions';
 
 export interface UseTaskActionsInput {
@@ -49,6 +51,9 @@ export interface TaskActions {
   markSubtaskDoneWithoutReview: (subtaskId: string) => void;
   editTaskReview: (taskId: string, reviewId: string, updates: Partial<Pick<TaskCompletionReview, 'status' | 'percent' | 'summary' | 'unknowns' | 'nextStep'>>) => void;
   changePriority: (id: string, priority: Task['priority']) => void;
+  setTodayFocus: (selectedTaskIds: string[]) => void;
+  setTodayFocusState: (taskId: string, state: TodayFocusState, reason?: string) => void;
+  adoptDailyReviewSuggestion: (adoption: DailyReviewSuggestionAdoption) => void;
   reorderSourceGroups: (date: string, activeSource: TaskSource, overSource: TaskSource) => void;
   reorderTasksWithinSource: (date: string, source: TaskSource, completed: boolean, activeId: string, overId: string) => void;
   clearCompleted: () => void;
@@ -101,6 +106,7 @@ export function useTaskActions({
   } = useMemo(
     () => createTaskCompletionActionHandlers({
       appSettings,
+      currentDate,
       setAllTasks,
       setRetainedReviews: setRetainedObsidianReviews,
       persistRetainedReviews,
@@ -108,7 +114,7 @@ export function useTaskActions({
       createId: () => crypto.randomUUID(),
       getTimestamp: () => new Date().toISOString(),
     }),
-    [appSettings, confirmDeleteReview, persistRetainedReviews, setAllTasks, setRetainedObsidianReviews],
+    [appSettings, confirmDeleteReview, currentDate, persistRetainedReviews, setAllTasks, setRetainedObsidianReviews],
   );
   const {
     addTask,
@@ -121,6 +127,9 @@ export function useTaskActions({
     deleteSubtask,
     toggleTaskCollapse,
     changePriority,
+    setTodayFocus,
+    setTodayFocusState,
+    adoptDailyReviewSuggestion,
     clearCompleted,
   } = useMemo(
     () => createTaskTreeActionHandlers({
@@ -148,6 +157,6 @@ export function useTaskActions({
     updateAppSettings, updateDailyWork, updateDailyInspiration, addTask, toggleTask, completeTaskWithReview,
     deleteTaskReview, deleteTaskReviews, deleteTask, editTask, updateTask, addSubtask, toggleSubtask, deleteSubtask, toggleTaskCollapse,
     updateSubtaskReview, markSubtaskDoneWithoutReview, editTaskReview, changePriority, reorderSourceGroups,
-    reorderTasksWithinSource, clearCompleted,
+    setTodayFocus, setTodayFocusState, adoptDailyReviewSuggestion, reorderTasksWithinSource, clearCompleted,
   };
 }

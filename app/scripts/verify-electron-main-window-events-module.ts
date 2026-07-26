@@ -33,8 +33,8 @@ assert.match(helper, /win\.webContents\.on\('did-fail-load'/, 'mainWindowEvents 
 assert.match(helper, /win\.webContents\.on\('preload-error'/, 'mainWindowEvents should own preload-error diagnostics.');
 assert.match(helper, /win\.on\('hide'/, 'mainWindowEvents should own hide diagnostics.');
 assert.match(helper, /win\.on\('minimize'/, 'mainWindowEvents should own minimize handling.');
-assert.match(helper, /from '\.\/minimizeRecovery'/, 'mainWindowEvents should delegate unexpected minimize recovery through the focused helper.');
-assert.match(helper, /recoverFromUnexpectedMinimize\(\{/, 'mainWindowEvents should invoke unexpected minimize recovery.');
+assert.doesNotMatch(helper, /from '\.\/minimizeRecovery'/, 'mainWindowEvents should not bypass the explicit tray policy through minimize recovery.');
+assert.match(helper, /win\.on\('minimize',[\s\S]*hideMainWindow\(\)/, 'native minimize should always hide the window to the tray.');
 assert.match(helper, /win\.on\('blur'/, 'mainWindowEvents should own blur diagnostics.');
 assert.match(helper, /win\.on\('focus'/, 'mainWindowEvents should own focus diagnostics.');
 assert.match(helper, /ensureDesktopHosted\(win\)/, 'mainWindowEvents should immediately restore component hosting after window lifecycle changes.');
@@ -48,6 +48,7 @@ assert.match(helper, /win\.on\('resize'/, 'mainWindowEvents should own resize pe
 assert.match(helper, /win\.on\('close'/, 'mainWindowEvents should own minimize-to-tray close behavior.');
 assert.match(helper, /event\.preventDefault\(\)/, 'mainWindowEvents should preserve preventDefault during minimize-to-tray close behavior.');
 assert.match(helper, /hideMainWindow\(\)/, 'mainWindowEvents should preserve minimize-to-tray hide behavior.');
+assert.match(helper, /getAppSettings\(\)\.closeToExit !== true/, 'mainWindowEvents should exit only when the advanced setting is explicitly enabled.');
 assert.match(helper, /stopDesktopGuard\(\)/, 'mainWindowEvents should preserve desktop guard cleanup on close.');
 
 assert.match(composition, /from '\.\/mainWindowBootstrap'/, 'main-window composition should import the bootstrap helper that wires main-window events.');

@@ -22,6 +22,7 @@ export type { TaskDragHandleProps } from './taskItem/taskItemControls';
 
 interface TaskItemProps {
   task: Task;
+  currentDate: string;
   language: AppLanguage;
   dragHandleProps?: TaskDragHandleProps;
   onToggle: () => void;
@@ -45,6 +46,7 @@ interface TaskItemProps {
 
 export function TaskItem({
   task,
+  currentDate,
   language,
   dragHandleProps,
   onToggle,
@@ -135,6 +137,7 @@ export function TaskItem({
             void window.electronAPI?.openTaskContextMenu(createTaskContextMenuOpenPayload({
               task,
               allTags,
+              currentDate,
               screenX: e.screenX,
               screenY: e.screenY,
               isDark: document.documentElement.classList.contains('dark'),

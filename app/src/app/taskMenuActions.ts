@@ -4,7 +4,7 @@ import { normalizeTaskMenuActionPayload } from '../../shared/taskMenuActionUpdat
 export type TaskMenuActionPayload = {
   taskId: string;
   updates: Partial<Task> & {
-    __action?: 'edit' | 'delete' | 'addSubtask';
+    __action?: 'edit' | 'delete' | 'addSubtask' | 'selectTodayFocus';
     text?: string;
   };
 };
@@ -16,6 +16,7 @@ export type ParsedTaskMenuAction =
   | { kind: 'addSubtask'; taskId: string; text: string }
   | { kind: 'delete'; taskId: string }
   | { kind: 'edit'; taskId: string }
+  | { kind: 'selectTodayFocus'; taskId: string }
   | { kind: 'update'; taskId: string; updates: Partial<Task> };
 
 export function parseTaskMenuAction(payload: unknown): ParsedTaskMenuAction {
@@ -40,6 +41,10 @@ export function parseTaskMenuAction(payload: unknown): ParsedTaskMenuAction {
     return { kind: 'edit', taskId };
   }
 
+  if (action === 'selectTodayFocus') {
+    return { kind: 'selectTodayFocus', taskId };
+  }
+
   // Drop control fields before applying generic task updates.
   const { __action: _action, text: _text, ...taskUpdates } = updates;
   return { kind: 'update', taskId, updates: taskUpdates };
@@ -48,6 +53,7 @@ export function parseTaskMenuAction(payload: unknown): ParsedTaskMenuAction {
 export type TaskMenuActionHandlers = {
   addSubtask: (taskId: string, text: string) => void;
   deleteTask: (taskId: string) => void;
+  requestTodayFocus: (taskId: string) => void;
   setEditRequest: (updater: (prev: EditRequest | null) => EditRequest) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
 };
@@ -72,6 +78,11 @@ export function applyParsedTaskMenuAction(
 
   if (action.kind === 'edit') {
     handlers.setEditRequest((prev) => createEditRequest(prev, action.taskId));
+    return;
+  }
+
+  if (action.kind === 'selectTodayFocus') {
+    handlers.requestTodayFocus(action.taskId);
     return;
   }
 

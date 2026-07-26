@@ -5,10 +5,9 @@ import type { SettingsModeState } from './settingsModeState';
 import type { UserHiddenState } from './userHiddenState';
 import type { EdgeAutoHideController } from './edgeAutoHideController';
 import { ensureWindowBoundsVisible } from './windowState';
-import { recoverFromUnexpectedMinimize } from './minimizeRecovery';
 
 type AppSettingsLike = {
-  minimizeToTrayOnClose?: boolean;
+  closeToExit?: boolean;
 };
 
 type RegisterMainWindowEventHandlersOptions = {
@@ -92,13 +91,7 @@ export function registerMainWindowEventHandlers({
     edgeAutoHide.noteForcedExpandAndClear();
     diag('evt: minimize');
     diag(`  userHidden=${userHidden.isHidden()} windowMode=${getWindowMode()} isVisible=${win.isVisible()}`);
-    recoverFromUnexpectedMinimize({
-      win,
-      getWindowMode,
-      isQuitting,
-      userHidden,
-      diag,
-    });
+    hideMainWindow();
   });
   win.on('restore', () => {
     rescueIfOffscreen('restore');
@@ -131,7 +124,7 @@ export function registerMainWindowEventHandlers({
   });
   win.on('close', (event) => {
     if (isQuitting()) return;
-    if (getAppSettings().minimizeToTrayOnClose) {
+    if (getAppSettings().closeToExit !== true) {
       event.preventDefault();
       hideMainWindow();
       return;

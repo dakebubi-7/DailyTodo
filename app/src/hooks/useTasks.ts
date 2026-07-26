@@ -96,7 +96,7 @@ export function useTasks() {
 
   return {
     tasks: sortedTasks, allTasks, taskListOrderByDate, sourceOrderForSelectedDate, ...taskActions,
-    selectedDateTaskCommands, obsidianSyncTasks, activeTab, setActiveTab, priorityFilter, setPriorityFilter, selectedDate,
+    selectedDateTaskCommands, obsidianSyncTasks, activeTab, setActiveTab, priorityFilter, setPriorityFilter, currentDate, selectedDate,
     setSelectedDate, allDates, dailyWork: dailyWorkNotes[selectedDate] || '', dailyInspiration: dailyInspirationNotes[selectedDate] || '',
     isDark, toggleDarkMode, setDarkMode, obsidianPath, syncStatus, chooseObsidianFolder,
     openSelectedDailyNote, completedCount, totalCount, todayCount, isLoaded, appSettings,

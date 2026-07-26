@@ -25,6 +25,8 @@ export type SetupMainBrowserWindowOptions = {
   registerMainWindowEvents(): void;
   registerWindowIpc(): void;
   registerSettingsIpc(): void;
+  registerBackupIpc(): void;
+  registerProductPathsIpc(): void;
   registerTaskContextMenuIpc(): void;
   registerCompanionIpc(): void;
   registerAiReviewIpc(): void;
@@ -99,10 +101,12 @@ export function setupMainBrowserWindow(
     scheduleAiTimers,
     createTray,
     loadMainRenderer,
-    registerMainWindowEvents,
-    registerWindowIpc,
-    registerSettingsIpc,
-    registerTaskContextMenuIpc,
+  registerMainWindowEvents,
+  registerWindowIpc,
+  registerSettingsIpc,
+  registerBackupIpc,
+  registerProductPathsIpc,
+  registerTaskContextMenuIpc,
     registerCompanionIpc,
     registerAiReviewIpc,
     registerObsidianIpc,
@@ -116,6 +120,8 @@ export function setupMainBrowserWindow(
   registerMainWindowEvents();
   registerWindowIpc();
   registerSettingsIpc();
+  registerBackupIpc();
+  registerProductPathsIpc();
   registerTaskContextMenuIpc();
   registerCompanionIpc();
   registerAiReviewIpc();

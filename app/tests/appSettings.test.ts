@@ -8,6 +8,13 @@ describe('app behavior settings', () => {
     expect(normalizeAppSettings({ edgeAutoHide: 'false' }).edgeAutoHide).toBe(true);
   });
 
+  it('defaults to close-to-tray and migrates the legacy close preference without changing behavior', () => {
+    expect(createDefaultAppSettings().closeToExit).toBe(false);
+    expect(normalizeAppSettings({ minimizeToTrayOnClose: true }).closeToExit).toBe(false);
+    expect(normalizeAppSettings({ minimizeToTrayOnClose: false }).closeToExit).toBe(true);
+    expect(normalizeAppSettings({ minimizeToTrayOnClose: true, closeToExit: true }).closeToExit).toBe(true);
+  });
+
   it('defaults input shortcuts to standard and migrates the legacy mode once', () => {
     expect(createDefaultAppSettings().inputKeybindings).toEqual({ preset: 'standard', overrides: {} });
     expect(normalizeAppSettings({ inputKeyboardMode: 'obsidian' }).inputKeybindings).toEqual({

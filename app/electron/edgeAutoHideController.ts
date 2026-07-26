@@ -3,6 +3,7 @@
   getExpandedBounds,
   getRetractedBounds,
   isPointInActivationStrip,
+  isPointInRect,
   isPointOnDesktopEdge,
   type EdgeAutoHideEdge,
   type Point,
@@ -102,6 +103,9 @@ export function createEdgeAutoHideController({
   // After hiding while the cursor is still on the edge/strip, require the
   // pointer to leave the strip before hover can expand again.
   let suppressStripRestore = false;
+  // The first retraction is requested by a deliberate edge drag. Later
+  // retractions are armed when a restored edge-attached window is left.
+  let rearmRetractionOnLeave = false;
   const pollTimer = setInterval(poll, POLL_INTERVAL_MS);
 
   function canOperate(): boolean {
@@ -193,6 +197,7 @@ export function createEdgeAutoHideController({
       activationStrip.hide();
       diag('edge auto-hide: restored');
       // If the cursor is already on the desktop edge, schedule hide immediately.
+      rearmRetractionOnLeave = true;
       poll();
     });
   }
@@ -201,6 +206,7 @@ export function createEdgeAutoHideController({
     edge = null;
     expandedBounds = null;
     workArea = null;
+    rearmRetractionOnLeave = false;
   }
 
   function reset(): void {
@@ -254,8 +260,14 @@ export function createEdgeAutoHideController({
       restore();
       return;
     }
-    // Retraction is armed by a completed edge attachment, not by ordinary
-    // cursor movement. A new drag always cancels the pending retraction.
+    if (!rearmRetractionOnLeave) return;
+    if (isPointInRect(cursor, expandedBounds)) {
+      clearLeaveTimer();
+      return;
+    }
+    // Keep the restored window open while it is in use, then re-arm its
+    // existing edge attachment once the cursor leaves the expanded bounds.
+    scheduleRetraction();
   }
 
   function applySettle(): void {

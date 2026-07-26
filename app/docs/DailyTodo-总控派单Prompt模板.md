@@ -21,7 +21,7 @@
 一、项目背景
 
 项目路径：
-G:\Personal-AI\DailyTodo\app
+<DailyTodo workspace root>
 
 这是 DailyTodo app 的多对话协作体系。已有部门任务如下：
 
