@@ -56,7 +56,7 @@ export const DateNavigator = memo(function DateNavigator({
             </span>
           </p>
           <div className="compact-day-progress-track" aria-label={formatCompactProgressLabel(summary, text)}>
-            {summary.total > 0 && (
+            {summary.completed > 0 && (
               <div
                 className="compact-day-progress-fill"
                 style={{ width: `min(100%, max(${fillWidth}%, 2.65rem))` }}
