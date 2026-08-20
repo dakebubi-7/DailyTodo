@@ -3,8 +3,8 @@
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 [![CI](https://github.com/dakebubi-7/DailyTodo/actions/workflows/ci.yml/badge.svg)](https://github.com/dakebubi-7/DailyTodo/actions/workflows/ci.yml)
-[![Latest Release](https://img.shields.io/github/v/release/dakebubi-7/DailyTodo-backup?display_name=tag&style=flat-square)](https://github.com/dakebubi-7/DailyTodo/releases)
-[![License](https://img.shields.io/github/license/dakebubi-7/DailyTodo-backup?style=flat-square)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/dakebubi-7/DailyTodo?display_name=tag&style=flat-square)](https://github.com/dakebubi-7/DailyTodo/releases)
+[![License](https://img.shields.io/github/license/dakebubi-7/DailyTodo?style=flat-square)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-34-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
