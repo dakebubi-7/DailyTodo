@@ -2,8 +2,8 @@
 
 [English](README.md) · **简体中文**
 
-[![CI](https://github.com/dakebubi-7/DailyTodo-backup/actions/workflows/ci.yml/badge.svg)](https://github.com/dakebubi-7/DailyTodo-backup/actions/workflows/ci.yml)
-[![最新版本](https://img.shields.io/github/v/release/dakebubi-7/DailyTodo-backup?display_name=tag&style=flat-square)](https://github.com/dakebubi-7/DailyTodo-backup/releases)
+[![CI](https://github.com/dakebubi-7/DailyTodo/actions/workflows/ci.yml/badge.svg)](https://github.com/dakebubi-7/DailyTodo/actions/workflows/ci.yml)
+[![最新版本](https://img.shields.io/github/v/release/dakebubi-7/DailyTodo-backup?display_name=tag&style=flat-square)](https://github.com/dakebubi-7/DailyTodo/releases)
 [![许可证](https://img.shields.io/github/license/dakebubi-7/DailyTodo-backup?style=flat-square)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-34-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)
@@ -35,7 +35,7 @@ DailyTodo 将本地任务管理、Obsidian 日记同步、AI 辅助复盘和轻�
 
 ## 下载和安装
 
-最新版 Windows 安装包位于 [GitHub Releases](https://github.com/dakebubi-7/DailyTodo-backup/releases/latest)。
+最新版 Windows 安装包位于 [GitHub Releases](https://github.com/dakebubi-7/DailyTodo/releases/latest)。
 
 1. 在最新 Release 的附件中下载 `DailyTodo.exe`。
 2. 运行安装程序，需要时选择安装目录。
