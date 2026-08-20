@@ -25,4 +25,4 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/e
 - AI review generation reports a failure when no writable review block is available.
 - Empty AI account states no longer expose unsafe or misleading actions.
 
-[1.0.0]: https://github.com/dakebubi-7/DailyTodo-backup/releases/tag/v1.0.0
+[1.0.0]: https://github.com/dakebubi-7/DailyTodo/releases/tag/v1.0.0
