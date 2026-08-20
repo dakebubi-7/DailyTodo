@@ -1,0 +1,53 @@
+﻿name: Bug report
+
+description: Report a reproducible problem in DailyTodo
+title: "fix: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove API keys, Obsidian vault paths, private task data, and other sensitive information before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: DailyTodo version
+      description: Which release or commit are you using?
+      placeholder: v1.0.0 or 3fd8f33
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest sequence that reproduces the issue.
+      placeholder: |
+        1. Open Settings...
+        2. Select...
+        3. Click...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Redact secrets and personal data first.

@@ -1,59 +1,75 @@
 ﻿# DailyTodo
 
-DailyTodo is a Windows-first Electron desktop application for turning a daily task list into a focused execution workspace. It combines local task management, Obsidian daily-note synchronization, AI-assisted reviews, and a lightweight desktop surface that can stay out of the way while work is in progress.
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-![Electron](https://img.shields.io/badge/Electron-34.2.0-47848F?style=flat-square&logo=electron)
-![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=flat-square&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.17-06B6D4?style=flat-square&logo=tailwind-css)
+[![CI](https://github.com/dakebubi-7/DailyTodo-backup/actions/workflows/ci.yml/badge.svg)](https://github.com/dakebubi-7/DailyTodo-backup/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/dakebubi-7/DailyTodo-backup?display_name=tag&style=flat-square)](https://github.com/dakebubi-7/DailyTodo-backup/releases)
+[![License](https://img.shields.io/github/license/dakebubi-7/DailyTodo-backup?style=flat-square)](LICENSE)
+[![Electron](https://img.shields.io/badge/Electron-34-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+
+> A Windows-first desktop workspace for turning a daily task list into focused execution, reflection, and better next actions.
+
+DailyTodo combines local task management, Obsidian daily-note synchronization, AI-assisted reviews, and a compact desktop surface that stays close to the work. The application supports **Simplified Chinese and English** through **Settings → Language**.
+
+## Why DailyTodo
+
+Most task lists stop at “what should I do?”. DailyTodo is designed around the complete loop:
+
+```text
+Plan → Focus → Complete → Review → Choose the next action
+```
+
+The result is a desktop workflow that keeps execution, evidence, and reflection in one place without requiring a cloud account for basic task management.
 
 ## Highlights
 
-- **Daily execution workspace** — manage tasks, priorities, subtasks, completion progress, task sources, and carry-over work.
-- **AI review workflow** — generate daily, weekly, monthly, and external reviews from configured AI providers.
-- **Multi-account AI settings** — add, duplicate, delete, switch, and test provider profiles without exposing stored API keys to the renderer.
-- **Obsidian integration** — keep DailyTodo-managed review blocks and daily task notes synchronized with an Obsidian vault.
-- **Desktop-focused UI** — compact window modes, transparent/glass styling, edge auto-hide, recovery behavior, and an invisible focus surface.
-- **Review result handoff** — inspect yesterday's review, edit an AI-suggested next action, and explicitly adopt it as today's focus.
+- **Daily execution workspace** — priorities, subtasks, completion progress, carry-over work, and task sources.
+- **AI-assisted reviews** — generate daily, weekly, monthly, or external reviews from configured providers.
+- **Multi-account AI settings** — create, duplicate, delete, switch, and test provider profiles while keeping API keys behind the Electron main process.
+- **Obsidian integration** — synchronize DailyTodo task notes and managed review blocks with an Obsidian vault.
+- **Desktop-focused interaction** — compact window modes, transparent/glass styling, edge auto-hide, recovery behavior, and an invisible focus surface.
+- **Review-to-focus handoff** — inspect review results, edit an AI-suggested next action, and explicitly adopt it as today’s focus.
+- **Bilingual UI** — switch between `简体中文` and `English` in the application settings.
 
-## Recent update: August 20, 2026
+## Download and install
 
-This update consolidates the latest AI review and desktop interaction work:
+The latest Windows installer is available on the [Releases page](https://github.com/dakebubi-7/DailyTodo-backup/releases/latest).
 
-- Added compatibility for previously persisted custom review block markers, so older daily-note templates can still be recognized safely by heading.
-- Made AI review failures explicit when no writable review block is available instead of reporting a false success.
-- Added a confirmation flow before regenerating an existing daily review, with an explicit cancel path.
-- Improved AI account management when no profile is selected, including a clear empty state and guarded actions.
-- Fixed the daily review detail dialog so it closes with **Escape** and its content remains scrollable on short windows.
-- Added regression coverage for AI generation, account management, app-state accessors, invisible completed-task styling, and daily review dialog behavior.
+1. Download `DailyTodo.exe` from the latest release.
+2. Run the installer and choose an installation directory if needed.
+3. Launch DailyTodo from the Start menu or desktop shortcut.
 
-## Tech stack
+> The Windows build is currently unsigned. Windows SmartScreen may display a warning during first launch. Review the release asset and source before installing.
 
-| Area | Technology |
-| --- | --- |
-| Desktop runtime | Electron 34 |
-| UI | React 18 |
-| Language | TypeScript |
-| Styling | Tailwind CSS + custom global styles |
-| Local persistence | electron-store |
-| Integrations | Obsidian daily notes, configurable AI providers |
-| Testing | Vitest, Testing Library, jsdom |
+## Language switching
 
-## Getting started
+The app has built-in language support:
 
-### Install dependencies
+1. Open **Settings**.
+2. Open the **General** section.
+3. Select **简体中文** or **English** in **Language**.
+
+The selected language is persisted in the local application settings and is used by the main shell, task views, review panels, settings, and related workflows.
+
+## Development
+
+### Requirements
+
+- Windows 10 or later
+- Node.js 20+
+- npm
+- Visual Studio Build Tools for the native Windows hit-test helper
+
+### Install and run
 
 ```bash
 npm install
-```
-
-### Run in development
-
-```bash
 npm run dev
 ```
 
-### Type-check, test, and build
+### Verify and build
 
 ```bash
 npm run typecheck
@@ -61,30 +77,48 @@ npm test -- --run
 npm run build
 ```
 
-### Build the Windows application
+### Build the Windows installer
 
 ```powershell
 npm.cmd run electron:build
 ```
 
-Release artifacts are written to `release/`. The Windows installer is currently unsigned, so SmartScreen may show a warning on first launch.
+The installer and unpacked application are written to `release/`. Build output is intentionally ignored by Git so personal profiles, logs, and generated binaries are not committed to the source repository.
 
 ## Project structure
 
 ```text
-electron/   Electron main process, IPC, persistence, AI and integration services
-src/        React renderer, hooks, components, settings and styles
-shared/     Cross-process types and AI review contracts
-tests/      Unit and DOM regression tests
-docs/       Product specs, implementation plans and release/QA notes
+electron/   Electron main process, IPC, persistence, AI, and integrations
+src/        React renderer, hooks, components, settings, and styles
+shared/     Cross-process types and AI/review contracts
+tests/      Unit, DOM, and regression tests
+scripts/    Verification and native-build helpers
+docs/       Product specs, implementation plans, and release notes
 ```
 
-## Security notes
+## Security and privacy
 
-- API keys are stored and revealed through the Electron main-process settings flow; renderer-facing settings are masked.
-- Do not commit local `.test-version*` profiles, logs, `.out`/`.err` files, or other runtime data.
-- Configure provider credentials locally and keep them out of source control.
+- API keys are handled through the Electron main-process settings flow; renderer-facing settings are masked.
+- DailyTodo is local-first for core task management. Obsidian and AI integrations are opt-in configurations.
+- Never commit API keys, vault paths, local task data, `.test-version*` profiles, logs, or generated release output.
+- Security issues should be reported privately using the process in [SECURITY.md](SECURITY.md).
+
+## Roadmap
+
+- Improve first-run onboarding and provider setup guidance.
+- Add richer release screenshots and short workflow demonstrations.
+- Continue expanding bilingual coverage across advanced integration settings.
+- Improve signed distribution and update delivery for future Windows releases.
+
+## Documentation
+
+- [Chinese project overview](README.zh-CN.md)
+- [Release notes](RELEASE_NOTES_2026-08-20.md)
+- [Changelog](CHANGELOG.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Project specification](SPEC.md)
 
 ## License
 
-MIT
+Distributed under the [MIT License](LICENSE).
