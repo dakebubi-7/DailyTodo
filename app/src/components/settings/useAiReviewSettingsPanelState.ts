@@ -51,6 +51,9 @@ interface UseAiReviewSettingsPanelStateResult {
   saveAiReviewSettings: (next: AiReviewSettings) => void;
   saveAiReviewSettingsInput: (next: AiReviewSettings) => void;
   runGeneration: (action: GenerationAction) => void;
+  pendingDailyRegeneration: { date: string; tasks: Task[] } | null;
+  confirmDailyRegeneration: () => void;
+  cancelDailyRegeneration: () => void;
   applyHandoff: (taskId: string, updateNextStep: boolean) => void;
   onCloseDiagnostic: () => void;
 }

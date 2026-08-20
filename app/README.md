@@ -1,118 +1,90 @@
-# Daily Todo
+﻿# DailyTodo
 
-一个精美优雅的每日清单桌面应用，采用温暖纸张质感与现代极简风格的混合设计。
+DailyTodo is a Windows-first Electron desktop application for turning a daily task list into a focused execution workspace. It combines local task management, Obsidian daily-note synchronization, AI-assisted reviews, and a lightweight desktop surface that can stay out of the way while work is in progress.
 
-![Daily Todo](https://img.shields.io/badge/Electron-34.2.0-47848F?style=flat-square&logo=electron)
+![Electron](https://img.shields.io/badge/Electron-34.2.0-47848F?style=flat-square&logo=electron)
 ![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.17-06B6D4?style=flat-square&logo=tailwind-css)
 
-## 特性
+## Highlights
 
-- **精美界面**：温暖纸张质感背景、柔和投影、流畅动画
-- **任务管理**：添加、完成、编辑、删除任务
-- **优先级支持**：高/中/低三级优先级，用彩色圆点标识
-- **分组筛选**：今日/全部/已完成三个视图
-- **进度追踪**：实时显示完成进度
-- **深色模式**：一键切换深色主题
-- **数据持久化**：electron-store 本地存储
-- **撒花动画**：完成所有任务时触发庆祝动画
+- **Daily execution workspace** — manage tasks, priorities, subtasks, completion progress, task sources, and carry-over work.
+- **AI review workflow** — generate daily, weekly, monthly, and external reviews from configured AI providers.
+- **Multi-account AI settings** — add, duplicate, delete, switch, and test provider profiles without exposing stored API keys to the renderer.
+- **Obsidian integration** — keep DailyTodo-managed review blocks and daily task notes synchronized with an Obsidian vault.
+- **Desktop-focused UI** — compact window modes, transparent/glass styling, edge auto-hide, recovery behavior, and an invisible focus surface.
+- **Review result handoff** — inspect yesterday's review, edit an AI-suggested next action, and explicitly adopt it as today's focus.
 
-## 技术栈
+## Recent update: August 20, 2026
 
-| 类别 | 技术 |
-|------|------|
-| 桌面框架 | Electron |
-| UI 框架 | React 18 |
-| 语言 | TypeScript |
-| 样式 | Tailwind CSS |
-| 动画 | Framer Motion |
-| 数据存储 | electron-store |
-| 字体 | Playfair Display + DM Sans |
+This update consolidates the latest AI review and desktop interaction work:
 
-## 开始使用
+- Added compatibility for previously persisted custom review block markers, so older daily-note templates can still be recognized safely by heading.
+- Made AI review failures explicit when no writable review block is available instead of reporting a false success.
+- Added a confirmation flow before regenerating an existing daily review, with an explicit cancel path.
+- Improved AI account management when no profile is selected, including a clear empty state and guarded actions.
+- Fixed the daily review detail dialog so it closes with **Escape** and its content remains scrollable on short windows.
+- Added regression coverage for AI generation, account management, app-state accessors, invisible completed-task styling, and daily review dialog behavior.
 
-### 安装依赖
+## Tech stack
+
+| Area | Technology |
+| --- | --- |
+| Desktop runtime | Electron 34 |
+| UI | React 18 |
+| Language | TypeScript |
+| Styling | Tailwind CSS + custom global styles |
+| Local persistence | electron-store |
+| Integrations | Obsidian daily notes, configurable AI providers |
+| Testing | Vitest, Testing Library, jsdom |
+
+## Getting started
+
+### Install dependencies
 
 ```bash
 npm install
 ```
 
-### 开发模式
+### Run in development
 
 ```bash
 npm run dev
 ```
 
-### 构建应用 / Build
+### Type-check, test, and build
 
 ```bash
+npm run typecheck
+npm test -- --run
 npm run build
 ```
 
-### Windows RC 打包 / Windows RC Packaging
+### Build the Windows application
 
 ```powershell
-npm.cmd run verify:rc
 npm.cmd run electron:build
 ```
 
-Release artifacts are written to `app/release/`. The NSIS installer is unsigned, so Windows SmartScreen may show a warning on first launch.
+Release artifacts are written to `release/`. The Windows installer is currently unsigned, so SmartScreen may show a warning on first launch.
 
-RC notes:
+## Project structure
 
-- DailyTodo writes one Obsidian daily note by default: `logs/daily/DailyTodo/{{date}}.md`.
-- Legacy `logs/daily/DailyTodo/tasks/{{date}}.md` files are not deleted automatically.
-- See `../docs/DailyTodo-Developer-Manual-and-Cases.zh-en.md` and `../docs/DailyTodo-Template-Adjustment-Manual-and-Cases.zh-en.md`.
-
-## 快捷键
-
-| 操作 | 快捷键 |
-|------|--------|
-| 添加任务 | Enter |
-| 编辑任务 | 双击任务文字 |
-| 取消编辑 | Escape |
-
-## 界面预览
-
-```
-┌────────────────────────────────────┐
-│  2025年5月19日 星期一    ─  ✕     │
-├────────────────────────────────────┤
-│  Daily Todo                    🌙  │
-│  ████████████░░░░  6/10 完成       │
-├────────────────────────────────────┤
-│  今日    |    全部    |   已完成    │
-├────────────────────────────────────┤
-│  ● 完成设计稿审查                  │
-│  ✓ 发周报邮件                      │
-│  ○ 整理桌面文件                    │
-│  ...                               │
-├────────────────────────────────────┤
-│  [+] 添加新任务...                  │
-└────────────────────────────────────┘
+```text
+electron/   Electron main process, IPC, persistence, AI and integration services
+src/        React renderer, hooks, components, settings and styles
+shared/     Cross-process types and AI review contracts
+tests/      Unit and DOM regression tests
+docs/       Product specs, implementation plans and release/QA notes
 ```
 
-## 项目结构
+## Security notes
 
-```
-daily-todo/
-├── electron/
-│   ├── main.ts           # 主进程
-│   └── preload.ts        # 预加载脚本
-├── src/
-│   ├── App.tsx           # 应用入口
-│   ├── main.tsx          # React 入口
-│   ├── components/       # UI 组件
-│   ├── hooks/           # 自定义 Hooks
-│   ├── store/           # 数据存储
-│   ├── types/            # TypeScript 类型
-│   └── styles/           # 全局样式
-├── package.json
-├── vite.config.ts
-└── tailwind.config.js
-```
+- API keys are stored and revealed through the Electron main-process settings flow; renderer-facing settings are masked.
+- Do not commit local `.test-version*` profiles, logs, `.out`/`.err` files, or other runtime data.
+- Configure provider credentials locally and keep them out of source control.
 
-## 许可证
+## License
 
 MIT

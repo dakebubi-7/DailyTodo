@@ -12614,6 +12614,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   top: 50%;
   left: 50%;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   width: min(34rem, calc(100vw - 1.5rem));
   max-height: min(38rem, calc(100dvh - 1.5rem));
   gap: 0.5rem;
@@ -12642,6 +12643,7 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   min-height: 0;
   gap: 0.5rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .daily-review-item {
@@ -13542,6 +13544,24 @@ html:not(.dark) .app-shell[data-theme='invisible'] :is(.task-card-completed .tas
   .task-action-layer {
     transition: none !important;
   }
+}
+
+/* Completed tasks in Invisible mode keep one stable text copy on hover. */
+.app-shell[data-theme='invisible'] .task-card-completed .task-text-wrap .task-text-browse {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+.app-shell[data-theme='invisible'] .task-card-completed .task-text-wrap .task-text-active {
+  opacity: 0 !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+.app-shell[data-theme='invisible'] .task-card-completed .task-text-wrap > .task-text-row {
+  height: 2.5em !important;
+  transition: none !important;
 }
 
 /* Compact action outlines sit optically below the main-task text center. */

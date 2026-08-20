@@ -153,6 +153,17 @@ export function DailyReviewPanel({
     setIsPromptHidden(true);
   }, [cancelAdoption, sourceDate]);
 
+  useEffect(() => {
+    if (!isDetailOpen) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDetails();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closeDetails, isDetailOpen]);
+
   const confirmAdoption = useCallback(() => {
     const suggestedAction = adoptionItem?.suggestion?.suggestedAction;
     if (!adoptionItem || !suggestedAction) return;

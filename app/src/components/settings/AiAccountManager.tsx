@@ -40,9 +40,10 @@ export function AiAccountManager({
   const [modelsByProfile, setModelsByProfile] = useState<Record<string, string[]>>({});
   const [modelStatus, setModelStatus] = useState('');
   const [fetchingModels, setFetchingModels] = useState(false);
-  const fetchedModels = modelsByProfile[editing.id] ?? [];
+  const fetchedModels = editing ? modelsByProfile[editing.id] ?? [] : [];
 
   const fetchModels = async () => {
+    if (!editing) return;
     setFetchingModels(true);
     setModelStatus(text.modelFetching);
     try {
@@ -70,15 +71,15 @@ export function AiAccountManager({
         <div className="ai-account-header">
           <div>
             <h3>{text.manageTitle}</h3>
-            <p>{editing.name || editing.model || editing.id}</p>
+            <p>{editing ? (editing.name || editing.model || editing.id) : text.accountAdd}</p>
           </div>
           <div className="ai-account-header-actions">
             <button type="button" className="settings-reset-button" onClick={onAdd}>{text.accountAdd}</button>
-            <button type="button" className="settings-reset-button" onClick={() => onDuplicate(editing.id)}>{text.accountCopy}</button>
-            <button type="button" className="settings-reset-button" disabled={editing.id === activeId} onClick={() => onSetActive(editing.id)}>
-              {editing.id === activeId ? text.accountIsActive : text.setActive}
+            <button type="button" className="settings-reset-button" disabled={!editing} onClick={() => editing && onDuplicate(editing.id)}>{text.accountCopy}</button>
+            <button type="button" className="settings-reset-button" disabled={!editing || editing.id === activeId} onClick={() => editing && onSetActive(editing.id)}>
+              {editing?.id === activeId ? text.accountIsActive : text.setActive}
             </button>
-            <button type="button" className="settings-reset-button settings-danger-button" disabled={profiles.length <= 1} onClick={() => onDelete(editing.id)}>
+            <button type="button" className="settings-reset-button settings-danger-button" disabled={!editing || profiles.length <= 1} onClick={() => editing && onDelete(editing.id)}>
               {text.accountDelete}
             </button>
             <button type="button" className="ai-account-close" onClick={onClose} aria-label={text.close}>✓</button>
@@ -89,26 +90,34 @@ export function AiAccountManager({
             text={text}
             profiles={profiles}
             activeId={activeId}
-            editingId={editing.id}
+            editingId={editing?.id ?? ''}
             onSelectEditing={onSelectEditing}
             onAdd={onAdd}
             onDuplicate={onDuplicate}
           />
-          <AiAccountDetails
-            text={text}
-            editing={editing}
-            activeId={activeId}
-            profileCount={profiles.length}
-            fetchedModels={fetchedModels}
-            fetchingModels={fetchingModels}
-            modelStatus={modelStatus}
-            onUpdate={onUpdate}
-            onUpdateInput={onUpdateInput}
-            onFetchModels={fetchModels}
-            onSetActive={onSetActive}
-            onDelete={onDelete}
-            onClose={onClose}
-          />
+          {editing ? (
+            <AiAccountDetails
+              text={text}
+              editing={editing}
+              activeId={activeId}
+              profileCount={profiles.length}
+              fetchedModels={fetchedModels}
+              fetchingModels={fetchingModels}
+              modelStatus={modelStatus}
+              onUpdate={onUpdate}
+              onUpdateInput={onUpdateInput}
+              onFetchModels={fetchModels}
+              onSetActive={onSetActive}
+              onDelete={onDelete}
+              onClose={onClose}
+            />
+          ) : (
+            <div className="ai-account-detail ai-account-empty-state">
+              <strong>{text.accountAdd}</strong>
+              <span>{text.manageTitle}</span>
+              <button type="button" className="settings-reset-button" onClick={onAdd}>{text.accountAdd}</button>
+            </div>
+          )}
         </div>
       </div>
     </div>

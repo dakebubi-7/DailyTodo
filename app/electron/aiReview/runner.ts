@@ -50,9 +50,10 @@ export async function runReviewForFile(params: RunParams): Promise<RunResult> {
 
   if (!filled.length) {
     const error = failed.map((item) => `${item.key}: ${item.error}`).join('; ');
+    const noWritableBlocksError = '未找到可写入的 AI 复盘区块，请同步日报或检查日报模板配置';
     return {
-      ok: failed.length === 0,
-      ...(error ? { error } : {}),
+      ok: failed.length === 0 && blocks.length > 0,
+      ...(error || blocks.length === 0 ? { error: error || noWritableBlocksError } : {}),
       filledMarkers: [],
       skippedMarkers: skipped,
       failedMarkers: failed,

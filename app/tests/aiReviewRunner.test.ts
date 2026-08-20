@@ -51,6 +51,58 @@ describe('AI review file runner', () => {
     });
   });
 
+  it('fails clearly when the daily note contains no configured AI review blocks', async () => {
+    const staleMarker = customBlockMarker('stale-template-block');
+    const filePath = createReviewFile([
+      '# 2026-07-20',
+      '## Review',
+      staleMarker.start,
+      staleMarker.end,
+    ]);
+    const callLlm = vi.fn(async () => ({ ok: true as const, content: 'Should not be requested' }));
+
+    const result = await runReviewForFile({
+      filePath,
+      date: '2026-07-20',
+      tasks: [],
+      sections: createDefaultSections(),
+      customBlocks: [],
+      callLlm,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('未找到可写入的 AI 复盘区块');
+    expect(result.filledMarkers).toEqual([]);
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+  it('fills a legacy custom marker when its configured block has the same heading but a new ID', async () => {
+    const legacyMarker = customBlockMarker('legacy-review-block');
+    const configuredBlock: CustomBlock = {
+      id: 'new-review-block',
+      name: '复盘',
+      aiGenerate: true,
+      renderType: 'text',
+      prompt: '',
+    };
+    const filePath = createReviewFile([
+      '# 2026-07-20',
+      '## 复盘',
+      legacyMarker.start,
+      legacyMarker.end,
+    ]);
+
+    const result = await runReviewForFile({
+      filePath,
+      date: '2026-07-20',
+      tasks: [],
+      sections: [],
+      customBlocks: [configuredBlock],
+      callLlm: async () => ({ ok: true as const, content: '已完成当天测试与复盘。' }),
+    });
+
+    expect(result).toMatchObject({ ok: true, filledMarkers: ['CUSTOM:new-review-block'] });
+    expect(readBlockBody(fs.readFileSync(filePath, 'utf8'), legacyMarker)).toContain('已完成当天测试与复盘。');
+  });
   it('writes successful blocks and exposes a warning when another requested block fails', async () => {
     const filePath = createReviewFile([
       '# 2026-07-20',

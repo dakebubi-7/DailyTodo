@@ -71,12 +71,14 @@ export function createAiReviewDailyRunner({
   stage,
   createDiagnostic,
 }: CreateAiReviewDailyRunnerOptions) {
+  const inFlightRuns = new Map<string, Promise<Awaited<ReturnType<typeof runReviewForDateInternal>>>>();
+
   function inspectDailyAiContent(date: string): InspectDailyResult {
     const { snapshot: _snapshot, ...inspection } = inspectDailyAiContentWithSnapshot(getDailyFilePath, date);
     return inspection;
   }
 
-  async function runReviewForDate(date: string, tasks: AiReviewDailyRunnerTask[], force = false) {
+  async function runReviewForDateInternal(date: string, tasks: AiReviewDailyRunnerTask[], force = false) {
     const startedAt = Date.now();
     const progress = createDailyAiReviewProgress({ emit: emitAiReviewProgress, createStage: stage });
     const { labels, messages } = progress;
@@ -203,6 +205,19 @@ export function createAiReviewDailyRunner({
       warning,
     });
     return { ...result, ...(warning ? { warning } : {}), handoffs, diagnostic };
+  }
+
+  function runReviewForDate(date: string, tasks: AiReviewDailyRunnerTask[], force = false) {
+    const existing = inFlightRuns.get(date);
+    if (existing) return existing;
+
+    const pending = runReviewForDateInternal(date, tasks, force);
+    inFlightRuns.set(date, pending);
+    const clear = () => {
+      if (inFlightRuns.get(date) === pending) inFlightRuns.delete(date);
+    };
+    void pending.then(clear, clear);
+    return pending;
   }
 
   return {

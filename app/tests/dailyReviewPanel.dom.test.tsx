@@ -221,6 +221,26 @@ describe('DailyReviewPanel', () => {
     });
   });
 
+  it('closes the detail panel when Escape is pressed', async () => {
+    setAiReviewApi({ enabled: true, dailyBatch: batch() });
+    render(
+      <DailyReviewPanel
+        currentDate={currentDate}
+        text={getShellText('en-US').app}
+        onAdoptDailyReviewSuggestion={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /view/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /view/i }));
+    expect(screen.getByRole('dialog', { name: /yesterday's review/i })).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog', { name: /yesterday's review/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /view/i })).toBeNull();
+  });
+
   it('offers an explicit retry for failed items only after the user clicks it', async () => {
     const failedBatch = batch({
       items: [{

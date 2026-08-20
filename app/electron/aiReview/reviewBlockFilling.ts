@@ -1,4 +1,4 @@
-import { REVIEW_MARKERS, customBlockMarker, hasBlock, readBlockBody, upsertBlock } from '../../shared/aiReview/markers';
+import { REVIEW_MARKERS, customBlockMarker, hasBlock, readBlockBody, upsertBlock, type BlockMarker } from '../../shared/aiReview/markers';
 import { embedHash } from '../../shared/aiReview/hash';
 import { decideBlock, BlockAction } from '../../shared/aiReview/scanDecision';
 import type { CustomBlock, SectionConfig } from '../../shared/aiReview/sectionConfig';
@@ -66,6 +66,34 @@ function buildDeterministicTomorrowBody(tasks: StatTask[], date: string) {
   return embedHash(renderTomorrowProjection(tasks, date));
 }
 
+function normalizeReviewBlockHeading(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function findCustomBlockMarker(params: {
+  content: string;
+  block: CustomBlock;
+  usedMarkerStarts: Set<string>;
+}): BlockMarker | undefined {
+  const { content, block, usedMarkerStarts } = params;
+  const configuredMarker = customBlockMarker(block.id);
+  if (hasBlock(content, configuredMarker) && !usedMarkerStarts.has(configuredMarker.start)) return configuredMarker;
+
+  // 旧版本未持久化默认模板的 UUID，日报可能保留了旧 marker。按相邻标题安全地兼容一次。
+  const targetHeading = normalizeReviewBlockHeading(block.name);
+  const pattern = /<!--\s*DAILYTODO:CUSTOM:([^:\s]+):START\s*-->/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(content))) {
+    const marker: BlockMarker = {
+      start: match[0].trim(),
+      end: `<!-- DAILYTODO:CUSTOM:${match[1]}:END -->`,
+    };
+    if (usedMarkerStarts.has(marker.start) || !hasBlock(content, marker)) continue;
+    if (normalizeReviewBlockHeading(findNearestHeadingBeforeMarker(content, marker.start)) === targetHeading) return marker;
+  }
+  return undefined;
+}
+
 export function buildReviewBlocks(params: {
   sections: SectionConfig[];
   customBlocks?: CustomBlock[];
@@ -75,6 +103,20 @@ export function buildReviewBlocks(params: {
 }): ReviewBlockInput[] {
   const { sections, customBlocks, date, stats, content } = params;
   const aiCustomBlocks = customBlocks?.filter((block) => block.aiGenerate) ?? [];
+  const usedCustomMarkerStarts = new Set<string>();
+  const customReviewBlocks = aiCustomBlocks.flatMap((block) => {
+    const marker = findCustomBlockMarker({ content, block, usedMarkerStarts: usedCustomMarkerStarts });
+    if (!marker) return [];
+    usedCustomMarkerStarts.add(marker.start);
+    return [{
+      key: `CUSTOM:${block.id}`,
+      marker,
+      title: block.name,
+      type: block.contentSource === 'tomorrowProjection' ? SectionType.Deterministic : SectionType.Ai,
+      buildMessages: (currentContent: string) => buildCustomBlockReviewMessages({ date, dailyContent: currentContent, block, stats }),
+    }];
+  });
+
   return [
     ...sections.map((section) => ({
       key: section.markerKey,
@@ -83,16 +125,9 @@ export function buildReviewBlocks(params: {
       type: section.type,
       buildMessages: (currentContent: string) => buildReviewMessages({ date, dailyContent: currentContent, section, stats }),
     })),
-    ...aiCustomBlocks.map((block) => ({
-      key: `CUSTOM:${block.id}`,
-      marker: customBlockMarker(block.id),
-      title: block.name,
-      type: block.contentSource === 'tomorrowProjection' ? SectionType.Deterministic : SectionType.Ai,
-      buildMessages: (currentContent: string) => buildCustomBlockReviewMessages({ date, dailyContent: currentContent, block, stats }),
-    })),
+    ...customReviewBlocks,
   ].filter((block) => hasBlock(content, block.marker));
 }
-
 export async function fillReviewBlock(params: {
   content: string;
   date: string;

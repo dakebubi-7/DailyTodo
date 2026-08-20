@@ -72,7 +72,11 @@ export function createAppStateAccessors({
   }
 
   function getObsidianTemplateSettings(): ObsidianTemplateSettings {
-    return normalizeObsidianTemplateSettings(store.get(OBSIDIAN_TEMPLATE_SETTINGS_KEY));
+    const stored = store.get(OBSIDIAN_TEMPLATE_SETTINGS_KEY);
+    const settings = normalizeObsidianTemplateSettings(stored);
+    // 默认模板包含自定义块 UUID。首次读取时持久化它们，保证日报渲染与 AI 复盘使用同一组 marker。
+    if (!areStoreValuesEqual(stored, settings)) store.set(OBSIDIAN_TEMPLATE_SETTINGS_KEY, settings);
+    return settings;
   }
 
   function setObsidianTemplateSettings(value: unknown): ObsidianTemplateSettings {

@@ -28,3 +28,23 @@ coverage/
 
 # Legacy bundled main process artifact
 main.js
+
+# Local development and agent state
+.claude/
+.superpowers/
+.worktrees/
+
+# Electron runtime / local test profiles
+.test-version/
+.test-version-*/
+
+# Local diagnostics and temporary command output
+*.out
+*.err
+.rg-bugs.txt
+
+# Build output and generated release files
+release/
+release-*/
+dist/
+dist-electron/

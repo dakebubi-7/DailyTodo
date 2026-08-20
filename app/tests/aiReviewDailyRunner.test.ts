@@ -147,6 +147,26 @@ describe('AI daily review runner', () => {
     expect(callLlm).toHaveBeenCalledTimes(1);
   });
 
+  it('shares one in-flight daily review when auto sync and manual generation overlap', async () => {
+    const filePath = createDailyFile();
+    const { runner, callLlm } = createRunner(true, filePath);
+    let releaseReview: ((value: { ok: true; content: string }) => void) | undefined;
+    const reviewResponse = new Promise<{ ok: true; content: string }>((resolve) => {
+      releaseReview = resolve;
+    });
+    callLlm.mockImplementation(() => reviewResponse);
+
+    const firstRun = runner.runReviewForDate('2026-07-20', []);
+    const secondRun = runner.runReviewForDate('2026-07-20', [], true);
+    releaseReview?.({ ok: true, content: 'Review generated once' });
+
+    const [first, second] = await Promise.all([firstRun, secondRun]);
+    expect(callLlm).toHaveBeenCalledTimes(1);
+    expect(first).toMatchObject({ ok: true, filledMarkers: ['REVIEW'] });
+    expect(second).toMatchObject({ ok: true, filledMarkers: ['REVIEW'] });
+    expect(fs.readFileSync(filePath, 'utf8')).toContain('Review generated once');
+  });
+
   it('keeps a successful review successful when a handoff request fails', async () => {
     const filePath = createDailyFile();
     const { runner, callLlm } = createRunner(true, filePath);

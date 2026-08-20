@@ -31,6 +31,10 @@ type UseAiReviewGenerationOptions = {
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
 };
 
+type PendingDailyRegeneration = {
+  date: string;
+  tasks: Task[];
+};
 export function useAiReviewGeneration({
   isOpen,
   zh,
@@ -44,13 +48,11 @@ export function useAiReviewGeneration({
   const [lastDiagnostic, setLastDiagnostic] = useState<AiReviewRunDiagnostic | null>(null);
   const [currentProgress, setCurrentProgress] = useState<AiReviewProgressEvent | null>(null);
   const [handoffs, setHandoffs] = useState<AiReviewHandoffSuggestion[]>([]);
+  const [pendingDailyRegeneration, setPendingDailyRegeneration] = useState<PendingDailyRegeneration | null>(null);
   const generationActiveRef = useRef(false);
   const progressFallbackTimerRef = useRef<number | null>(null);
 
   const waitingForRealProgress = zh ? '\u7b49\u5f85\u771f\u5b9e\u8fdb\u5ea6...' : 'Waiting for real progress...';
-  const confirmDailyRegeneration = zh
-    ? '当前日报可能已存在。确认后会覆盖 DailyTodo 管理的 AI 复盘块并重新生成，继续吗？'
-    : 'Today\'s daily review may already exist. Confirm to overwrite DailyTodo-managed AI review blocks and regenerate it.';
 
   useEffect(() => {
     if (!isOpen) {
@@ -87,7 +89,10 @@ export function useAiReviewGeneration({
     }, 1200);
   };
 
-  const runGeneration = async (action: GenerationAction) => {
+  const runGeneration = async (
+    action: GenerationAction,
+    dailyRegeneration: PendingDailyRegeneration | null = null,
+  ) => {
     setGeneratingAction(action);
     generationActiveRef.current = true;
     setLastDiagnostic(null);
@@ -98,18 +103,23 @@ export function useAiReviewGeneration({
 
     try {
       if (action === 'daily') {
-        const inspection = readAiReviewDailyInspection(await window.electronAPI?.aiReview.inspectDaily(selectedDate));
-        if (inspection?.error) {
-          throw new Error(inspection.error);
-        }
-        const shouldRegenerate = Boolean(inspection?.hasAiContent);
-        if (shouldRegenerate && !window.confirm(confirmDailyRegeneration)) {
-          setCurrentProgress(finishProgress(action, false));
-          setGenerationStatus(zh ? '已取消重新生成日报' : 'Daily regeneration canceled');
-          return;
+        const dailyDate = dailyRegeneration?.date ?? selectedDate;
+        const dailyTasks = dailyRegeneration?.tasks ?? tasks;
+        const shouldRegenerate = Boolean(dailyRegeneration);
+        if (!shouldRegenerate) {
+          const inspection = readAiReviewDailyInspection(await window.electronAPI?.aiReview.inspectDaily(dailyDate));
+          if (inspection?.error) {
+            throw new Error(inspection.error);
+          }
+          if (inspection?.hasAiContent) {
+            setPendingDailyRegeneration({ date: dailyDate, tasks: dailyTasks });
+            setCurrentProgress(null);
+            setGenerationStatus('');
+            return;
+          }
         }
 
-        const rawDailyResult = await window.electronAPI?.aiReview.runForDate(selectedDate, tasks, shouldRegenerate);
+        const rawDailyResult = await window.electronAPI?.aiReview.runForDate(dailyDate, dailyTasks, shouldRegenerate);
         const result = readAiReviewGenerationResult(rawDailyResult);
         if (!result) {
           throw new Error('AI Review API unavailable');
@@ -122,7 +132,7 @@ export function useAiReviewGeneration({
         setCurrentProgress(finishProgress(action, result.ok));
         setGenerationStatus(
           result.ok
-            ? `${text.aiReview.genSuccess}${selectedDate}${result.warning ? ` (${result.warning})` : ''}`
+            ? `${text.aiReview.genSuccess}${dailyDate}${result.warning ? ` (${result.warning})` : ''}`
             : `${text.aiReview.genFailed}${result.error ?? '未知错误'}`,
         );
         return;
@@ -168,6 +178,18 @@ export function useAiReviewGeneration({
     lastDiagnostic,
     handoffs,
     runGeneration,
+    pendingDailyRegeneration,
+    confirmDailyRegeneration: () => {
+      if (!pendingDailyRegeneration) return;
+      const pending = pendingDailyRegeneration;
+      setPendingDailyRegeneration(null);
+      void runGeneration('daily', pending);
+    },
+    cancelDailyRegeneration: () => {
+      setPendingDailyRegeneration(null);
+      setCurrentProgress(null);
+      setGenerationStatus(zh ? '\u5df2\u53d6\u6d88\u91cd\u65b0\u751f\u6210\u65e5\u62a5' : 'Daily regeneration canceled');
+    },
     applyHandoff: (taskId: string, updateNextStep: boolean) => {
       const suggestion = handoffs.find((entry) => entry.taskId === taskId);
       const task = tasks.find((item) => item.id === taskId);

@@ -37,6 +37,9 @@ interface AiReviewSettingsSectionProps {
   saveAiReviewSettings: (next: AiReviewSettings) => void;
   saveAiReviewSettingsInput: (next: AiReviewSettings) => void;
   runGeneration: (action: GenerationAction) => void;
+  pendingDailyRegeneration: { date: string; tasks: Task[] } | null;
+  confirmDailyRegeneration: () => void;
+  cancelDailyRegeneration: () => void;
   applyHandoff: (taskId: string, updateNextStep: boolean) => void;
   onCloseDiagnostic: () => void;
 }
@@ -60,6 +63,9 @@ export function AiReviewSettingsSection({
   saveAiReviewSettings,
   saveAiReviewSettingsInput,
   runGeneration,
+  pendingDailyRegeneration,
+  confirmDailyRegeneration,
+  cancelDailyRegeneration,
   applyHandoff,
   onCloseDiagnostic,
 }: AiReviewSettingsSectionProps) {
@@ -97,6 +103,9 @@ export function AiReviewSettingsSection({
           handoffs={handoffs}
           tasks={tasks}
           runGeneration={runGeneration}
+          pendingDailyRegeneration={Boolean(pendingDailyRegeneration)}
+          onConfirmDailyRegeneration={confirmDailyRegeneration}
+          onCancelDailyRegeneration={cancelDailyRegeneration}
           applyHandoff={applyHandoff}
           onCloseDiagnostic={onCloseDiagnostic}
         />
